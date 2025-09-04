@@ -11,7 +11,7 @@ interface InscriptionData {
   id: string;
   status: string;
   subject_area: string;
-  teaching_level: string;
+  teaching_level: 'inicial' | 'primario' | 'secundario';
   experience_years: number;
   availability?: string;
   motivational_letter?: string;

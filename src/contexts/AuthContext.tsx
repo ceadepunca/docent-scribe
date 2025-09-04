@@ -11,6 +11,18 @@ interface Profile {
   last_name: string;
   email: string;
   phone?: string;
+  titulo_1_nombre?: string;
+  titulo_1_fecha_egreso?: string;
+  titulo_1_promedio?: number;
+  titulo_2_nombre?: string;
+  titulo_2_fecha_egreso?: string;
+  titulo_2_promedio?: number;
+  titulo_3_nombre?: string;
+  titulo_3_fecha_egreso?: string;
+  titulo_3_promedio?: number;
+  titulo_4_nombre?: string;
+  titulo_4_fecha_egreso?: string;
+  titulo_4_promedio?: number;
 }
 
 interface AuthContextType {

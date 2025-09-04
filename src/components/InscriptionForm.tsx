@@ -17,7 +17,9 @@ import { Save, Send } from 'lucide-react';
 
 const inscriptionSchema = z.object({
   subject_area: z.string().min(2, 'El área temática debe tener al menos 2 caracteres'),
-  teaching_level: z.string().min(1, 'Debe seleccionar un nivel educativo'),
+  teaching_level: z.enum(['inicial', 'primario', 'secundario'], {
+    required_error: 'Debe seleccionar un nivel educativo'
+  }),
   experience_years: z.number().min(0, 'Los años de experiencia no pueden ser negativos').max(50, 'Años de experiencia no pueden ser más de 50'),
   availability: z.string().optional(),
   motivational_letter: z.string().min(50, 'La carta de motivación debe tener al menos 50 caracteres').max(2000, 'La carta de motivación no puede exceder 2000 caracteres')
@@ -40,7 +42,7 @@ const InscriptionForm: React.FC<InscriptionFormProps> = ({ initialData, isEdit =
     resolver: zodResolver(inscriptionSchema),
     defaultValues: {
       subject_area: initialData?.subject_area || '',
-      teaching_level: initialData?.teaching_level || '',
+      teaching_level: (initialData?.teaching_level as 'inicial' | 'primario' | 'secundario') || 'inicial',
       experience_years: initialData?.experience_years || 0,
       availability: initialData?.availability || '',
       motivational_letter: initialData?.motivational_letter || ''
@@ -186,11 +188,9 @@ const InscriptionForm: React.FC<InscriptionFormProps> = ({ initialData, isEdit =
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="inicial">Educación Inicial</SelectItem>
-                        <SelectItem value="primaria">Educación Primaria</SelectItem>
-                        <SelectItem value="secundaria">Educación Secundaria</SelectItem>
-                        <SelectItem value="superior">Educación Superior</SelectItem>
-                        <SelectItem value="universitario">Universitario</SelectItem>
+                        <SelectItem value="inicial">Nivel Inicial</SelectItem>
+                        <SelectItem value="primario">Nivel Primario</SelectItem>
+                        <SelectItem value="secundario">Nivel Secundario</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />

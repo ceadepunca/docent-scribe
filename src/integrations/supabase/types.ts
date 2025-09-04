@@ -93,16 +93,57 @@ export type Database = {
           },
         ]
       }
+      inscription_periods: {
+        Row: {
+          available_levels: Database["public"]["Enums"]["teaching_level_enum"][]
+          created_at: string
+          created_by: string
+          description: string | null
+          end_date: string
+          id: string
+          is_active: boolean
+          name: string
+          start_date: string
+          updated_at: string
+        }
+        Insert: {
+          available_levels: Database["public"]["Enums"]["teaching_level_enum"][]
+          created_at?: string
+          created_by: string
+          description?: string | null
+          end_date: string
+          id?: string
+          is_active?: boolean
+          name: string
+          start_date: string
+          updated_at?: string
+        }
+        Update: {
+          available_levels?: Database["public"]["Enums"]["teaching_level_enum"][]
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          end_date?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          start_date?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       inscriptions: {
         Row: {
           availability: string | null
           created_at: string
           experience_years: number
           id: string
+          inscription_period_id: string | null
           motivational_letter: string | null
           status: Database["public"]["Enums"]["inscription_status"]
           subject_area: string
-          teaching_level: string
+          target_position_type_id: string | null
+          teaching_level: Database["public"]["Enums"]["teaching_level_enum"]
           updated_at: string
           user_id: string
         }
@@ -111,10 +152,12 @@ export type Database = {
           created_at?: string
           experience_years?: number
           id?: string
+          inscription_period_id?: string | null
           motivational_letter?: string | null
           status?: Database["public"]["Enums"]["inscription_status"]
           subject_area: string
-          teaching_level: string
+          target_position_type_id?: string | null
+          teaching_level: Database["public"]["Enums"]["teaching_level_enum"]
           updated_at?: string
           user_id: string
         }
@@ -123,12 +166,53 @@ export type Database = {
           created_at?: string
           experience_years?: number
           id?: string
+          inscription_period_id?: string | null
           motivational_letter?: string | null
           status?: Database["public"]["Enums"]["inscription_status"]
           subject_area?: string
-          teaching_level?: string
+          target_position_type_id?: string | null
+          teaching_level?: Database["public"]["Enums"]["teaching_level_enum"]
           updated_at?: string
           user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inscriptions_inscription_period_id_fkey"
+            columns: ["inscription_period_id"]
+            isOneToOne: false
+            referencedRelation: "inscription_periods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inscriptions_target_position_type_id_fkey"
+            columns: ["target_position_type_id"]
+            isOneToOne: false
+            referencedRelation: "position_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      position_types: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          name: string
+          teaching_level: Database["public"]["Enums"]["teaching_level_enum"]
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          name: string
+          teaching_level: Database["public"]["Enums"]["teaching_level_enum"]
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          name?: string
+          teaching_level?: Database["public"]["Enums"]["teaching_level_enum"]
         }
         Relationships: []
       }
@@ -140,6 +224,18 @@ export type Database = {
           id: string
           last_name: string
           phone: string | null
+          titulo_1_fecha_egreso: string | null
+          titulo_1_nombre: string | null
+          titulo_1_promedio: number | null
+          titulo_2_fecha_egreso: string | null
+          titulo_2_nombre: string | null
+          titulo_2_promedio: number | null
+          titulo_3_fecha_egreso: string | null
+          titulo_3_nombre: string | null
+          titulo_3_promedio: number | null
+          titulo_4_fecha_egreso: string | null
+          titulo_4_nombre: string | null
+          titulo_4_promedio: number | null
           updated_at: string
         }
         Insert: {
@@ -149,6 +245,18 @@ export type Database = {
           id: string
           last_name: string
           phone?: string | null
+          titulo_1_fecha_egreso?: string | null
+          titulo_1_nombre?: string | null
+          titulo_1_promedio?: number | null
+          titulo_2_fecha_egreso?: string | null
+          titulo_2_nombre?: string | null
+          titulo_2_promedio?: number | null
+          titulo_3_fecha_egreso?: string | null
+          titulo_3_nombre?: string | null
+          titulo_3_promedio?: number | null
+          titulo_4_fecha_egreso?: string | null
+          titulo_4_nombre?: string | null
+          titulo_4_promedio?: number | null
           updated_at?: string
         }
         Update: {
@@ -158,9 +266,62 @@ export type Database = {
           id?: string
           last_name?: string
           phone?: string | null
+          titulo_1_fecha_egreso?: string | null
+          titulo_1_nombre?: string | null
+          titulo_1_promedio?: number | null
+          titulo_2_fecha_egreso?: string | null
+          titulo_2_nombre?: string | null
+          titulo_2_promedio?: number | null
+          titulo_3_fecha_egreso?: string | null
+          titulo_3_nombre?: string | null
+          titulo_3_promedio?: number | null
+          titulo_4_fecha_egreso?: string | null
+          titulo_4_nombre?: string | null
+          titulo_4_promedio?: number | null
           updated_at?: string
         }
         Relationships: []
+      }
+      teacher_registrations: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          legajo_code: string
+          position_type_id: string
+          registration_date: string
+          teaching_level: Database["public"]["Enums"]["teaching_level_enum"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          legajo_code: string
+          position_type_id: string
+          registration_date?: string
+          teaching_level: Database["public"]["Enums"]["teaching_level_enum"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          legajo_code?: string
+          position_type_id?: string
+          registration_date?: string
+          teaching_level?: Database["public"]["Enums"]["teaching_level_enum"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teacher_registrations_position_type_id_fkey"
+            columns: ["position_type_id"]
+            isOneToOne: false
+            referencedRelation: "position_types"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
@@ -188,11 +349,22 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_legajo_code: {
+        Args: {
+          p_position_type_code: string
+          p_teaching_level: Database["public"]["Enums"]["teaching_level_enum"]
+        }
+        Returns: string
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      validate_profile_completeness: {
+        Args: { user_id: string }
         Returns: boolean
       }
     }
@@ -211,6 +383,12 @@ export type Database = {
         | "approved"
         | "rejected"
         | "requires_changes"
+      position_type_enum:
+        | "maestra_sala"
+        | "maestro_grado"
+        | "profesor"
+        | "profesor_especial"
+      teaching_level_enum: "inicial" | "primario" | "secundario"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -354,6 +532,13 @@ export const Constants = {
         "rejected",
         "requires_changes",
       ],
+      position_type_enum: [
+        "maestra_sala",
+        "maestro_grado",
+        "profesor",
+        "profesor_especial",
+      ],
+      teaching_level_enum: ["inicial", "primario", "secundario"],
     },
   },
 } as const

@@ -1,12 +1,30 @@
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { LogOut, User, FileText, Users, Settings, Plus } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { 
+  User, 
+  FileText, 
+  Users, 
+  ClipboardList, 
+  Settings,
+  LogOut,
+  AlertCircle,
+  CheckCircle,
+  GraduationCap
+} from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useProfileCompleteness } from '@/hooks/useProfileCompleteness';
+import { useInscriptionPeriods } from '@/hooks/useInscriptionPeriods';
 
 const Dashboard = () => {
-  const { profile, userRoles, signOut, isSuperAdmin, isEvaluator, isDocente } = useAuth();
+  const { userRoles, profile, signOut, isEvaluator, isDocente, isSuperAdmin } = useAuth();
+  const navigate = useNavigate();
+  const { isComplete: profileComplete, completionPercentage, missingFields } = useProfileCompleteness();
+  const { availableLevels, loading: periodsLoading } = useInscriptionPeriods();
 
   const getRoleColor = (role: string) => {
     switch (role) {
@@ -35,13 +53,20 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b bg-card">
+    <div className="min-h-screen bg-gradient-to-br from-background to-muted/50">
+      <header className="border-b bg-card/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="flex h-16 items-center justify-between px-6">
           <div className="flex items-center space-x-4">
             <h1 className="text-xl font-semibold">CEADEP - Gestión de Inscripciones</h1>
           </div>
           <div className="flex items-center space-x-4">
+            <div className="flex flex-wrap gap-1">
+              {userRoles.map((role) => (
+                <Badge key={role} className={getRoleColor(role)}>
+                  {getRoleLabel(role)}
+                </Badge>
+              ))}
+            </div>
             <span className="text-sm text-muted-foreground">
               {profile?.first_name} {profile?.last_name}
             </span>
@@ -56,116 +81,135 @@ const Dashboard = () => {
       <main className="container mx-auto px-6 py-8">
         <div className="mb-8">
           <h2 className="text-3xl font-bold mb-2">Panel de Control</h2>
-          <div className="flex flex-wrap gap-2">
-            {userRoles.map((role) => (
-              <Badge key={role} className={getRoleColor(role)}>
-                {getRoleLabel(role)}
-              </Badge>
-            ))}
-          </div>
+          <p className="text-muted-foreground">
+            Bienvenido al sistema de gestión de inscripciones docentes
+          </p>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {/* Profile Card */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Mi Perfil</CardTitle>
-              <User className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {profile?.first_name} {profile?.last_name}
+        {/* Profile Completion Status */}
+        {!profileComplete && (
+          <Alert className="mb-6">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              Complete su perfil para poder inscribirse a los cargos docentes.
+              <div className="mt-2">
+                <Progress value={completionPercentage} className="mb-2" />
+                <p className="text-sm text-muted-foreground">
+                  {completionPercentage}% completado. Faltan: {missingFields.join(', ')}
+                </p>
               </div>
-              <p className="text-xs text-muted-foreground">
-                {profile?.email}
-              </p>
-              <Button variant="outline" size="sm" className="mt-4">
-                Editar Perfil
-              </Button>
-            </CardContent>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Inscription Status */}
+        {profileComplete && availableLevels.length === 0 && !periodsLoading && (
+          <Alert className="mb-6">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              No hay períodos de inscripción abiertos actualmente. Su perfil está completo y podrá inscribirse cuando se abran nuevos períodos.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {profileComplete && availableLevels.length > 0 && (
+          <Alert className="mb-6 border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950">
+            <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+            <AlertDescription className="text-green-800 dark:text-green-200">
+              ¡Perfil completo! Puede inscribirse en los niveles: {availableLevels.join(', ')}.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Feature Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+          {/* Mi Perfil Card - Always visible */}
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate('/profile')}>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <User className="h-5 w-5" />
+                Mi Perfil
+                {profileComplete && <CheckCircle className="h-4 w-4 text-green-500" />}
+              </CardTitle>
+              <CardDescription>
+                {profileComplete ? 'Editar información personal' : 'Completar información personal'}
+              </CardDescription>
+            </CardHeader>
+            {!profileComplete && (
+              <CardContent>
+                <Progress value={completionPercentage} />
+                <p className="text-xs text-muted-foreground mt-1">
+                  {completionPercentage}% completado
+                </p>
+              </CardContent>
+            )}
           </Card>
 
-          {/* Docente Features */}
-          {isDocente && (
-            <>
-              <Card>
-                <CardContent className="p-0">
-                  <Button 
-                    variant="outline" 
-                    className="w-full h-auto flex flex-col items-center p-6 bg-card hover:bg-accent transition-colors"
-                    onClick={() => window.location.href = '/inscriptions/new'}
-                  >
-                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
-                      <Plus className="h-6 w-6 text-primary" />
-                    </div>
-                    <h3 className="font-semibold text-base mb-2">Nueva Inscripción</h3>
-                    <p className="text-sm text-muted-foreground text-center">
-                      Postúlate para una nueva posición docente
-                    </p>
-                  </Button>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="p-0">
-                  <Button 
-                    variant="outline" 
-                    className="w-full h-auto flex flex-col items-center p-6 bg-card hover:bg-accent transition-colors"
-                    onClick={() => window.location.href = '/inscriptions'}
-                  >
-                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
-                      <FileText className="h-6 w-6 text-primary" />
-                    </div>
-                    <h3 className="font-semibold text-base mb-2">Ver Inscripciones</h3>
-                    <p className="text-sm text-muted-foreground text-center">
-                      Revisa el estado de tus postulaciones
-                    </p>
-                  </Button>
-                </CardContent>
-              </Card>
-            </>
-          )}
-
-          {/* Evaluator Features */}
-          {isEvaluator && (
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Evaluaciones</CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
+          {/* Inscription Cards - Dynamic by available levels */}
+          {profileComplete && availableLevels.map((level) => (
+            <Card 
+              key={level} 
+              className="hover:shadow-lg transition-shadow cursor-pointer" 
+              onClick={() => navigate(`/new-inscription?level=${level}`)}
+            >
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <GraduationCap className="h-5 w-5" />
+                  Inscribirse - {level.charAt(0).toUpperCase() + level.slice(1)}
+                </CardTitle>
+                <CardDescription>
+                  Crear inscripción para nivel {level}
+                </CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">0</div>
-                <p className="text-xs text-muted-foreground">
-                  Aspirantes por evaluar
-                </p>
-                <Button variant="outline" size="sm" className="mt-4">
-                  Ver Evaluaciones
-                </Button>
-              </CardContent>
+            </Card>
+          ))}
+
+          {/* Ver Inscripciones Card - For all users */}
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate('/inscriptions')}>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ClipboardList className="h-5 w-5" />
+                Ver Inscripciones
+              </CardTitle>
+              <CardDescription>
+                Revisar mis inscripciones
+              </CardDescription>
+            </CardHeader>
+          </Card>
+
+          {/* Evaluaciones Card - Only for Evaluators */}
+          {isEvaluator && (
+            <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate('/evaluations')}>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  Evaluaciones
+                </CardTitle>
+                <CardDescription>
+                  Evaluar inscripciones docentes
+                </CardDescription>
+              </CardHeader>
             </Card>
           )}
 
-          {/* Super Admin Features */}
+          {/* Administración Card - Only for Super Admins */}
           {isSuperAdmin && (
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Administración</CardTitle>
-                <Settings className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <CardDescription className="mb-4">
-                  Gestiona usuarios, roles y configuración del sistema
+            <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate('/admin')}>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Settings className="h-5 w-5" />
+                  Administración
+                </CardTitle>
+                <CardDescription>
+                  Panel de administración
                 </CardDescription>
-                <Button variant="outline" size="sm">
-                  Panel Admin
-                </Button>
-              </CardContent>
+              </CardHeader>
             </Card>
           )}
         </div>
 
         {/* Welcome message based on role */}
-        <Card className="mt-8">
+        <Card>
           <CardHeader>
             <CardTitle>Bienvenido al Sistema</CardTitle>
           </CardHeader>
@@ -173,19 +217,19 @@ const Dashboard = () => {
             {isSuperAdmin && (
               <p className="text-muted-foreground">
                 Como Super Administrador, tienes acceso total al sistema. Puedes gestionar usuarios, 
-                configurar evaluaciones y administrar todos los aspectos de la plataforma.
+                períodos de inscripción y administrar todos los aspectos de la plataforma.
               </p>
             )}
             {isEvaluator && !isSuperAdmin && (
               <p className="text-muted-foreground">
                 Como Evaluador, puedes acceder a las herramientas de clasificación y evaluación 
-                de aspirantes docentes.
+                de aspirantes docentes en todos los niveles educativos.
               </p>
             )}
             {isDocente && !isEvaluator && !isSuperAdmin && (
               <p className="text-muted-foreground">
-                Bienvenido docente. Aquí podrás gestionar tus inscripciones, cargar documentos 
-                y mantener actualizada tu información profesional.
+                Bienvenido docente. Aquí podrás gestionar tus inscripciones por nivel, 
+                completar tu perfil académico y mantener actualizada tu información profesional.
               </p>
             )}
           </CardContent>

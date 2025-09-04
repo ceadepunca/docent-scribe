@@ -9,6 +9,8 @@ import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
+import Profile from "./pages/Profile";
+import AdminPanel from "./pages/AdminPanel";
 import Unauthorized from "./pages/Unauthorized";
 import NotFound from "./pages/NotFound";
 import NewInscription from "./pages/NewInscription";
@@ -35,7 +37,22 @@ const App = () => (
                 <Dashboard />
               </ProtectedRoute>
             } />
+            <Route path="/profile" element={
+              <ProtectedRoute>
+                <Profile />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin" element={
+              <ProtectedRoute>
+                <AdminPanel />
+              </ProtectedRoute>
+            } />
             <Route path="/inscriptions/new" element={
+              <ProtectedRoute>
+                <NewInscription />
+              </ProtectedRoute>
+            } />
+            <Route path="/new-inscription" element={
               <ProtectedRoute>
                 <NewInscription />
               </ProtectedRoute>
