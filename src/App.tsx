@@ -11,6 +11,10 @@ import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import Unauthorized from "./pages/Unauthorized";
 import NotFound from "./pages/NotFound";
+import NewInscription from "./pages/NewInscription";
+import Inscriptions from "./pages/Inscriptions";
+import InscriptionDetail from "./pages/InscriptionDetail";
+import EditInscription from "./pages/EditInscription";
 
 const queryClient = new QueryClient();
 
@@ -29,6 +33,26 @@ const App = () => (
             <Route path="/dashboard" element={
               <ProtectedRoute>
                 <Dashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/inscriptions/new" element={
+              <ProtectedRoute>
+                <NewInscription />
+              </ProtectedRoute>
+            } />
+            <Route path="/inscriptions" element={
+              <ProtectedRoute>
+                <Inscriptions />
+              </ProtectedRoute>
+            } />
+            <Route path="/inscriptions/:id" element={
+              <ProtectedRoute>
+                <InscriptionDetail />
+              </ProtectedRoute>
+            } />
+            <Route path="/inscriptions/:id/edit" element={
+              <ProtectedRoute>
+                <EditInscription />
               </ProtectedRoute>
             } />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

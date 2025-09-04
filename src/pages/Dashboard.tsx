@@ -3,7 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { LogOut, User, FileText, Users, Settings } from 'lucide-react';
+import { LogOut, User, FileText, Users, Settings, Plus } from 'lucide-react';
 
 const Dashboard = () => {
   const { profile, userRoles, signOut, isSuperAdmin, isEvaluator, isDocente } = useAuth();
@@ -89,32 +89,37 @@ const Dashboard = () => {
           {isDocente && (
             <>
               <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Mis Inscripciones</CardTitle>
-                  <FileText className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">0</div>
-                  <p className="text-xs text-muted-foreground">
-                    Inscripciones activas
-                  </p>
-                  <Button variant="outline" size="sm" className="mt-4">
-                    Ver Inscripciones
+                <CardContent className="p-0">
+                  <Button 
+                    variant="outline" 
+                    className="w-full h-auto flex flex-col items-center p-6 bg-card hover:bg-accent transition-colors"
+                    onClick={() => window.location.href = '/inscriptions/new'}
+                  >
+                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
+                      <Plus className="h-6 w-6 text-primary" />
+                    </div>
+                    <h3 className="font-semibold text-base mb-2">Nueva Inscripción</h3>
+                    <p className="text-sm text-muted-foreground text-center">
+                      Postúlate para una nueva posición docente
+                    </p>
                   </Button>
                 </CardContent>
               </Card>
 
               <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Nueva Inscripción</CardTitle>
-                  <FileText className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <CardDescription className="mb-4">
-                    Inicia una nueva inscripción o reinscripción anual
-                  </CardDescription>
-                  <Button size="sm">
-                    Crear Inscripción
+                <CardContent className="p-0">
+                  <Button 
+                    variant="outline" 
+                    className="w-full h-auto flex flex-col items-center p-6 bg-card hover:bg-accent transition-colors"
+                    onClick={() => window.location.href = '/inscriptions'}
+                  >
+                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
+                      <FileText className="h-6 w-6 text-primary" />
+                    </div>
+                    <h3 className="font-semibold text-base mb-2">Ver Inscripciones</h3>
+                    <p className="text-sm text-muted-foreground text-center">
+                      Revisa el estado de tus postulaciones
+                    </p>
                   </Button>
                 </CardContent>
               </Card>

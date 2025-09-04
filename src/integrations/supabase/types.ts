@@ -14,6 +14,124 @@ export type Database = {
   }
   public: {
     Tables: {
+      inscription_documents: {
+        Row: {
+          document_type: Database["public"]["Enums"]["document_type"]
+          file_name: string
+          file_url: string
+          id: string
+          inscription_id: string
+          uploaded_at: string
+        }
+        Insert: {
+          document_type: Database["public"]["Enums"]["document_type"]
+          file_name: string
+          file_url: string
+          id?: string
+          inscription_id: string
+          uploaded_at?: string
+        }
+        Update: {
+          document_type?: Database["public"]["Enums"]["document_type"]
+          file_name?: string
+          file_url?: string
+          id?: string
+          inscription_id?: string
+          uploaded_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inscription_documents_inscription_id_fkey"
+            columns: ["inscription_id"]
+            isOneToOne: false
+            referencedRelation: "inscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inscription_history: {
+        Row: {
+          changed_by: string
+          created_at: string
+          id: string
+          inscription_id: string
+          new_status: Database["public"]["Enums"]["inscription_status"]
+          notes: string | null
+          previous_status:
+            | Database["public"]["Enums"]["inscription_status"]
+            | null
+        }
+        Insert: {
+          changed_by: string
+          created_at?: string
+          id?: string
+          inscription_id: string
+          new_status: Database["public"]["Enums"]["inscription_status"]
+          notes?: string | null
+          previous_status?:
+            | Database["public"]["Enums"]["inscription_status"]
+            | null
+        }
+        Update: {
+          changed_by?: string
+          created_at?: string
+          id?: string
+          inscription_id?: string
+          new_status?: Database["public"]["Enums"]["inscription_status"]
+          notes?: string | null
+          previous_status?:
+            | Database["public"]["Enums"]["inscription_status"]
+            | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inscription_history_inscription_id_fkey"
+            columns: ["inscription_id"]
+            isOneToOne: false
+            referencedRelation: "inscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inscriptions: {
+        Row: {
+          availability: string | null
+          created_at: string
+          experience_years: number
+          id: string
+          motivational_letter: string | null
+          status: Database["public"]["Enums"]["inscription_status"]
+          subject_area: string
+          teaching_level: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          availability?: string | null
+          created_at?: string
+          experience_years?: number
+          id?: string
+          motivational_letter?: string | null
+          status?: Database["public"]["Enums"]["inscription_status"]
+          subject_area: string
+          teaching_level: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          availability?: string | null
+          created_at?: string
+          experience_years?: number
+          id?: string
+          motivational_letter?: string | null
+          status?: Database["public"]["Enums"]["inscription_status"]
+          subject_area?: string
+          teaching_level?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -80,6 +198,19 @@ export type Database = {
     }
     Enums: {
       app_role: "super_admin" | "evaluator" | "docente"
+      document_type:
+        | "cv"
+        | "certificates"
+        | "diplomas"
+        | "recommendations"
+        | "other"
+      inscription_status:
+        | "draft"
+        | "submitted"
+        | "under_review"
+        | "approved"
+        | "rejected"
+        | "requires_changes"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -208,6 +339,21 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["super_admin", "evaluator", "docente"],
+      document_type: [
+        "cv",
+        "certificates",
+        "diplomas",
+        "recommendations",
+        "other",
+      ],
+      inscription_status: [
+        "draft",
+        "submitted",
+        "under_review",
+        "approved",
+        "rejected",
+        "requires_changes",
+      ],
     },
   },
 } as const
