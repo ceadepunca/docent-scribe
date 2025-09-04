@@ -18,10 +18,11 @@ export const useProfileCompleteness = (): ProfileCompletion => {
   }
 
   const requiredFields = [
+    { key: 'dni', label: 'DNI' },
     { key: 'first_name', label: 'Nombre' },
     { key: 'last_name', label: 'Apellido' },
     { key: 'email', label: 'Email' },
-    { key: 'phone', label: 'Teléfono' },
+    { key: 'phone', label: 'Teléfono celular' },
     { key: 'titulo_1_nombre', label: 'Título principal' },
     { key: 'titulo_1_fecha_egreso', label: 'Fecha de egreso del título principal' },
     { key: 'titulo_1_promedio', label: 'Promedio del título principal' },

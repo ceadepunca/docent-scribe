@@ -13,6 +13,7 @@ import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 
 const profileSchema = z.object({
+  dni: z.string().min(7, "El DNI debe tener al menos 7 dígitos").max(8, "El DNI debe tener máximo 8 dígitos").regex(/^\d+$/, "El DNI debe contener solo números"),
   firstName: z.string().min(1, 'El nombre es obligatorio'),
   lastName: z.string().min(1, 'El apellido es obligatorio'),
   email: z.string().email('Email inválido'),
@@ -41,6 +42,7 @@ const Profile = () => {
   const form = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
+      dni: profile?.dni || '',
       firstName: profile?.first_name || '',
       lastName: profile?.last_name || '',
       email: profile?.email || '',
@@ -67,6 +69,7 @@ const Profile = () => {
       const { error } = await supabase
         .from('profiles')
         .update({
+          dni: data.dni,
           first_name: data.firstName,
           last_name: data.lastName,
           email: data.email,
@@ -138,6 +141,20 @@ const Profile = () => {
               <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
+                  name="dni"
+                  render={({ field }) => (
+                    <FormItem className="md:col-span-2">
+                      <FormLabel>DNI *</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Ingrese su DNI" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
                   name="firstName"
                   render={({ field }) => (
                     <FormItem>
@@ -183,7 +200,7 @@ const Profile = () => {
                   name="phone"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Teléfono *</FormLabel>
+                      <FormLabel>Teléfono celular *</FormLabel>
                       <FormControl>
                         <Input {...field} />
                       </FormControl>
