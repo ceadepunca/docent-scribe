@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -8,12 +8,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, User, GraduationCap } from 'lucide-react';
+import { ArrowLeft, User, GraduationCap, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { DocumentUploader } from '@/components/DocumentUploader';
 import { DocumentViewer } from '@/components/DocumentViewer';
 import { useProfileDocuments } from '@/hooks/useProfileDocuments';
+import { TitleCard } from '@/components/TitleCard';
 
 const profileSchema = z.object({
   dni: z.string().min(7, "El DNI debe tener al menos 7 dígitos").max(8, "El DNI debe tener máximo 8 dígitos").regex(/^\d+$/, "El DNI debe contener solo números"),
@@ -42,6 +43,16 @@ const Profile = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { documents, getDocumentByType, refreshDocuments } = useProfileDocuments();
+  
+  // State for managing visible additional titles
+  const [visibleTitles, setVisibleTitles] = useState<number[]>(() => {
+    // Show additional titles that already have data
+    const existingTitles = [];
+    if (profile?.titulo_2_nombre) existingTitles.push(2);
+    if (profile?.titulo_3_nombre) existingTitles.push(3);
+    if (profile?.titulo_4_nombre) existingTitles.push(4);
+    return existingTitles;
+  });
   
   const form = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
@@ -227,116 +238,46 @@ const Profile = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                {/* Título 1 (Obligatorio) */}
-                <div className="border rounded-lg p-4 bg-muted/20">
-                  <h3 className="font-semibold mb-4 text-primary">Título Principal *</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="titulo1Nombre"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Nombre del Título *</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Ej: Profesorado en..." {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                {/* Primary Title (Required) */}
+                <TitleCard
+                  control={form.control}
+                  titleNumber={1}
+                  isRequired
+                />
 
-                    <FormField
-                      control={form.control}
-                      name="titulo1FechaEgreso"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Fecha de Egreso *</FormLabel>
-                          <FormControl>
-                            <Input type="date" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="titulo1Promedio"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Promedio *</FormLabel>
-                          <FormControl>
-                            <Input 
-                              type="number" 
-                              step="0.01"
-                              min="1"
-                              max="10"
-                              placeholder="8.50"
-                              {...field} 
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                </div>
-
-                {/* Títulos 2-4 (Opcionales) */}
-                {[2, 3, 4].map((num) => (
-                  <div key={num} className="border rounded-lg p-4">
-                    <h3 className="font-semibold mb-4">Título Adicional #{num}</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <FormField
-                        control={form.control}
-                        name={`titulo${num}Nombre` as keyof ProfileFormData}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Nombre del Título</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Opcional" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name={`titulo${num}FechaEgreso` as keyof ProfileFormData}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Fecha de Egreso</FormLabel>
-                            <FormControl>
-                              <Input type="date" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name={`titulo${num}Promedio` as keyof ProfileFormData}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Promedio</FormLabel>
-                            <FormControl>
-                              <Input 
-                                type="number" 
-                                step="0.01"
-                                min="1"
-                                max="10"
-                                {...field} 
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </div>
+                {/* Additional Titles (Dynamic) */}
+                {visibleTitles.map((titleNumber) => (
+                  <TitleCard
+                    key={titleNumber}
+                    control={form.control}
+                    titleNumber={titleNumber}
+                    onRemove={() => {
+                      setVisibleTitles(prev => prev.filter(num => num !== titleNumber));
+                      // Clear form values for this title
+                      form.setValue(`titulo${titleNumber}Nombre` as keyof ProfileFormData, '');
+                      form.setValue(`titulo${titleNumber}FechaEgreso` as keyof ProfileFormData, '');
+                      form.setValue(`titulo${titleNumber}Promedio` as keyof ProfileFormData, '');
+                    }}
+                  />
                 ))}
+
+                {/* Add Additional Title Button */}
+                {visibleTitles.length < 3 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      const nextTitle = [2, 3, 4].find(num => !visibleTitles.includes(num));
+                      if (nextTitle) {
+                        setVisibleTitles(prev => [...prev, nextTitle]);
+                      }
+                    }}
+                    className="w-full h-12 border-dashed"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Agregar Título Adicional
+                  </Button>
+                )}
               </CardContent>
             </Card>
 
