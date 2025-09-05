@@ -1,0 +1,162 @@
+import React from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
+import { BookOpen, GraduationCap } from 'lucide-react';
+import { SubjectSelection, useSecondaryInscriptionData } from '@/hooks/useSecondaryInscriptionData';
+
+interface SubjectSelectionGridProps {
+  selectedSubjects: SubjectSelection[];
+  onSelectionChange: (selections: SubjectSelection[]) => void;
+}
+
+export const SubjectSelectionGrid: React.FC<SubjectSelectionGridProps> = ({
+  selectedSubjects,
+  onSelectionChange,
+}) => {
+  const { schools, subjects, loading, getSubjectsBySchool } = useSecondaryInscriptionData();
+
+  const isSelected = (subjectId: string, positionType: 'profesor' | 'suplente') => {
+    return selectedSubjects.some(
+      selection => selection.subject_id === subjectId && selection.position_type === positionType
+    );
+  };
+
+  const handleSelectionChange = (subjectId: string, positionType: 'profesor' | 'suplente', checked: boolean) => {
+    let newSelections = [...selectedSubjects];
+    
+    if (checked) {
+      // Add selection
+      newSelections.push({
+        subject_id: subjectId,
+        position_type: positionType,
+      });
+    } else {
+      // Remove selection
+      newSelections = newSelections.filter(
+        selection => !(selection.subject_id === subjectId && selection.position_type === positionType)
+      );
+    }
+
+    onSelectionChange(newSelections);
+  };
+
+  if (loading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <BookOpen className="h-5 w-5" />
+            Selección de Materias
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground">Cargando materias disponibles...</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const allSubjects = subjects.reduce((acc, subject) => {
+    const existingSubject = acc.find(s => s.name === subject.name);
+    if (!existingSubject) {
+      acc.push({
+        name: subject.name,
+        subjects: [subject]
+      });
+    } else {
+      existingSubject.subjects.push(subject);
+    }
+    return acc;
+  }, [] as { name: string; subjects: typeof subjects }[]);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <BookOpen className="h-5 w-5 text-primary" />
+          Selección de Materias por Escuela
+        </CardTitle>
+        <p className="text-sm text-muted-foreground">
+          Seleccione las materias y cargos en los que desea inscribirse para cada escuela.
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="grid gap-4">
+          {/* Header */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-b pb-4">
+            <div className="font-semibold">Materia</div>
+            {schools.map(school => (
+              <div key={school.id} className="text-center font-semibold">
+                {school.name}
+              </div>
+            ))}
+          </div>
+
+          {/* Subjects Grid */}
+          {allSubjects.map(subjectGroup => (
+            <div key={subjectGroup.name} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center py-3 border-b border-muted">
+              <div className="font-medium flex items-center gap-2">
+                <GraduationCap className="h-4 w-4 text-muted-foreground" />
+                {subjectGroup.name}
+              </div>
+              
+              {schools.map(school => {
+                const schoolSubject = subjectGroup.subjects.find(s => s.school_id === school.id);
+                
+                return (
+                  <div key={school.id} className="space-y-2">
+                    {schoolSubject ? (
+                      <div className="flex flex-col gap-2">
+                        <label className="flex items-center space-x-2">
+                          <Checkbox
+                            checked={isSelected(schoolSubject.id, 'profesor')}
+                            onCheckedChange={(checked) => 
+                              handleSelectionChange(schoolSubject.id, 'profesor', checked as boolean)
+                            }
+                          />
+                          <span className="text-sm">Profesor</span>
+                        </label>
+                        <label className="flex items-center space-x-2">
+                          <Checkbox
+                            checked={isSelected(schoolSubject.id, 'suplente')}
+                            onCheckedChange={(checked) => 
+                              handleSelectionChange(schoolSubject.id, 'suplente', checked as boolean)
+                            }
+                          />
+                          <span className="text-sm">Suplente</span>
+                        </label>
+                      </div>
+                    ) : (
+                      <div className="text-muted-foreground text-sm">
+                        No disponible
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+
+        {/* Selection Summary */}
+        {selectedSubjects.length > 0 && (
+          <div className="mt-6 p-4 bg-muted/50 rounded-lg">
+            <h4 className="font-medium mb-3">Materias Seleccionadas:</h4>
+            <div className="flex flex-wrap gap-2">
+              {selectedSubjects.map((selection, index) => {
+                const subject = subjects.find(s => s.id === selection.subject_id);
+                const school = schools.find(s => s.id === subject?.school_id);
+                return (
+                  <Badge key={index} variant="secondary" className="text-xs">
+                    {subject?.name} - {school?.name} ({selection.position_type})
+                  </Badge>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+};

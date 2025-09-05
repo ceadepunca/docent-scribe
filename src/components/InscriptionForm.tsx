@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -14,7 +14,9 @@ import { useInscriptionPeriods } from '@/hooks/useInscriptionPeriods';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Save, Send } from 'lucide-react';
+import { Save, Send, ArrowLeft, ArrowRight } from 'lucide-react';
+import { SecondaryInscriptionWizard } from './SecondaryInscriptionWizard';
+import { SubjectSelection, PositionSelection, useSecondaryInscriptionData } from '@/hooks/useSecondaryInscriptionData';
 
 const inscriptionSchema = z.object({
   subject_area: z.string().min(2, 'El área temática debe tener al menos 2 caracteres'),
@@ -37,8 +39,11 @@ const InscriptionForm: React.FC<InscriptionFormProps> = ({ initialData, isEdit =
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSecondaryWizard, setShowSecondaryWizard] = useState(false);
+  const [basicFormData, setBasicFormData] = useState<InscriptionFormData | null>(null);
   const { availableLevels, getCurrentPeriods, getPeriodForLevel } = useInscriptionPeriods();
+  const { saveSubjectSelections, savePositionSelections } = useSecondaryInscriptionData();
 
   const form = useForm<InscriptionFormData>({
     resolver: zodResolver(inscriptionSchema),
@@ -50,6 +55,9 @@ const InscriptionForm: React.FC<InscriptionFormProps> = ({ initialData, isEdit =
       motivational_letter: initialData?.motivational_letter || ''
     }
   });
+
+  // Watch for teaching level changes
+  const teachingLevel = form.watch('teaching_level');
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -77,6 +85,13 @@ const InscriptionForm: React.FC<InscriptionFormProps> = ({ initialData, isEdit =
 
   const onSubmit = async (data: InscriptionFormData, isDraft: boolean = false) => {
     if (!user) return;
+    
+    // For secondary level, show the wizard first
+    if (data.teaching_level === 'secundario' && !showSecondaryWizard && !isEdit) {
+      setBasicFormData(data);
+      setShowSecondaryWizard(true);
+      return;
+    }
     
     setIsSubmitting(true);
     
@@ -141,7 +156,127 @@ const InscriptionForm: React.FC<InscriptionFormProps> = ({ initialData, isEdit =
     }
   };
 
+  const handleSecondaryInscriptionComplete = async (selections: {
+    subjectSelections: SubjectSelection[];
+    positionSelections: PositionSelection[];
+  }) => {
+    if (!user || !basicFormData) return;
+    
+    setIsSubmitting(true);
+    
+    try {
+      // Determine inscription_period_id
+      let inscriptionPeriodId = initialData?.inscription_period_id;
+      
+      if (!inscriptionPeriodId) {
+        const period = getPeriodForLevel(basicFormData.teaching_level);
+        if (!period) {
+          throw new Error('No hay un período de inscripción activo para este nivel');
+        }
+        inscriptionPeriodId = period.id;
+      }
+
+      const inscriptionData = {
+        subject_area: basicFormData.subject_area,
+        teaching_level: basicFormData.teaching_level,
+        experience_years: basicFormData.experience_years,
+        availability: basicFormData.availability,
+        motivational_letter: basicFormData.motivational_letter,
+        inscription_period_id: inscriptionPeriodId,
+        user_id: user.id,
+        status: 'submitted' as const
+      };
+
+      // Create the basic inscription
+      const { data: inscription, error: inscriptionError } = await supabase
+        .from('inscriptions')
+        .insert(inscriptionData)
+        .select()
+        .single();
+
+      if (inscriptionError) throw inscriptionError;
+
+      // Save the granular selections
+      await saveSubjectSelections(inscription.id, selections.subjectSelections);
+      await savePositionSelections(inscription.id, selections.positionSelections);
+
+      toast({
+        title: 'Inscripción completada',
+        description: 'Su inscripción para nivel secundario se envió exitosamente con todas las selecciones',
+      });
+
+      navigate('/inscriptions');
+    } catch (error) {
+      console.error('Error:', error);
+      toast({
+        title: 'Error',
+        description: 'Ocurrió un error al procesar la inscripción',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleBackToBasicForm = () => {
+    setShowSecondaryWizard(false);
+    setBasicFormData(null);
+  };
+
   const canEdit = !initialData?.status || ['draft', 'requires_changes'].includes(initialData.status);
+
+  // If showing secondary wizard
+  if (showSecondaryWizard && basicFormData) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Inscripción para Nivel Secundario</CardTitle>
+                <CardDescription>
+                  Complete los datos básicos y las selecciones específicas por escuela
+                </CardDescription>
+              </div>
+              <Button
+                variant="outline"
+                onClick={handleBackToBasicForm}
+                className="flex items-center gap-2"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Volver a Datos Básicos
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-muted/50 rounded-lg">
+              <div>
+                <span className="text-sm font-medium text-muted-foreground">Área:</span>
+                <p className="font-medium">{basicFormData.subject_area}</p>
+              </div>
+              <div>
+                <span className="text-sm font-medium text-muted-foreground">Nivel:</span>
+                <p className="font-medium">Secundario</p>
+              </div>
+              <div>
+                <span className="text-sm font-medium text-muted-foreground">Experiencia:</span>
+                <p className="font-medium">{basicFormData.experience_years} años</p>
+              </div>
+              <div>
+                <span className="text-sm font-medium text-muted-foreground">Disponibilidad:</span>
+                <p className="font-medium">{basicFormData.availability || 'No especificada'}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <SecondaryInscriptionWizard
+          onComplete={handleSecondaryInscriptionComplete}
+          isLoading={isSubmitting}
+        />
+      </div>
+    );
+  }
 
   return (
     <Card className="w-full max-w-4xl mx-auto">
@@ -306,8 +441,17 @@ const InscriptionForm: React.FC<InscriptionFormProps> = ({ initialData, isEdit =
                   disabled={isSubmitting}
                   className="flex items-center gap-2"
                 >
-                  <Send className="h-4 w-4" />
-                  {isEdit ? 'Actualizar y Enviar' : 'Enviar Inscripción'}
+                  {teachingLevel === 'secundario' && !isEdit ? (
+                    <>
+                      <ArrowRight className="h-4 w-4" />
+                      Continuar a Selecciones
+                    </>
+                  ) : (
+                    <>
+                      <Send className="h-4 w-4" />
+                      {isEdit ? 'Actualizar y Enviar' : 'Enviar Inscripción'}
+                    </>
+                  )}
                 </Button>
               </div>
             )}

@@ -14,6 +14,41 @@ export type Database = {
   }
   public: {
     Tables: {
+      administrative_positions: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          school_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          school_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          school_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "administrative_positions_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inscription_documents: {
         Row: {
           document_type: Database["public"]["Enums"]["document_type"]
@@ -131,6 +166,81 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      inscription_position_selections: {
+        Row: {
+          administrative_position_id: string
+          created_at: string
+          id: string
+          inscription_id: string
+        }
+        Insert: {
+          administrative_position_id: string
+          created_at?: string
+          id?: string
+          inscription_id: string
+        }
+        Update: {
+          administrative_position_id?: string
+          created_at?: string
+          id?: string
+          inscription_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inscription_position_selections_administrative_position_id_fkey"
+            columns: ["administrative_position_id"]
+            isOneToOne: false
+            referencedRelation: "administrative_positions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inscription_position_selections_inscription_id_fkey"
+            columns: ["inscription_id"]
+            isOneToOne: false
+            referencedRelation: "inscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inscription_subject_selections: {
+        Row: {
+          created_at: string
+          id: string
+          inscription_id: string
+          position_type: string
+          subject_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          inscription_id: string
+          position_type: string
+          subject_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          inscription_id?: string
+          position_type?: string
+          subject_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inscription_subject_selections_inscription_id_fkey"
+            columns: ["inscription_id"]
+            isOneToOne: false
+            referencedRelation: "inscriptions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inscription_subject_selections_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       inscriptions: {
         Row: {
@@ -311,6 +421,68 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      schools: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          teaching_level: Database["public"]["Enums"]["teaching_level_enum"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          teaching_level: Database["public"]["Enums"]["teaching_level_enum"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          teaching_level?: Database["public"]["Enums"]["teaching_level_enum"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      subjects: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          school_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          school_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          school_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subjects_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       teacher_registrations: {
         Row: {
