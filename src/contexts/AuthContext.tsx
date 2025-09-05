@@ -57,6 +57,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [profile, setProfile] = useState<Profile | null>(null);
   const [userRoles, setUserRoles] = useState<UserRole[]>([]);
   const [loading, setLoading] = useState(true);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [rolesLoading, setRolesLoading] = useState(false);
 
   useEffect(() => {
     // Set up auth state listener
@@ -66,6 +68,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(session?.user ?? null);
         
         if (session?.user) {
+          setProfileLoading(true);
+          setRolesLoading(true);
           setTimeout(() => {
             fetchUserProfile(session.user.id);
             fetchUserRoles(session.user.id);
@@ -73,8 +77,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } else {
           setProfile(null);
           setUserRoles([]);
+          setProfileLoading(false);
+          setRolesLoading(false);
+          setLoading(false);
         }
-        setLoading(false);
       }
     );
 
@@ -84,10 +90,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(session?.user ?? null);
       
       if (session?.user) {
+        setProfileLoading(true);
+        setRolesLoading(true);
         fetchUserProfile(session.user.id);
         fetchUserRoles(session.user.id);
+      } else {
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
@@ -111,6 +120,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } catch (error) {
       console.error('Error fetching profile:', error);
+    } finally {
+      setProfileLoading(false);
     }
   };
 
@@ -131,6 +142,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } catch (error) {
       console.error('Error fetching user roles:', error);
+    } finally {
+      setRolesLoading(false);
     }
   };
 
@@ -183,13 +196,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      toast({
-        title: "Error al cerrar sesión",
-        description: error.message,
-        variant: "destructive",
-      });
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error && !error.message.includes('session_not_found')) {
+        toast({
+          title: "Error al cerrar sesión",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      // Handle any other errors silently for logout
+      console.error('Logout error:', error);
+    } finally {
+      // Always perform local cleanup and redirect
+      setUser(null);
+      setSession(null);
+      setProfile(null);
+      setUserRoles([]);
+      window.location.href = '/login';
     }
   };
 
@@ -200,6 +225,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const isSuperAdmin = hasRole('super_admin');
   const isEvaluator = hasRole('evaluator');
   const isDocente = hasRole('docente');
+
+  // Update loading state based on profile and roles loading states
+  useEffect(() => {
+    if (user) {
+      setLoading(profileLoading || rolesLoading);
+    }
+  }, [user, profileLoading, rolesLoading]);
 
   const value: AuthContextType = {
     user,
