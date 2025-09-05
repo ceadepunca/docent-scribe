@@ -24,7 +24,7 @@ const Dashboard = () => {
   const { userRoles, profile, signOut, isEvaluator, isDocente, isSuperAdmin } = useAuth();
   const navigate = useNavigate();
   const { isComplete: profileComplete, completionPercentage, missingFields } = useProfileCompleteness();
-  const { availableLevels, loading: periodsLoading } = useInscriptionPeriods();
+  const { availableLevels, loading: periodsLoading, getPeriodForLevel } = useInscriptionPeriods();
 
   const getRoleColor = (role: string) => {
     switch (role) {
@@ -150,7 +150,12 @@ const Dashboard = () => {
             <Card 
               key={level} 
               className="hover:shadow-lg transition-shadow cursor-pointer" 
-              onClick={() => navigate(`/new-inscription?level=${level}`)}
+          onClick={() => {
+            const period = getPeriodForLevel(level);
+            if (period) {
+              navigate(`/new-inscription?level=${level}&periodId=${period.id}`);
+            }
+          }}
             >
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">

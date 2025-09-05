@@ -1,13 +1,37 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useInscriptionPeriods } from '@/hooks/useInscriptionPeriods';
+import { toast } from 'sonner';
 import InscriptionForm from '@/components/InscriptionForm';
 
 const NewInscription = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { getPeriodForLevel, loading } = useInscriptionPeriods();
+  
   const selectedLevel = searchParams.get('level') as 'inicial' | 'primario' | 'secundario' | null;
+  const periodId = searchParams.get('periodId');
+
+  useEffect(() => {
+    if (!loading) {
+      // Validate that we have required parameters
+      if (!selectedLevel || !periodId) {
+        toast.error('Parámetros de inscripción inválidos');
+        navigate('/dashboard');
+        return;
+      }
+
+      // Validate that the period exists and is valid for the level
+      const period = getPeriodForLevel(selectedLevel);
+      if (!period || period.id !== periodId) {
+        toast.error('El período de inscripción no está disponible para este nivel');
+        navigate('/dashboard');
+        return;
+      }
+    }
+  }, [selectedLevel, periodId, loading, getPeriodForLevel, navigate]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/50 p-4">
@@ -39,7 +63,11 @@ const NewInscription = () => {
         </div>
 
         <InscriptionForm 
-          initialData={selectedLevel ? { teaching_level: selectedLevel } : undefined} 
+          initialData={
+            selectedLevel && periodId 
+              ? { teaching_level: selectedLevel, inscription_period_id: periodId } 
+              : undefined
+          } 
         />
       </div>
     </div>

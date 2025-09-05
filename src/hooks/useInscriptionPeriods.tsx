@@ -38,21 +38,31 @@ export const useInscriptionPeriods = () => {
     fetchActivePeriods();
   }, []);
 
+  const getCurrentPeriods = (): InscriptionPeriod[] => {
+    const now = new Date();
+    return periods.filter(period => {
+      const startDate = new Date(period.start_date);
+      const endDate = new Date(period.end_date);
+      return now >= startDate && now <= endDate;
+    });
+  };
+
+  const getPeriodForLevel = (level: 'inicial' | 'primario' | 'secundario'): InscriptionPeriod | null => {
+    const currentPeriods = getCurrentPeriods();
+    return currentPeriods.find(period => 
+      period.available_levels.includes(level)
+    ) || null;
+  };
+
   const getAvailableLevelsForUser = (): ('inicial' | 'primario' | 'secundario')[] => {
     const allLevels: ('inicial' | 'primario' | 'secundario')[] = [];
     
-    periods.forEach(period => {
-      const now = new Date();
-      const startDate = new Date(period.start_date);
-      const endDate = new Date(period.end_date);
-      
-      if (now >= startDate && now <= endDate) {
-        period.available_levels.forEach(level => {
-          if (!allLevels.includes(level)) {
-            allLevels.push(level);
-          }
-        });
-      }
+    getCurrentPeriods().forEach(period => {
+      period.available_levels.forEach(level => {
+        if (!allLevels.includes(level)) {
+          allLevels.push(level);
+        }
+      });
     });
 
     return allLevels;
@@ -64,5 +74,7 @@ export const useInscriptionPeriods = () => {
     error,
     refetch: fetchActivePeriods,
     availableLevels: getAvailableLevelsForUser(),
+    getCurrentPeriods,
+    getPeriodForLevel,
   };
 };

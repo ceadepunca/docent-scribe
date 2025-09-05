@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import { useInscriptionPeriods } from '@/hooks/useInscriptionPeriods';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -28,7 +29,7 @@ const inscriptionSchema = z.object({
 type InscriptionFormData = z.infer<typeof inscriptionSchema>;
 
 interface InscriptionFormProps {
-  initialData?: Partial<InscriptionFormData & { id: string; status: string }>;
+  initialData?: Partial<InscriptionFormData & { id: string; status: string; inscription_period_id?: string }>;
   isEdit?: boolean;
 }
 
@@ -37,6 +38,7 @@ const InscriptionForm: React.FC<InscriptionFormProps> = ({ initialData, isEdit =
   const { toast } = useToast();
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const { availableLevels, getCurrentPeriods, getPeriodForLevel } = useInscriptionPeriods();
 
   const form = useForm<InscriptionFormData>({
     resolver: zodResolver(inscriptionSchema),
@@ -79,12 +81,24 @@ const InscriptionForm: React.FC<InscriptionFormProps> = ({ initialData, isEdit =
     setIsSubmitting(true);
     
     try {
+      // Determine inscription_period_id
+      let inscriptionPeriodId = initialData?.inscription_period_id;
+      
+      if (!inscriptionPeriodId) {
+        const period = getPeriodForLevel(data.teaching_level);
+        if (!period) {
+          throw new Error('No hay un período de inscripción activo para este nivel');
+        }
+        inscriptionPeriodId = period.id;
+      }
+
       const inscriptionData = {
         subject_area: data.subject_area,
         teaching_level: data.teaching_level,
         experience_years: data.experience_years,
         availability: data.availability,
         motivational_letter: data.motivational_letter,
+        inscription_period_id: inscriptionPeriodId,
         user_id: user.id,
         status: (isDraft ? 'draft' : 'submitted') as 'draft' | 'submitted' | 'under_review' | 'approved' | 'rejected' | 'requires_changes'
       };
