@@ -20,7 +20,6 @@ export const useProfileCompleteness = (): ProfileCompletion => {
   }
 
   const requiredFields = [
-    { key: 'dni', label: 'DNI' },
     { key: 'first_name', label: 'Nombre' },
     { key: 'last_name', label: 'Apellido' },
     { key: 'email', label: 'Email' },
@@ -42,21 +41,8 @@ export const useProfileCompleteness = (): ProfileCompletion => {
     }
   });
 
-  // Check required documents
-  const requiredDocuments = [
-    { check: hasRequiredDNIDocuments(), label: 'DNI (ambos lados)' },
-    { check: getTituloDocuments().length > 0, label: 'Título académico (PDF)' },
-  ];
-
-  requiredDocuments.forEach(({ check, label }) => {
-    if (!check) {
-      missingFields.push(label);
-    } else {
-      completedFields++;
-    }
-  });
-
-  const totalRequiredFields = requiredFields.length + requiredDocuments.length;
+  // For testing phase, documents are optional - no document requirements
+  const totalRequiredFields = requiredFields.length;
   const completionPercentage = Math.round((completedFields / totalRequiredFields) * 100);
   const isComplete = missingFields.length === 0;
 

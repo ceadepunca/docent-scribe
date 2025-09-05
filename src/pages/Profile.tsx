@@ -17,7 +17,7 @@ import { useProfileDocuments } from '@/hooks/useProfileDocuments';
 import { TitleCard } from '@/components/TitleCard';
 
 const profileSchema = z.object({
-  dni: z.string().min(7, "El DNI debe tener al menos 7 dígitos").max(8, "El DNI debe tener máximo 8 dígitos").regex(/^\d+$/, "El DNI debe contener solo números"),
+  dni: z.string().optional().or(z.literal('')),
   firstName: z.string().min(1, 'El nombre es obligatorio'),
   lastName: z.string().min(1, 'El apellido es obligatorio'),
   email: z.string().email('Email inválido'),
@@ -159,7 +159,7 @@ const Profile = () => {
                   name="dni"
                   render={({ field }) => (
                     <FormItem className="md:col-span-2">
-                      <FormLabel>DNI *</FormLabel>
+                      <FormLabel>DNI (opcional para pruebas)</FormLabel>
                       <FormControl>
                         <Input placeholder="Ingrese su DNI" {...field} />
                       </FormControl>
@@ -299,9 +299,9 @@ const Profile = () => {
         {/* Documentos Requeridos */}
         <Card>
           <CardHeader>
-            <CardTitle>Documentos Requeridos</CardTitle>
+            <CardTitle>Documentos (Opcionales para Pruebas)</CardTitle>
             <p className="text-sm text-muted-foreground">
-              Suba las fotografías de ambos lados de su DNI y los archivos PDF de sus títulos académicos.
+              Durante la fase de pruebas, los documentos son opcionales. Puede subir las fotografías de ambos lados de su DNI y los archivos PDF de sus títulos académicos.
             </p>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -311,7 +311,7 @@ const Profile = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <DocumentUploader
                   documentType="dni_frente"
-                  label="DNI - Frente *"
+                  label="DNI - Frente (opcional)"
                   acceptedFormats="image/*"
                   maxSizeMB={5}
                   existingDocument={getDocumentByType('dni_frente')}
@@ -319,7 +319,7 @@ const Profile = () => {
                 />
                 <DocumentUploader
                   documentType="dni_dorso"
-                  label="DNI - Dorso *"
+                  label="DNI - Dorso (opcional)"
                   acceptedFormats="image/*"
                   maxSizeMB={5}
                   existingDocument={getDocumentByType('dni_dorso')}
@@ -334,15 +334,14 @@ const Profile = () => {
               <div className="space-y-4">
                 <DocumentUploader
                   documentType="titulo_pdf"
-                  label="Título Académico (PDF) *"
+                  label="Título Académico (PDF - opcional)"
                   acceptedFormats=".pdf"
                   maxSizeMB={10}
                   existingDocument={getDocumentByType('titulo_pdf')}
                   onUploadSuccess={refreshDocuments}
                 />
                 <p className="text-sm text-muted-foreground">
-                  Suba un archivo PDF que contenga todas las páginas de su título académico principal.
-                  Para títulos adicionales, puede subirlos posteriormente.
+                  Durante las pruebas, puede omitir la subida de documentos. Si desea subirlos, incluya un archivo PDF que contenga todas las páginas de su título académico principal.
                 </p>
               </div>
             </div>
