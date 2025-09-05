@@ -11,6 +11,9 @@ import { Input } from '@/components/ui/input';
 import { ArrowLeft, User, GraduationCap } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
+import { DocumentUploader } from '@/components/DocumentUploader';
+import { DocumentViewer } from '@/components/DocumentViewer';
+import { useProfileDocuments } from '@/hooks/useProfileDocuments';
 
 const profileSchema = z.object({
   dni: z.string().min(7, "El DNI debe tener al menos 7 dígitos").max(8, "El DNI debe tener máximo 8 dígitos").regex(/^\d+$/, "El DNI debe contener solo números"),
@@ -38,6 +41,7 @@ const Profile = () => {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { documents, getDocumentByType, refreshDocuments } = useProfileDocuments();
   
   const form = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
@@ -350,6 +354,67 @@ const Profile = () => {
             </div>
           </form>
         </Form>
+
+        {/* Documentos Requeridos */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Documentos Requeridos</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Suba las fotografías de ambos lados de su DNI y los archivos PDF de sus títulos académicos.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* DNI Documents */}
+            <div>
+              <h3 className="text-lg font-semibold mb-4">Documento Nacional de Identidad</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <DocumentUploader
+                  documentType="dni_frente"
+                  label="DNI - Frente *"
+                  acceptedFormats="image/*"
+                  maxSizeMB={5}
+                  existingDocument={getDocumentByType('dni_frente')}
+                  onUploadSuccess={refreshDocuments}
+                />
+                <DocumentUploader
+                  documentType="dni_dorso"
+                  label="DNI - Dorso *"
+                  acceptedFormats="image/*"
+                  maxSizeMB={5}
+                  existingDocument={getDocumentByType('dni_dorso')}
+                  onUploadSuccess={refreshDocuments}
+                />
+              </div>
+            </div>
+
+            {/* Academic Titles Documents */}
+            <div>
+              <h3 className="text-lg font-semibold mb-4">Títulos Académicos</h3>
+              <div className="space-y-4">
+                <DocumentUploader
+                  documentType="titulo_pdf"
+                  label="Título Académico (PDF) *"
+                  acceptedFormats=".pdf"
+                  maxSizeMB={10}
+                  existingDocument={getDocumentByType('titulo_pdf')}
+                  onUploadSuccess={refreshDocuments}
+                />
+                <p className="text-sm text-muted-foreground">
+                  Suba un archivo PDF que contenga todas las páginas de su título académico principal.
+                  Para títulos adicionales, puede subirlos posteriormente.
+                </p>
+              </div>
+            </div>
+
+            {/* Document Viewer */}
+            {documents.length > 0 && (
+              <div>
+                <h3 className="text-lg font-semibold mb-4">Documentos Subidos</h3>
+                <DocumentViewer documents={documents} />
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

@@ -1,4 +1,5 @@
 import { useAuth } from '@/contexts/AuthContext';
+import { useProfileDocuments } from '@/hooks/useProfileDocuments';
 
 export interface ProfileCompletion {
   isComplete: boolean;
@@ -8,6 +9,7 @@ export interface ProfileCompletion {
 
 export const useProfileCompleteness = (): ProfileCompletion => {
   const { profile } = useAuth();
+  const { hasRequiredDNIDocuments, getTituloDocuments } = useProfileDocuments();
 
   if (!profile) {
     return {
@@ -40,7 +42,22 @@ export const useProfileCompleteness = (): ProfileCompletion => {
     }
   });
 
-  const completionPercentage = Math.round((completedFields / requiredFields.length) * 100);
+  // Check required documents
+  const requiredDocuments = [
+    { check: hasRequiredDNIDocuments(), label: 'DNI (ambos lados)' },
+    { check: getTituloDocuments().length > 0, label: 'Título académico (PDF)' },
+  ];
+
+  requiredDocuments.forEach(({ check, label }) => {
+    if (!check) {
+      missingFields.push(label);
+    } else {
+      completedFields++;
+    }
+  });
+
+  const totalRequiredFields = requiredFields.length + requiredDocuments.length;
+  const completionPercentage = Math.round((completedFields / totalRequiredFields) * 100);
   const isComplete = missingFields.length === 0;
 
   return {

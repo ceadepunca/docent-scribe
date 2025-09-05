@@ -216,6 +216,33 @@ export type Database = {
         }
         Relationships: []
       }
+      profile_documents: {
+        Row: {
+          document_type: Database["public"]["Enums"]["document_type"]
+          file_name: string
+          file_url: string
+          id: string
+          uploaded_at: string
+          user_id: string
+        }
+        Insert: {
+          document_type: Database["public"]["Enums"]["document_type"]
+          file_name: string
+          file_url: string
+          id?: string
+          uploaded_at?: string
+          user_id: string
+        }
+        Update: {
+          document_type?: Database["public"]["Enums"]["document_type"]
+          file_name?: string
+          file_url?: string
+          id?: string
+          uploaded_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -379,6 +406,9 @@ export type Database = {
         | "diplomas"
         | "recommendations"
         | "other"
+        | "dni_frente"
+        | "dni_dorso"
+        | "titulo_pdf"
       inscription_status:
         | "draft"
         | "submitted"
@@ -526,6 +556,9 @@ export const Constants = {
         "diplomas",
         "recommendations",
         "other",
+        "dni_frente",
+        "dni_dorso",
+        "titulo_pdf",
       ],
       inscription_status: [
         "draft",
