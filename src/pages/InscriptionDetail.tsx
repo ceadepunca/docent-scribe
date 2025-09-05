@@ -23,6 +23,28 @@ interface InscriptionDetail {
   updated_at: string;
 }
 
+interface SubjectSelection {
+  id: string;
+  subject_id: string;
+  subject?: {
+    name: string;
+    school?: {
+      name: string;
+    };
+  };
+}
+
+interface PositionSelection {
+  id: string;
+  administrative_position_id: string;
+  administrative_position?: {
+    name: string;
+    school?: {
+      name: string;
+    };
+  };
+}
+
 interface HistoryEntry {
   id: string;
   previous_status: string | null;
@@ -38,6 +60,8 @@ const InscriptionDetail = () => {
   const { toast } = useToast();
   const [inscription, setInscription] = useState<InscriptionDetail | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [subjectSelections, setSubjectSelections] = useState<SubjectSelection[]>([]);
+  const [positionSelections, setPositionSelections] = useState<PositionSelection[]>([]);
   const [loading, setLoading] = useState(true);
 
   const getStatusColor = (status: string) => {
@@ -140,6 +164,45 @@ const InscriptionDetail = () => {
       } else {
         setHistory(historyData || []);
       }
+
+      // Fetch selections for secondary level inscriptions
+      if (inscriptionData.teaching_level === 'secundario') {
+        // Fetch subject selections
+        const { data: subjectsData, error: subjectsError } = await supabase
+          .from('inscription_subject_selections')
+          .select(`
+            *,
+            subject:subjects(
+              name,
+              school:schools(name)
+            )
+          `)
+          .eq('inscription_id', id);
+
+        if (subjectsError) {
+          console.error('Error fetching subject selections:', subjectsError);
+        } else {
+          setSubjectSelections(subjectsData || []);
+        }
+
+        // Fetch position selections
+        const { data: positionsData, error: positionsError } = await supabase
+          .from('inscription_position_selections')
+          .select(`
+            *,
+            administrative_position:administrative_positions(
+              name,
+              school:schools(name)
+            )
+          `)
+          .eq('inscription_id', id);
+
+        if (positionsError) {
+          console.error('Error fetching position selections:', positionsError);
+        } else {
+          setPositionSelections(positionsData || []);
+        }
+      }
     } catch (error) {
       console.error('Error fetching inscription:', error);
       toast({
@@ -235,13 +298,15 @@ const InscriptionDetail = () => {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <BookOpen className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium text-sm">Área Temática</span>
+                  {inscription.teaching_level !== 'secundario' && (
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <BookOpen className="h-4 w-4 text-muted-foreground" />
+                        <span className="font-medium text-sm">Área Temática</span>
+                      </div>
+                      <p className="text-foreground">{inscription.subject_area}</p>
                     </div>
-                    <p className="text-foreground">{inscription.subject_area}</p>
-                  </div>
+                  )}
                   
                   <div>
                     <div className="flex items-center gap-2 mb-1">
@@ -251,29 +316,69 @@ const InscriptionDetail = () => {
                     <p className="text-foreground">{getLevelLabel(inscription.teaching_level)}</p>
                   </div>
                   
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <User className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium text-sm">Experiencia</span>
-                    </div>
-                    <p className="text-foreground">
-                      {inscription.experience_years} {inscription.experience_years === 1 ? 'año' : 'años'}
-                    </p>
-                  </div>
-                  
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <Clock className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium text-sm">Disponibilidad</span>
-                    </div>
-                    <p className="text-foreground">{getAvailabilityLabel(inscription.availability)}</p>
-                  </div>
+                  {inscription.teaching_level !== 'secundario' && (
+                    <>
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <User className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-medium text-sm">Experiencia</span>
+                        </div>
+                        <p className="text-foreground">
+                          {inscription.experience_years} {inscription.experience_years === 1 ? 'año' : 'años'}
+                        </p>
+                      </div>
+                      
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <Clock className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-medium text-sm">Disponibilidad</span>
+                        </div>
+                        <p className="text-foreground">{getAvailabilityLabel(inscription.availability)}</p>
+                      </div>
+                    </>
+                  )}
                 </div>
               </CardContent>
             </Card>
 
+            {/* Subject Selections for Secondary Level */}
+            {inscription.teaching_level === 'secundario' && subjectSelections.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Materias Seleccionadas</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {subjectSelections.map((selection) => (
+                      <Badge key={selection.id} variant="secondary">
+                        {selection.subject?.name} - {selection.subject?.school?.name}
+                      </Badge>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Position Selections for Secondary Level */}
+            {inscription.teaching_level === 'secundario' && positionSelections.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Cargos Administrativos Seleccionados</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {positionSelections.map((selection) => (
+                      <Badge key={selection.id} variant="secondary">
+                        {selection.administrative_position?.name} - {selection.administrative_position?.school?.name}
+                      </Badge>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Motivational Letter */}
-            {inscription.motivational_letter && (
+            {inscription.motivational_letter && inscription.teaching_level !== 'secundario' && (
               <Card>
                 <CardHeader>
                   <CardTitle>Carta de Motivación</CardTitle>
