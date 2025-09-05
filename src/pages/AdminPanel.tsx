@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,10 +6,26 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ArrowLeft, Plus, Calendar, Users, BookOpen } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { ArrowLeft, Plus, Calendar, Users, BookOpen, ClipboardList, Eye } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
+
+interface RecentInscription {
+  id: string;
+  subject_area: string;
+  teaching_level: string;
+  status: string;
+  created_at: string;
+  profiles?: {
+    first_name: string;
+    last_name: string;
+    email: string;
+  } | null;
+}
 
 const AdminPanel = () => {
   const { user, isSuperAdmin } = useAuth();
@@ -23,6 +39,20 @@ const AdminPanel = () => {
     endDate: '',
     availableLevels: [] as ('inicial' | 'primario' | 'secundario')[],
   });
+  
+  const [recentInscriptions, setRecentInscriptions] = useState<RecentInscription[]>([]);
+  const [stats, setStats] = useState({
+    totalInscriptions: 0,
+    activePeriods: 0,
+    registeredFiles: 0
+  });
+
+  useEffect(() => {
+    if (isSuperAdmin) {
+      fetchStats();
+      fetchRecentInscriptions();
+    }
+  }, [isSuperAdmin]);
 
   if (!isSuperAdmin) {
     return (
@@ -39,6 +69,84 @@ const AdminPanel = () => {
       </div>
     );
   }
+
+  const fetchStats = async () => {
+    try {
+      // Fetch total inscriptions
+      const { count: inscriptionsCount } = await supabase
+        .from('inscriptions')
+        .select('*', { count: 'exact', head: true });
+
+      // Fetch active periods
+      const { count: periodsCount } = await supabase
+        .from('inscription_periods')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_active', true);
+
+      // Fetch profile documents count
+      const { count: documentsCount } = await supabase
+        .from('profile_documents')
+        .select('*', { count: 'exact', head: true });
+
+      setStats({
+        totalInscriptions: inscriptionsCount || 0,
+        activePeriods: periodsCount || 0,
+        registeredFiles: documentsCount || 0
+      });
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+    }
+  };
+
+  const fetchRecentInscriptions = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('inscriptions')
+        .select(`
+          id,
+          subject_area,
+          teaching_level,
+          status,
+          created_at,
+          profiles:user_id (
+            first_name,
+            last_name,
+            email
+          )
+        `)
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      if (error) throw error;
+      setRecentInscriptions((data as any[]) || []);
+    } catch (error) {
+      console.error('Error fetching recent inscriptions:', error);
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'draft': return 'bg-muted text-muted-foreground';
+      case 'submitted': return 'bg-blue-100 text-blue-800';
+      case 'under_review': return 'bg-yellow-100 text-yellow-800';
+      case 'approved': return 'bg-green-100 text-green-800';
+      case 'rejected': return 'bg-red-100 text-red-800';
+      case 'requires_changes': return 'bg-orange-100 text-orange-800';
+      default: return 'bg-muted text-muted-foreground';
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'draft': return 'Borrador';
+      case 'submitted': return 'Enviada';
+      case 'under_review': return 'En Revisión';
+      case 'approved': return 'Aprobada';
+      case 'rejected': return 'Rechazada';
+      case 'requires_changes': return 'Requiere Cambios';
+      default: return 'Desconocido';
+    }
+  };
 
   const handleLevelChange = (level: 'inicial' | 'primario' | 'secundario', checked: boolean) => {
     setPeriodForm(prev => ({
@@ -115,6 +223,48 @@ const AdminPanel = () => {
               Gestión de períodos de inscripción y configuración del sistema
             </p>
           </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          {/* Quick Stats */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Calendar className="h-5 w-5" />
+                Períodos Activos
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-2xl font-bold">{stats.activePeriods}</p>
+              <p className="text-muted-foreground">Períodos disponibles</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                Inscripciones Totales
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-2xl font-bold">{stats.totalInscriptions}</p>
+              <p className="text-muted-foreground">En el sistema</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BookOpen className="h-5 w-5" />
+                Documentos Cargados
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-2xl font-bold">{stats.registeredFiles}</p>
+              <p className="text-muted-foreground">Archivos en el sistema</p>
+            </CardContent>
+          </Card>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -196,47 +346,62 @@ const AdminPanel = () => {
             </CardContent>
           </Card>
 
-          {/* Quick Stats */}
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Calendar className="h-5 w-5" />
-                  Períodos Activos
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-bold">-</p>
-                <p className="text-muted-foreground">En desarrollo</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="h-5 w-5" />
-                  Inscripciones Totales
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-bold">-</p>
-                <p className="text-muted-foreground">En desarrollo</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BookOpen className="h-5 w-5" />
-                  Legajos Registrados
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-bold">-</p>
-                <p className="text-muted-foreground">En desarrollo</p>
-              </CardContent>
-            </Card>
-          </div>
+          {/* Recent Inscriptions */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 justify-between">
+                <div className="flex items-center gap-2">
+                  <ClipboardList className="h-5 w-5" />
+                  Inscripciones Recientes
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate('/inscriptions')}
+                >
+                  Ver todas
+                </Button>
+              </CardTitle>
+              <CardDescription>
+                Últimas inscripciones registradas en el sistema
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {recentInscriptions.length === 0 ? (
+                <p className="text-muted-foreground text-center py-4">
+                  No hay inscripciones registradas
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {recentInscriptions.map((inscription) => (
+                    <div key={inscription.id} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium">{inscription.subject_area}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {inscription.profiles?.first_name} {inscription.profiles?.last_name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {format(new Date(inscription.created_at), 'dd/MM/yyyy', { locale: es })}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge className={`${getStatusColor(inscription.status)} text-xs`}>
+                          {getStatusLabel(inscription.status)}
+                        </Badge>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => navigate(`/inscriptions/${inscription.id}`)}
+                        >
+                          <Eye className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>

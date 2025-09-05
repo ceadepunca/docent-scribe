@@ -18,11 +18,17 @@ interface Inscription {
   experience_years: number;
   created_at: string;
   updated_at: string;
+  user_id: string;
+  profiles?: {
+    first_name: string;
+    last_name: string;
+    email: string;
+  } | null;
 }
 
 const Inscriptions = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, isSuperAdmin, isDocente } = useAuth();
   const { toast } = useToast();
   const [inscriptions, setInscriptions] = useState<Inscription[]>([]);
   const [loading, setLoading] = useState(true);
@@ -82,14 +88,27 @@ const Inscriptions = () => {
     if (!user) return;
 
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('inscriptions')
-        .select('*')
-        .eq('user_id', user.id)
+        .select(`
+          *,
+          profiles:user_id (
+            first_name,
+            last_name,
+            email
+          )
+        `)
         .order('created_at', { ascending: false });
 
+      // If not super admin, only show own inscriptions
+      if (!isSuperAdmin) {
+        query = query.eq('user_id', user.id);
+      }
+
+      const { data, error } = await query;
+
       if (error) throw error;
-      setInscriptions(data || []);
+      setInscriptions((data as any[]) || []);
     } catch (error) {
       console.error('Error fetching inscriptions:', error);
       toast({
@@ -129,19 +148,24 @@ const Inscriptions = () => {
           <div className="flex items-center justify-between mb-8">
             <div>
               <h1 className="text-3xl font-bold text-foreground mb-2">
-                Mis Inscripciones
+                {isSuperAdmin && !isDocente ? 'Gestión de Inscripciones' : 'Mis Inscripciones'}
               </h1>
               <p className="text-muted-foreground">
-                Gestiona tus postulaciones como docente
+                {isSuperAdmin && !isDocente 
+                  ? 'Administrar todas las inscripciones del sistema' 
+                  : 'Gestiona tus postulaciones como docente'
+                }
               </p>
             </div>
-            <Button
-              onClick={() => navigate('/inscriptions/new')}
-              className="flex items-center gap-2"
-            >
-              <Plus className="h-4 w-4" />
-              Nueva Inscripción
-            </Button>
+            {isDocente && (
+              <Button
+                onClick={() => navigate('/inscriptions/new')}
+                className="flex items-center gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                Nueva Inscripción
+              </Button>
+            )}
           </div>
         </div>
 
@@ -149,17 +173,24 @@ const Inscriptions = () => {
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
               <div className="text-center">
-                <h3 className="text-lg font-semibold mb-2">No tienes inscripciones</h3>
+                <h3 className="text-lg font-semibold mb-2">
+                  {isSuperAdmin && !isDocente ? 'No hay inscripciones en el sistema' : 'No tienes inscripciones'}
+                </h3>
                 <p className="text-muted-foreground mb-4">
-                  Comienza creando tu primera inscripción como docente
+                  {isSuperAdmin && !isDocente 
+                    ? 'No hay inscripciones registradas en el sistema actualmente'
+                    : 'Comienza creando tu primera inscripción como docente'
+                  }
                 </p>
-                <Button
-                  onClick={() => navigate('/inscriptions/new')}
-                  className="flex items-center gap-2"
-                >
-                  <Plus className="h-4 w-4" />
-                  Crear Primera Inscripción
-                </Button>
+                {isDocente && (
+                  <Button
+                    onClick={() => navigate('/inscriptions/new')}
+                    className="flex items-center gap-2"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Crear Primera Inscripción
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -172,6 +203,11 @@ const Inscriptions = () => {
                     <div className="space-y-1">
                       <CardTitle className="text-lg">{inscription.subject_area}</CardTitle>
                       <CardDescription>{getLevelLabel(inscription.teaching_level)}</CardDescription>
+                      {isSuperAdmin && inscription.profiles && (
+                        <CardDescription className="text-xs text-primary">
+                          {inscription.profiles.first_name} {inscription.profiles.last_name} ({inscription.profiles.email})
+                        </CardDescription>
+                      )}
                     </div>
                     <Badge className={`${getStatusColor(inscription.status)} flex items-center gap-1`}>
                       {getStatusIcon(inscription.status)}
@@ -201,7 +237,8 @@ const Inscriptions = () => {
                         <Eye className="h-3 w-3" />
                         Ver
                       </Button>
-                      {['draft', 'requires_changes'].includes(inscription.status) && (
+                      {['draft', 'requires_changes'].includes(inscription.status) && 
+                       (inscription.user_id === user.id || isDocente) && (
                         <Button
                           variant="outline"
                           size="sm"

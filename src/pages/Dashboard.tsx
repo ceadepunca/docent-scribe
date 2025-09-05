@@ -145,8 +145,8 @@ const Dashboard = () => {
             )}
           </Card>
 
-          {/* Inscription Cards - Dynamic by available levels */}
-          {profileComplete && availableLevels.map((level) => (
+          {/* Inscription Cards - Only for teachers */}
+          {isDocente && profileComplete && availableLevels.map((level) => (
             <Card 
               key={level} 
               className="hover:shadow-lg transition-shadow cursor-pointer" 
@@ -169,18 +169,20 @@ const Dashboard = () => {
             </Card>
           ))}
 
-          {/* Ver Inscripciones Card - For all users */}
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate('/inscriptions')}>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <ClipboardList className="h-5 w-5" />
-                Ver Inscripciones
-              </CardTitle>
-              <CardDescription>
-                Revisar mis inscripciones
-              </CardDescription>
-            </CardHeader>
-          </Card>
+          {/* Ver Inscripciones Card - For teachers and super admins */}
+          {(isDocente || isSuperAdmin) && (
+            <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate('/inscriptions')}>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ClipboardList className="h-5 w-5" />
+                  {isSuperAdmin && !isDocente ? 'Gestionar Inscripciones' : 'Ver Inscripciones'}
+                </CardTitle>
+                <CardDescription>
+                  {isSuperAdmin && !isDocente ? 'Administrar todas las inscripciones' : 'Revisar mis inscripciones'}
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          )}
 
           {/* Evaluaciones Card - Only for Evaluators */}
           {isEvaluator && (
