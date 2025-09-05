@@ -154,7 +154,7 @@ export const SecondaryInscriptionWizard: React.FC<SecondaryInscriptionWizardProp
                       const school = schools.find(s => s.id === subject?.school_id);
                       return (
                         <Badge key={index} variant="secondary">
-                          {subject?.name} - {school?.name} ({selection.position_type === 'profesor' ? 'Prof.' : 'Supl.'})
+                          {subject?.name} - {school?.name}
                         </Badge>
                       );
                     })}

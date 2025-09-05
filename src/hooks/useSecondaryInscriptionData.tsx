@@ -23,7 +23,6 @@ interface AdministrativePosition {
 
 export interface SubjectSelection {
   subject_id: string;
-  position_type: 'profesor' | 'suplente';
 }
 
 export interface PositionSelection {
@@ -113,7 +112,8 @@ export const useSecondaryInscriptionData = () => {
         .insert(
           selections.map(selection => ({
             inscription_id: inscriptionId,
-            ...selection
+            subject_id: selection.subject_id,
+            position_type: 'profesor'
           }))
         );
 

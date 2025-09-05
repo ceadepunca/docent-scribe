@@ -16,25 +16,24 @@ export const SubjectSelectionGrid: React.FC<SubjectSelectionGridProps> = ({
 }) => {
   const { schools, subjects, loading, getSubjectsBySchool } = useSecondaryInscriptionData();
 
-  const isSelected = (subjectId: string, positionType: 'profesor' | 'suplente') => {
+  const isSelected = (subjectId: string) => {
     return selectedSubjects.some(
-      selection => selection.subject_id === subjectId && selection.position_type === positionType
+      selection => selection.subject_id === subjectId
     );
   };
 
-  const handleSelectionChange = (subjectId: string, positionType: 'profesor' | 'suplente', checked: boolean) => {
+  const handleSelectionChange = (subjectId: string, checked: boolean) => {
     let newSelections = [...selectedSubjects];
     
     if (checked) {
       // Add selection
       newSelections.push({
         subject_id: subjectId,
-        position_type: positionType,
       });
     } else {
       // Remove selection
       newSelections = newSelections.filter(
-        selection => !(selection.subject_id === subjectId && selection.position_type === positionType)
+        selection => selection.subject_id !== subjectId
       );
     }
 
@@ -105,28 +104,17 @@ export const SubjectSelectionGrid: React.FC<SubjectSelectionGridProps> = ({
                 const schoolSubject = subjectGroup.subjects.find(s => s.school_id === school.id);
                 
                 return (
-                  <div key={school.id} className="space-y-2">
+                  <div key={school.id} className="flex justify-center">
                     {schoolSubject ? (
-                      <div className="flex flex-col gap-2">
-                        <label className="flex items-center space-x-2">
-                          <Checkbox
-                            checked={isSelected(schoolSubject.id, 'profesor')}
-                            onCheckedChange={(checked) => 
-                              handleSelectionChange(schoolSubject.id, 'profesor', checked as boolean)
-                            }
-                          />
-                          <span className="text-sm">Profesor</span>
-                        </label>
-                        <label className="flex items-center space-x-2">
-                          <Checkbox
-                            checked={isSelected(schoolSubject.id, 'suplente')}
-                            onCheckedChange={(checked) => 
-                              handleSelectionChange(schoolSubject.id, 'suplente', checked as boolean)
-                            }
-                          />
-                          <span className="text-sm">Suplente</span>
-                        </label>
-                      </div>
+                      <label className="flex items-center space-x-2">
+                        <Checkbox
+                          checked={isSelected(schoolSubject.id)}
+                          onCheckedChange={(checked) => 
+                            handleSelectionChange(schoolSubject.id, checked as boolean)
+                          }
+                        />
+                        <span className="text-sm">Profesor</span>
+                      </label>
                     ) : (
                       <div className="text-muted-foreground text-sm">
                         No disponible
@@ -149,7 +137,7 @@ export const SubjectSelectionGrid: React.FC<SubjectSelectionGridProps> = ({
                 const school = schools.find(s => s.id === subject?.school_id);
                 return (
                   <Badge key={index} variant="secondary" className="text-xs">
-                    {subject?.name} - {school?.name} ({selection.position_type})
+                    {subject?.name} - {school?.name}
                   </Badge>
                 );
               })}
