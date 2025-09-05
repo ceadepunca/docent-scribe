@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-
+import { useQueryClient } from '@tanstack/react-query';
 type UserRole = 'super_admin' | 'evaluator' | 'docente';
 
 interface Profile {
@@ -59,6 +59,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const [profileLoading, setProfileLoading] = useState(false);
   const [rolesLoading, setRolesLoading] = useState(false);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     // Set up auth state listener
@@ -197,8 +198,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signOut = async () => {
     try {
-      const { error } = await supabase.auth.signOut();
-      if (error && !error.message.includes('session_not_found')) {
+      // Try global sign out (revokes refresh token server-side)
+      const { error } = await supabase.auth.signOut({ scope: 'global' as any });
+      if (error && !`${error.message}`.includes('session_not_found')) {
         toast({
           title: "Error al cerrar sesión",
           description: error.message,
@@ -206,15 +208,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
       }
     } catch (error) {
-      // Handle any other errors silently for logout
       console.error('Logout error:', error);
     } finally {
-      // Always perform local cleanup and redirect
+      try {
+        // Ensure local session is cleared regardless of server response
+        await supabase.auth.signOut({ scope: 'local' as any });
+      } catch {}
+
+      // Extra hard reset: remove any Supabase auth keys from storage
+      try {
+        const keysToRemove: string[] = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (!key) continue;
+          if (key.startsWith('sb-') || key.startsWith('supabase.')) {
+            keysToRemove.push(key);
+          }
+        }
+        keysToRemove.forEach((k) => localStorage.removeItem(k));
+      } catch {}
+
+      // Clear React Query cache to avoid leaking prior user data
+      try { queryClient.clear(); } catch {}
+
+      // Local state cleanup
       setUser(null);
       setSession(null);
       setProfile(null);
       setUserRoles([]);
-      window.location.href = '/login';
+
+      // Navigate to login
+      window.location.replace('/login');
     }
   };
 
@@ -232,6 +256,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setLoading(profileLoading || rolesLoading);
     }
   }, [user, profileLoading, rolesLoading]);
+
+  // Clear cache whenever user changes (prevents data leakage between sessions)
+  useEffect(() => {
+    queryClient.clear();
+  }, [user?.id]);
 
   const value: AuthContextType = {
     user,
