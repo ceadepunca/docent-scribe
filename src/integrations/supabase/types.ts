@@ -138,7 +138,7 @@ export type Database = {
           created_at: string
           experience_years: number
           id: string
-          inscription_period_id: string | null
+          inscription_period_id: string
           motivational_letter: string | null
           status: Database["public"]["Enums"]["inscription_status"]
           subject_area: string
@@ -152,7 +152,7 @@ export type Database = {
           created_at?: string
           experience_years?: number
           id?: string
-          inscription_period_id?: string | null
+          inscription_period_id: string
           motivational_letter?: string | null
           status?: Database["public"]["Enums"]["inscription_status"]
           subject_area: string
@@ -166,7 +166,7 @@ export type Database = {
           created_at?: string
           experience_years?: number
           id?: string
-          inscription_period_id?: string | null
+          inscription_period_id?: string
           motivational_letter?: string | null
           status?: Database["public"]["Enums"]["inscription_status"]
           subject_area?: string
