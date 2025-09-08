@@ -49,6 +49,69 @@ export type Database = {
           },
         ]
       }
+      evaluations: {
+        Row: {
+          antiguedad_docente_score: number | null
+          antiguedad_titulo_score: number | null
+          becas_otros_score: number | null
+          concepto_score: number | null
+          concurso_score: number | null
+          created_at: string
+          evaluator_id: string
+          id: string
+          inscription_id: string
+          notes: string | null
+          otros_antecedentes_score: number | null
+          promedio_titulo_score: number | null
+          red_federal_score: number | null
+          status: string | null
+          titulo_score: number | null
+          total_score: number | null
+          trabajo_publico_score: number | null
+          updated_at: string
+        }
+        Insert: {
+          antiguedad_docente_score?: number | null
+          antiguedad_titulo_score?: number | null
+          becas_otros_score?: number | null
+          concepto_score?: number | null
+          concurso_score?: number | null
+          created_at?: string
+          evaluator_id: string
+          id?: string
+          inscription_id: string
+          notes?: string | null
+          otros_antecedentes_score?: number | null
+          promedio_titulo_score?: number | null
+          red_federal_score?: number | null
+          status?: string | null
+          titulo_score?: number | null
+          total_score?: number | null
+          trabajo_publico_score?: number | null
+          updated_at?: string
+        }
+        Update: {
+          antiguedad_docente_score?: number | null
+          antiguedad_titulo_score?: number | null
+          becas_otros_score?: number | null
+          concepto_score?: number | null
+          concurso_score?: number | null
+          created_at?: string
+          evaluator_id?: string
+          id?: string
+          inscription_id?: string
+          notes?: string | null
+          otros_antecedentes_score?: number | null
+          promedio_titulo_score?: number | null
+          red_federal_score?: number | null
+          status?: string | null
+          titulo_score?: number | null
+          total_score?: number | null
+          trabajo_publico_score?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       inscription_documents: {
         Row: {
           document_type: Database["public"]["Enums"]["document_type"]

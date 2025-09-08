@@ -10,6 +10,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { EvaluationGrid } from '@/components/EvaluationGrid';
 
 interface InscriptionDetail {
   id: string;
@@ -396,6 +397,14 @@ const InscriptionDetail = () => {
                   </div>
                 </CardContent>
               </Card>
+            )}
+
+            {/* Evaluation Grid - Only for evaluators and super admins */}
+            {(isEvaluator || isSuperAdmin) && (
+              <EvaluationGrid 
+                inscriptionId={inscription.id}
+                teachingLevel={inscription.teaching_level}
+              />
             )}
           </div>
 
