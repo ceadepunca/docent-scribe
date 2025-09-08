@@ -56,7 +56,7 @@ interface HistoryEntry {
 const InscriptionDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, isEvaluator, isSuperAdmin } = useAuth();
   const { toast } = useToast();
   const [inscription, setInscription] = useState<InscriptionDetail | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
@@ -132,12 +132,17 @@ const InscriptionDetail = () => {
 
     try {
       // Fetch inscription details
-      const { data: inscriptionData, error: inscriptionError } = await supabase
+      let query = supabase
         .from('inscriptions')
         .select('*')
-        .eq('id', id)
-        .eq('user_id', user.id)
-        .single();
+        .eq('id', id);
+
+      // If not evaluator or super admin, only show own inscriptions
+      if (!isEvaluator && !isSuperAdmin) {
+        query = query.eq('user_id', user.id);
+      }
+
+      const { data: inscriptionData, error: inscriptionError } = await query.single();
 
       if (inscriptionError) throw inscriptionError;
       if (!inscriptionData) {

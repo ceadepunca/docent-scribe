@@ -17,6 +17,7 @@ import NewInscription from "./pages/NewInscription";
 import Inscriptions from "./pages/Inscriptions";
 import InscriptionDetail from "./pages/InscriptionDetail";
 import EditInscription from "./pages/EditInscription";
+import Evaluations from "./pages/Evaluations";
 
 const queryClient = new QueryClient();
 
@@ -58,8 +59,13 @@ const App = () => (
               </ProtectedRoute>
             } />
             <Route path="/inscriptions" element={
-              <ProtectedRoute allowedRoles={['docente', 'super_admin']}>
+              <ProtectedRoute allowedRoles={['docente', 'super_admin', 'evaluator']}>
                 <Inscriptions />
+              </ProtectedRoute>
+            } />
+            <Route path="/evaluations" element={
+              <ProtectedRoute allowedRoles={['evaluator', 'super_admin']}>
+                <Evaluations />
               </ProtectedRoute>
             } />
             <Route path="/inscriptions/:id" element={
