@@ -70,7 +70,7 @@ const Evaluations = () => {
           created_at,
           updated_at,
           user_id,
-          profiles:user_id (
+          profiles:profiles!fk_inscriptions_user_profile (
             first_name,
             last_name,
             email,
@@ -111,13 +111,14 @@ const Evaluations = () => {
           profiles: profilesMap.get(inscription.user_id) || null
         })) || [];
       } else {
-        // Transform embedded join data to match our interface
-        inscriptionsData = inscriptionsData?.map(inscription => ({
-          ...inscription,
-          profiles: Array.isArray(inscription.profiles) && inscription.profiles.length > 0 
-            ? inscription.profiles[0] 
-            : null
-        })) || [];
+        // Transform embedded join data to match our interface (handle object or array)
+        inscriptionsData = (inscriptionsData as any[])?.map((inscription: any) => {
+          let prof = inscription.profiles;
+          if (Array.isArray(prof)) {
+            prof = prof[0] ?? null;
+          }
+          return { ...inscription, profiles: prof ?? null };
+        }) || [];
       }
 
       console.log('Successfully fetched inscriptions:', inscriptionsData?.length || 0);
