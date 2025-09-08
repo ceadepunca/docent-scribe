@@ -58,36 +58,41 @@ const Evaluations = () => {
     try {
       setLoading(true);
       
-      // Get inscriptions that are submitted or further in the process
+      // Get inscriptions with profiles using left join
       const { data: inscriptionsData, error: inscriptionsError } = await supabase
         .from('inscriptions')
-        .select('*')
+        .select(`
+          id,
+          status,
+          subject_area,
+          teaching_level,
+          experience_years,
+          created_at,
+          updated_at,
+          user_id,
+          profiles:user_id (
+            first_name,
+            last_name,
+            email,
+            dni
+          )
+        `)
         .in('status', ['submitted', 'under_review', 'approved', 'rejected', 'requires_changes'])
         .order('created_at', { ascending: false });
 
       if (inscriptionsError) throw inscriptionsError;
 
-      // Get unique user IDs to fetch profiles
-      const userIds = [...new Set(inscriptionsData?.map(inscription => inscription.user_id) || [])];
+      console.log('Fetched inscriptions with profiles:', inscriptionsData);
       
-      // Fetch profiles for these users
-      const { data: profilesData, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, first_name, last_name, email, dni')
-        .in('id', userIds);
-
-      if (profilesError) throw profilesError;
-
-      // Create profiles map for easy lookup
-      const profilesMap = new Map(profilesData?.map(profile => [profile.id, profile]) || []);
-
-      // Combine inscriptions with profiles
-      const inscriptionsWithProfiles = inscriptionsData?.map(inscription => ({
+      // Transform the data to match our interface
+      const transformedData = inscriptionsData?.map(inscription => ({
         ...inscription,
-        profiles: profilesMap.get(inscription.user_id) || null
-      })) || [];
+        profiles: Array.isArray(inscription.profiles) && inscription.profiles.length > 0 
+          ? inscription.profiles[0] 
+          : null
+      })) as InscriptionWithProfile[] || [];
 
-      setInscriptions(inscriptionsWithProfiles);
+      setInscriptions(transformedData);
     } catch (error) {
       console.error('Error fetching inscriptions:', error);
       toast({
