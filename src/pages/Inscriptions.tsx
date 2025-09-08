@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Eye, Edit2, Clock, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Plus, Eye, Edit2, Clock, CheckCircle2, XCircle, AlertCircle, Search, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -23,6 +25,7 @@ interface Inscription {
     first_name: string;
     last_name: string;
     email: string;
+    dni?: string;
   } | null;
 }
 
@@ -31,7 +34,10 @@ const Inscriptions = () => {
   const { user, isSuperAdmin, isEvaluator, isDocente } = useAuth();
   const { toast } = useToast();
   const [inscriptions, setInscriptions] = useState<Inscription[]>([]);
+  const [filteredInscriptions, setFilteredInscriptions] = useState<Inscription[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -109,7 +115,7 @@ const Inscriptions = () => {
       // Fetch profiles for these users
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
-        .select('id, first_name, last_name, email')
+        .select('id, first_name, last_name, email, dni')
         .in('id', userIds);
 
       if (profilesError) throw profilesError;
@@ -123,7 +129,9 @@ const Inscriptions = () => {
         profiles: profilesMap.get(inscription.user_id) || null
       })) || [];
 
+      console.log('Debug - Inscriptions with profiles:', inscriptionsWithProfiles);
       setInscriptions(inscriptionsWithProfiles);
+      setFilteredInscriptions(inscriptionsWithProfiles);
     } catch (error) {
       console.error('Error fetching inscriptions:', error);
       toast({
@@ -135,6 +143,33 @@ const Inscriptions = () => {
       setLoading(false);
     }
   };
+
+  // Filter inscriptions based on search term and status
+  useEffect(() => {
+    let filtered = inscriptions;
+
+    // Filter by search term (name, email, or DNI)
+    if (searchTerm.trim()) {
+      filtered = filtered.filter(inscription => {
+        const profile = inscription.profiles;
+        if (!profile) return false;
+        
+        const fullName = `${profile.first_name} ${profile.last_name}`.toLowerCase();
+        const email = profile.email.toLowerCase();
+        const dni = profile.dni?.toLowerCase() || '';
+        const search = searchTerm.toLowerCase();
+        
+        return fullName.includes(search) || email.includes(search) || dni.includes(search);
+      });
+    }
+
+    // Filter by status
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(inscription => inscription.status === statusFilter);
+    }
+
+    setFilteredInscriptions(filtered);
+  }, [inscriptions, searchTerm, statusFilter]);
 
   if (loading) {
     return (
@@ -160,41 +195,84 @@ const Inscriptions = () => {
             Volver al Dashboard
           </Button>
           
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h1 className="text-3xl font-bold text-foreground mb-2">
-                {(isSuperAdmin || isEvaluator) && !isDocente ? 'Gestión de Inscripciones' : 'Mis Inscripciones'}
-              </h1>
-              <p className="text-muted-foreground">
-                {(isSuperAdmin || isEvaluator) && !isDocente 
-                  ? 'Administrar todas las inscripciones del sistema' 
-                  : 'Gestiona tus postulaciones como docente'
-                }
-              </p>
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h1 className="text-3xl font-bold text-foreground mb-2">
+                  {(isSuperAdmin || isEvaluator) && !isDocente ? 'Gestión de Inscripciones' : 'Mis Inscripciones'}
+                </h1>
+                <p className="text-muted-foreground">
+                  {(isSuperAdmin || isEvaluator) && !isDocente 
+                    ? 'Administrar todas las inscripciones del sistema' 
+                    : 'Gestiona tus postulaciones como docente'
+                  }
+                </p>
+              </div>
+              {isDocente && (
+                <Button
+                  onClick={() => navigate('/inscriptions/new')}
+                  className="flex items-center gap-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  Nueva Inscripción
+                </Button>
+              )}
             </div>
-            {isDocente && (
-              <Button
-                onClick={() => navigate('/inscriptions/new')}
-                className="flex items-center gap-2"
-              >
-                <Plus className="h-4 w-4" />
-                Nueva Inscripción
-              </Button>
+
+            {/* Search and Filters - Only for admins/evaluators */}
+            {(isSuperAdmin || isEvaluator) && inscriptions.length > 0 && (
+              <div className="bg-card p-4 rounded-lg border space-y-4">
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                    <Input
+                      placeholder="Buscar por nombre, email o DNI del docente..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="w-full sm:w-48">
+                      <SelectValue placeholder="Filtrar por estado" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos los estados</SelectItem>
+                      <SelectItem value="draft">Borrador</SelectItem>
+                      <SelectItem value="submitted">Enviada</SelectItem>
+                      <SelectItem value="under_review">En Revisión</SelectItem>
+                      <SelectItem value="approved">Aprobada</SelectItem>
+                      <SelectItem value="rejected">Rechazada</SelectItem>
+                      <SelectItem value="requires_changes">Requiere Cambios</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  Mostrando {filteredInscriptions.length} de {inscriptions.length} inscripciones
+                </div>
+              </div>
             )}
           </div>
         </div>
 
-        {inscriptions.length === 0 ? (
+        {filteredInscriptions.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
               <div className="text-center">
                 <h3 className="text-lg font-semibold mb-2">
-                  {(isSuperAdmin || isEvaluator) && !isDocente ? 'No hay inscripciones en el sistema' : 'No tienes inscripciones'}
+                  {searchTerm || statusFilter !== 'all' 
+                    ? 'No se encontraron inscripciones'
+                    : (isSuperAdmin || isEvaluator) && !isDocente 
+                      ? 'No hay inscripciones en el sistema' 
+                      : 'No tienes inscripciones'
+                  }
                 </h3>
                 <p className="text-muted-foreground mb-4">
-                  {(isSuperAdmin || isEvaluator) && !isDocente 
-                    ? 'No hay inscripciones registradas en el sistema actualmente'
-                    : 'Comienza creando tu primera inscripción como docente'
+                  {searchTerm || statusFilter !== 'all'
+                    ? 'Intenta ajustar los filtros de búsqueda'
+                    : (isSuperAdmin || isEvaluator) && !isDocente 
+                      ? 'No hay inscripciones registradas en el sistema actualmente'
+                      : 'Comienza creando tu primera inscripción como docente'
                   }
                 </p>
                 {isDocente && (
@@ -211,20 +289,33 @@ const Inscriptions = () => {
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {inscriptions.map((inscription) => (
+            {filteredInscriptions.map((inscription) => (
               <Card key={inscription.id} className="hover:shadow-lg transition-shadow">
                 <CardHeader>
                   <div className="flex items-start justify-between">
-                    <div className="space-y-1">
+                    <div className="space-y-2">
                       <CardTitle className="text-lg">{inscription.subject_area}</CardTitle>
                       <CardDescription>{getLevelLabel(inscription.teaching_level)}</CardDescription>
+                      
+                      {/* Teacher Information - More prominent for evaluators/admins */}
                       {(isSuperAdmin || isEvaluator) && inscription.profiles && (
-                        <CardDescription className="text-xs text-primary">
-                          {inscription.profiles.first_name} {inscription.profiles.last_name} ({inscription.profiles.email})
-                        </CardDescription>
+                        <div className="bg-muted/30 p-3 rounded-md border-l-2 border-primary">
+                          <div className="flex items-center gap-2 mb-1">
+                            <User className="h-4 w-4 text-primary" />
+                            <span className="font-medium text-sm text-foreground">
+                              {inscription.profiles.first_name} {inscription.profiles.last_name}
+                            </span>
+                          </div>
+                          <div className="text-xs text-muted-foreground space-y-0.5">
+                            <div>Email: {inscription.profiles.email}</div>
+                            {inscription.profiles.dni && (
+                              <div>DNI: {inscription.profiles.dni}</div>
+                            )}
+                          </div>
+                        </div>
                       )}
                     </div>
-                    <Badge className={`${getStatusColor(inscription.status)} flex items-center gap-1`}>
+                    <Badge className={`${getStatusColor(inscription.status)} flex items-center gap-1 shrink-0`}>
                       {getStatusIcon(inscription.status)}
                       {getStatusLabel(inscription.status)}
                     </Badge>
