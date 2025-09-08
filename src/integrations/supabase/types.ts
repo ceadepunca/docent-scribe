@@ -287,6 +287,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_inscriptions_user_profile"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "inscriptions_inscription_period_id_fkey"
             columns: ["inscription_period_id"]
             isOneToOne: false

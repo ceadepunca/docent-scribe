@@ -58,8 +58,8 @@ const Evaluations = () => {
     try {
       setLoading(true);
       
-      // Get inscriptions with profiles using left join
-      const { data: inscriptionsData, error: inscriptionsError } = await supabase
+      // Try embedded join first (should work now with foreign key)
+      let { data: inscriptionsData, error: inscriptionsError } = await supabase
         .from('inscriptions')
         .select(`
           id,
@@ -80,19 +80,49 @@ const Evaluations = () => {
         .in('status', ['submitted', 'under_review', 'approved', 'rejected', 'requires_changes'])
         .order('created_at', { ascending: false });
 
-      if (inscriptionsError) throw inscriptionsError;
+      // If embedded join fails, fall back to separate queries
+      if (inscriptionsError || !inscriptionsData) {
+        console.warn('Embedded join failed, falling back to separate queries:', inscriptionsError);
+        
+        // Get inscriptions first
+        const { data: basicInscriptions, error: basicError } = await supabase
+          .from('inscriptions')
+          .select('id, status, subject_area, teaching_level, experience_years, created_at, updated_at, user_id')
+          .in('status', ['submitted', 'under_review', 'approved', 'rejected', 'requires_changes'])
+          .order('created_at', { ascending: false });
 
-      console.log('Fetched inscriptions with profiles:', inscriptionsData);
+        if (basicError) throw basicError;
+
+        // Get unique user IDs and fetch profiles
+        const userIds = [...new Set(basicInscriptions?.map(inscription => inscription.user_id) || [])];
+        
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, first_name, last_name, email, dni')
+          .in('id', userIds);
+
+        if (profilesError) throw profilesError;
+
+        // Create profiles map and combine data
+        const profilesMap = new Map(profilesData?.map(profile => [profile.id, profile]) || []);
+        
+        inscriptionsData = basicInscriptions?.map(inscription => ({
+          ...inscription,
+          profiles: profilesMap.get(inscription.user_id) || null
+        })) || [];
+      } else {
+        // Transform embedded join data to match our interface
+        inscriptionsData = inscriptionsData?.map(inscription => ({
+          ...inscription,
+          profiles: Array.isArray(inscription.profiles) && inscription.profiles.length > 0 
+            ? inscription.profiles[0] 
+            : null
+        })) || [];
+      }
+
+      console.log('Successfully fetched inscriptions:', inscriptionsData?.length || 0);
+      setInscriptions(inscriptionsData as InscriptionWithProfile[] || []);
       
-      // Transform the data to match our interface
-      const transformedData = inscriptionsData?.map(inscription => ({
-        ...inscription,
-        profiles: Array.isArray(inscription.profiles) && inscription.profiles.length > 0 
-          ? inscription.profiles[0] 
-          : null
-      })) as InscriptionWithProfile[] || [];
-
-      setInscriptions(transformedData);
     } catch (error) {
       console.error('Error fetching inscriptions:', error);
       toast({
