@@ -88,27 +88,42 @@ const Inscriptions = () => {
     if (!user) return;
 
     try {
-      let query = supabase
+      // Build inscriptions query
+      let inscriptionsQuery = supabase
         .from('inscriptions')
-        .select(`
-          *,
-          profiles:user_id (
-            first_name,
-            last_name,
-            email
-          )
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
       // If not super admin or evaluator, only show own inscriptions
       if (!isSuperAdmin && !isEvaluator) {
-        query = query.eq('user_id', user.id);
+        inscriptionsQuery = inscriptionsQuery.eq('user_id', user.id);
       }
 
-      const { data, error } = await query;
+      const { data: inscriptionsData, error: inscriptionsError } = await inscriptionsQuery;
 
-      if (error) throw error;
-      setInscriptions((data as any[]) || []);
+      if (inscriptionsError) throw inscriptionsError;
+
+      // Get unique user IDs to fetch profiles
+      const userIds = [...new Set(inscriptionsData?.map(inscription => inscription.user_id) || [])];
+      
+      // Fetch profiles for these users
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, email')
+        .in('id', userIds);
+
+      if (profilesError) throw profilesError;
+
+      // Create profiles map for easy lookup
+      const profilesMap = new Map(profilesData?.map(profile => [profile.id, profile]) || []);
+
+      // Combine inscriptions with profiles
+      const inscriptionsWithProfiles = inscriptionsData?.map(inscription => ({
+        ...inscription,
+        profiles: profilesMap.get(inscription.user_id) || null
+      })) || [];
+
+      setInscriptions(inscriptionsWithProfiles);
     } catch (error) {
       console.error('Error fetching inscriptions:', error);
       toast({
