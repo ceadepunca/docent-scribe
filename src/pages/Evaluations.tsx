@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, User, Eye, Calendar, GraduationCap, BookOpen, Filter } from 'lucide-react';
+import { Search, User, Eye, Calendar, GraduationCap, BookOpen, Filter, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -34,7 +35,8 @@ const Evaluations = () => {
   const { user, isEvaluator, isSuperAdmin } = useAuth();
   const { toast } = useToast();
   const [inscriptions, setInscriptions] = useState<InscriptionWithProfile[]>([]);
-  const [filteredInscriptions, setFilteredInscriptions] = useState<InscriptionWithProfile[]>([]);
+  const [groupedInscriptions, setGroupedInscriptions] = useState<Record<string, InscriptionWithProfile[]>>({});
+  const [duplicatesFound, setDuplicatesFound] = useState(0);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -49,7 +51,7 @@ const Evaluations = () => {
   }, [user, isEvaluator, isSuperAdmin]);
 
   useEffect(() => {
-    filterInscriptions();
+    processInscriptions();
   }, [inscriptions, searchTerm, statusFilter, levelFilter]);
 
   const fetchInscriptions = async () => {
@@ -136,10 +138,37 @@ const Evaluations = () => {
     }
   };
 
-  const filterInscriptions = () => {
-    let filtered = inscriptions;
+  // Deduplicate inscriptions: keep most recent per user/level
+  const deduplicateInscriptions = (inscriptions: InscriptionWithProfile[]) => {
+    const userLevelMap = new Map<string, InscriptionWithProfile>();
+    let duplicatesCount = 0;
 
-    // Search by name, last name, email or DNI
+    inscriptions.forEach(inscription => {
+      const key = `${inscription.user_id}-${inscription.teaching_level}`;
+      const existing = userLevelMap.get(key);
+      
+      if (existing) {
+        duplicatesCount++;
+        // Keep the most recent one
+        if (new Date(inscription.created_at) > new Date(existing.created_at)) {
+          userLevelMap.set(key, inscription);
+        }
+      } else {
+        userLevelMap.set(key, inscription);
+      }
+    });
+
+    setDuplicatesFound(duplicatesCount);
+    return Array.from(userLevelMap.values());
+  };
+
+  const processInscriptions = () => {
+    let filtered = [...inscriptions];
+
+    // Apply deduplication first
+    filtered = deduplicateInscriptions(filtered);
+
+    // Apply filters
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       filtered = filtered.filter(inscription => {
@@ -156,18 +185,116 @@ const Evaluations = () => {
       });
     }
 
-    // Filter by status
     if (statusFilter !== 'all') {
       filtered = filtered.filter(inscription => inscription.status === statusFilter);
     }
 
-    // Filter by teaching level
-    if (levelFilter !== 'all') {
-      filtered = filtered.filter(inscription => inscription.teaching_level === levelFilter);
-    }
+    // Group by teaching level
+    const grouped: Record<string, InscriptionWithProfile[]> = {};
+    
+    filtered.forEach(inscription => {
+      const level = inscription.teaching_level;
+      if (!grouped[level]) {
+        grouped[level] = [];
+      }
+      
+      // If level filter is applied, only include matching levels
+      if (levelFilter === 'all' || level === levelFilter) {
+        grouped[level].push(inscription);
+      }
+    });
 
-    setFilteredInscriptions(filtered);
+    // Sort inscriptions within each group by creation date (newest first)
+    Object.keys(grouped).forEach(level => {
+      grouped[level].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    });
+
+    setGroupedInscriptions(grouped);
   };
+
+  const getTotalInscriptions = () => {
+    return Object.values(groupedInscriptions).reduce((total, level) => total + level.length, 0);
+  };
+
+  const renderInscriptionTable = (inscriptions: InscriptionWithProfile[], level: string) => (
+    <Card key={level} className="mb-6">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <GraduationCap className="h-5 w-5" />
+          {getLevelLabel(level)}
+          <Badge variant="secondary" className="ml-2">
+            {inscriptions.length} inscripción{inscriptions.length !== 1 ? 'es' : ''}
+          </Badge>
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Docente</TableHead>
+              <TableHead>Email</TableHead>
+              <TableHead>DNI</TableHead>
+              {level !== 'secundario' && <TableHead>Área/Materia</TableHead>}
+              <TableHead>Experiencia</TableHead>
+              <TableHead>Estado</TableHead>
+              <TableHead>Fecha</TableHead>
+              <TableHead>Acciones</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {inscriptions.map((inscription) => (
+              <TableRow key={inscription.id}>
+                <TableCell className="font-medium">
+                  <div className="flex items-center gap-2">
+                    <User className="h-4 w-4 text-muted-foreground" />
+                    {inscription.profiles ? 
+                      `${inscription.profiles.first_name} ${inscription.profiles.last_name}` : 
+                      'Usuario no encontrado'
+                    }
+                  </div>
+                </TableCell>
+                <TableCell>{inscription.profiles?.email || 'No disponible'}</TableCell>
+                <TableCell>{inscription.profiles?.dni || '-'}</TableCell>
+                {level !== 'secundario' && (
+                  <TableCell>
+                    <div className="flex items-center gap-1">
+                      <BookOpen className="h-4 w-4 text-muted-foreground" />
+                      {inscription.subject_area}
+                    </div>
+                  </TableCell>
+                )}
+                <TableCell>
+                  {inscription.experience_years} {inscription.experience_years === 1 ? 'año' : 'años'}
+                </TableCell>
+                <TableCell>
+                  <Badge className={getStatusColor(inscription.status)}>
+                    {getStatusLabel(inscription.status)}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-1">
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                    {format(new Date(inscription.created_at), 'dd/MM/yyyy', { locale: es })}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate(`/inscriptions/${inscription.id}`)}
+                    className="flex items-center gap-2"
+                  >
+                    <Eye className="h-4 w-4" />
+                    Ver
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  );
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -279,15 +406,29 @@ const Evaluations = () => {
           </CardContent>
         </Card>
 
-        {/* Results Summary */}
-        <div className="mb-6">
+        {/* Results Summary & Duplicates Warning */}
+        <div className="mb-6 space-y-2">
           <p className="text-muted-foreground">
-            Mostrando {filteredInscriptions.length} de {inscriptions.length} inscripciones
+            Mostrando {getTotalInscriptions()} de {inscriptions.length} inscripciones
+            {duplicatesFound > 0 && ` (${duplicatesFound} duplicados eliminados)`}
           </p>
+          {duplicatesFound > 0 && (
+            <Card className="border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950/50">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 text-orange-800 dark:text-orange-200">
+                  <AlertTriangle className="h-4 w-4" />
+                  <span className="text-sm">
+                    Se encontraron {duplicatesFound} inscripción{duplicatesFound !== 1 ? 'es' : ''} duplicada{duplicatesFound !== 1 ? 's' : ''} 
+                    (mismo usuario en el mismo nivel). Se muestra solo la más reciente de cada caso.
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
-        {/* Inscriptions List */}
-        {filteredInscriptions.length === 0 ? (
+        {/* Inscriptions by Level */}
+        {Object.keys(groupedInscriptions).length === 0 ? (
           <Card>
             <CardContent className="text-center p-8">
               <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -300,90 +441,15 @@ const Evaluations = () => {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 gap-4">
-            {filteredInscriptions.map((inscription) => (
-              <Card key={inscription.id} className="hover:shadow-lg transition-shadow">
-                <CardContent className="p-6">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="flex items-center gap-2">
-                          <User className="h-4 w-4 text-muted-foreground" />
-                          <h3 className="text-lg font-semibold">
-                            {inscription.profiles ? 
-                              `${inscription.profiles.first_name} ${inscription.profiles.last_name}` : 
-                              'Usuario no encontrado'
-                            }
-                          </h3>
-                        </div>
-                        <Badge className={getStatusColor(inscription.status)}>
-                          {getStatusLabel(inscription.status)}
-                        </Badge>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                        <div>
-                          <p className="text-sm text-muted-foreground">Email</p>
-                          <p className="font-medium">{inscription.profiles?.email || 'No disponible'}</p>
-                        </div>
-                        {inscription.profiles?.dni && (
-                          <div>
-                            <p className="text-sm text-muted-foreground">DNI</p>
-                            <p className="font-medium">{inscription.profiles.dni}</p>
-                          </div>
-                        )}
-                        <div>
-                          <p className="text-sm text-muted-foreground">Nivel Educativo</p>
-                          <div className="flex items-center gap-1">
-                            <GraduationCap className="h-4 w-4 text-muted-foreground" />
-                            <p className="font-medium">{getLevelLabel(inscription.teaching_level)}</p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        {inscription.teaching_level !== 'secundario' && (
-                          <div>
-                            <p className="text-sm text-muted-foreground">Área Temática</p>
-                            <div className="flex items-center gap-1">
-                              <BookOpen className="h-4 w-4 text-muted-foreground" />
-                              <p className="font-medium">{inscription.subject_area}</p>
-                            </div>
-                          </div>
-                        )}
-                        <div>
-                          <p className="text-sm text-muted-foreground">Experiencia</p>
-                          <p className="font-medium">
-                            {inscription.experience_years} {inscription.experience_years === 1 ? 'año' : 'años'}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-muted-foreground">Fecha de Inscripción</p>
-                          <div className="flex items-center gap-1">
-                            <Calendar className="h-4 w-4 text-muted-foreground" />
-                            <p className="font-medium">
-                              {format(new Date(inscription.created_at), 'dd/MM/yyyy', { locale: es })}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex gap-2 ml-4">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => navigate(`/inscriptions/${inscription.id}`)}
-                        className="flex items-center gap-2"
-                      >
-                        <Eye className="h-4 w-4" />
-                        Ver Detalle
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+          <div className="space-y-6">
+            {Object.entries(groupedInscriptions)
+              .sort(([levelA], [levelB]) => {
+                // Sort levels: inicial, primaria, secundario, superior, universitario
+                const levelOrder = ['inicial', 'primaria', 'secundario', 'superior', 'universitario'];
+                return levelOrder.indexOf(levelA) - levelOrder.indexOf(levelB);
+              })
+              .map(([level, inscriptions]) => renderInscriptionTable(inscriptions, level))
+            }
           </div>
         )}
       </div>
