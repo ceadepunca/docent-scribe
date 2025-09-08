@@ -28,7 +28,7 @@ interface Inscription {
 
 const Inscriptions = () => {
   const navigate = useNavigate();
-  const { user, isSuperAdmin, isDocente } = useAuth();
+  const { user, isSuperAdmin, isEvaluator, isDocente } = useAuth();
   const { toast } = useToast();
   const [inscriptions, setInscriptions] = useState<Inscription[]>([]);
   const [loading, setLoading] = useState(true);
@@ -100,8 +100,8 @@ const Inscriptions = () => {
         `)
         .order('created_at', { ascending: false });
 
-      // If not super admin, only show own inscriptions
-      if (!isSuperAdmin) {
+      // If not super admin or evaluator, only show own inscriptions
+      if (!isSuperAdmin && !isEvaluator) {
         query = query.eq('user_id', user.id);
       }
 
@@ -148,10 +148,10 @@ const Inscriptions = () => {
           <div className="flex items-center justify-between mb-8">
             <div>
               <h1 className="text-3xl font-bold text-foreground mb-2">
-                {isSuperAdmin && !isDocente ? 'Gestión de Inscripciones' : 'Mis Inscripciones'}
+                {(isSuperAdmin || isEvaluator) && !isDocente ? 'Gestión de Inscripciones' : 'Mis Inscripciones'}
               </h1>
               <p className="text-muted-foreground">
-                {isSuperAdmin && !isDocente 
+                {(isSuperAdmin || isEvaluator) && !isDocente 
                   ? 'Administrar todas las inscripciones del sistema' 
                   : 'Gestiona tus postulaciones como docente'
                 }
@@ -174,10 +174,10 @@ const Inscriptions = () => {
             <CardContent className="flex flex-col items-center justify-center py-12">
               <div className="text-center">
                 <h3 className="text-lg font-semibold mb-2">
-                  {isSuperAdmin && !isDocente ? 'No hay inscripciones en el sistema' : 'No tienes inscripciones'}
+                  {(isSuperAdmin || isEvaluator) && !isDocente ? 'No hay inscripciones en el sistema' : 'No tienes inscripciones'}
                 </h3>
                 <p className="text-muted-foreground mb-4">
-                  {isSuperAdmin && !isDocente 
+                  {(isSuperAdmin || isEvaluator) && !isDocente 
                     ? 'No hay inscripciones registradas en el sistema actualmente'
                     : 'Comienza creando tu primera inscripción como docente'
                   }
@@ -203,7 +203,7 @@ const Inscriptions = () => {
                     <div className="space-y-1">
                       <CardTitle className="text-lg">{inscription.subject_area}</CardTitle>
                       <CardDescription>{getLevelLabel(inscription.teaching_level)}</CardDescription>
-                      {isSuperAdmin && inscription.profiles && (
+                      {(isSuperAdmin || isEvaluator) && inscription.profiles && (
                         <CardDescription className="text-xs text-primary">
                           {inscription.profiles.first_name} {inscription.profiles.last_name} ({inscription.profiles.email})
                         </CardDescription>
