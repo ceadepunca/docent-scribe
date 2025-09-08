@@ -401,10 +401,37 @@ const InscriptionDetail = () => {
 
             {/* Evaluation Grid - Only for evaluators and super admins */}
             {(isEvaluator || isSuperAdmin) && (
-              <EvaluationGrid 
-                inscriptionId={inscription.id}
-                teachingLevel={inscription.teaching_level}
-              />
+              <>
+                {inscription.teaching_level === 'secundario' ? (
+                  <div className="space-y-6">
+                    {/* Subject Evaluations */}
+                    {subjectSelections.map((selection) => (
+                      <EvaluationGrid 
+                        key={`subject-${selection.id}`}
+                        inscriptionId={inscription.id}
+                        teachingLevel={inscription.teaching_level}
+                        subjectSelection={selection}
+                      />
+                    ))}
+                    
+                    {/* Position Evaluations */}
+                    {positionSelections.map((selection) => (
+                      <EvaluationGrid 
+                        key={`position-${selection.id}`}
+                        inscriptionId={inscription.id}
+                        teachingLevel={inscription.teaching_level}
+                        positionSelection={selection}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  // Single evaluation for initial/primario levels
+                  <EvaluationGrid 
+                    inscriptionId={inscription.id}
+                    teachingLevel={inscription.teaching_level}
+                  />
+                )}
+              </>
             )}
           </div>
 

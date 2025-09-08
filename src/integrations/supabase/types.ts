@@ -62,9 +62,12 @@ export type Database = {
           inscription_id: string
           notes: string | null
           otros_antecedentes_score: number | null
+          position_selection_id: string | null
           promedio_titulo_score: number | null
           red_federal_score: number | null
           status: string | null
+          subject_selection_id: string | null
+          title_type: string | null
           titulo_score: number | null
           total_score: number | null
           trabajo_publico_score: number | null
@@ -82,9 +85,12 @@ export type Database = {
           inscription_id: string
           notes?: string | null
           otros_antecedentes_score?: number | null
+          position_selection_id?: string | null
           promedio_titulo_score?: number | null
           red_federal_score?: number | null
           status?: string | null
+          subject_selection_id?: string | null
+          title_type?: string | null
           titulo_score?: number | null
           total_score?: number | null
           trabajo_publico_score?: number | null
@@ -102,15 +108,33 @@ export type Database = {
           inscription_id?: string
           notes?: string | null
           otros_antecedentes_score?: number | null
+          position_selection_id?: string | null
           promedio_titulo_score?: number | null
           red_federal_score?: number | null
           status?: string | null
+          subject_selection_id?: string | null
+          title_type?: string | null
           titulo_score?: number | null
           total_score?: number | null
           trabajo_publico_score?: number | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "evaluations_position_selection_id_fkey"
+            columns: ["position_selection_id"]
+            isOneToOne: false
+            referencedRelation: "inscription_position_selections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evaluations_subject_selection_id_fkey"
+            columns: ["subject_selection_id"]
+            isOneToOne: false
+            referencedRelation: "inscription_subject_selections"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       inscription_documents: {
         Row: {

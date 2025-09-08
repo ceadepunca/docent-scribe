@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Save, Calculator } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -23,6 +24,7 @@ interface EvaluationData {
   red_federal_score: number;
   notes?: string;
   status: 'draft' | 'completed';
+  title_type?: 'docente' | 'habilitante' | 'supletorio';
 }
 
 interface EvaluationCriterion {
@@ -32,25 +34,50 @@ interface EvaluationCriterion {
   column: string;
 }
 
+interface SubjectSelection {
+  id: string;
+  subject_id: string;
+  subject?: {
+    name: string;
+    school?: {
+      name: string;
+    };
+  };
+}
+
+interface PositionSelection {
+  id: string;
+  administrative_position_id: string;
+  administrative_position?: {
+    name: string;
+    school?: {
+      name: string;
+    };
+  };
+}
+
 interface EvaluationGridProps {
   inscriptionId: string;
   teachingLevel: string;
+  subjectSelection?: SubjectSelection;
+  positionSelection?: PositionSelection;
 }
 
-const evaluationCriteria: EvaluationCriterion[] = [
-  { id: 'titulo_score', label: 'TÍTULO', column: 'A' },
-  { id: 'antiguedad_titulo_score', label: 'ANTIGÜEDAD TÍTULO', maxValue: 3, column: 'B' },
-  { id: 'antiguedad_docente_score', label: 'ANTIGÜEDAD DOCEN.', maxValue: 6, column: 'C' },
-  { id: 'concepto_score', label: 'CONCEPTO', column: 'D' },
-  { id: 'promedio_titulo_score', label: 'PROM.GRAL.TÍTULO DOCEN.', column: 'E' },
-  { id: 'trabajo_publico_score', label: 'TRAB.PUBLIC.', maxValue: 3, column: 'F' },
-  { id: 'becas_otros_score', label: 'BECAS Y OTROS EST.', maxValue: 3, column: 'G' },
-  { id: 'concurso_score', label: 'CONCURSO', maxValue: 2, column: 'H' },
-  { id: 'otros_antecedentes_score', label: 'OTROS ANTEC. DOC.', maxValue: 3, column: 'I' },
-  { id: 'red_federal_score', label: 'RED FEDERAL', maxValue: 3, column: 'J' },
-];
+const getTitleTypeMaxValue = (titleType?: string): number => {
+  switch (titleType) {
+    case 'docente': return 9;
+    case 'habilitante': return 6;
+    case 'supletorio': return 3;
+    default: return 9; // Default for non-secondary levels
+  }
+};
 
-export const EvaluationGrid: React.FC<EvaluationGridProps> = ({ inscriptionId, teachingLevel }) => {
+export const EvaluationGrid: React.FC<EvaluationGridProps> = ({ 
+  inscriptionId, 
+  teachingLevel, 
+  subjectSelection, 
+  positionSelection 
+}) => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [evaluation, setEvaluation] = useState<EvaluationData>({
@@ -65,10 +92,27 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({ inscriptionId, t
     otros_antecedentes_score: 0,
     red_federal_score: 0,
     notes: '',
-    status: 'draft'
+    status: 'draft',
+    title_type: teachingLevel === 'secundario' ? 'docente' : undefined
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  const isSecondaryLevel = teachingLevel === 'secundario';
+  const titleMaxValue = getTitleTypeMaxValue(evaluation.title_type);
+
+  const evaluationCriteria: EvaluationCriterion[] = [
+    { id: 'titulo_score', label: 'TÍTULO', maxValue: titleMaxValue, column: 'A' },
+    { id: 'antiguedad_titulo_score', label: 'ANTIGÜEDAD TÍTULO', maxValue: 3, column: 'B' },
+    { id: 'antiguedad_docente_score', label: 'ANTIGÜEDAD DOCEN.', maxValue: 6, column: 'C' },
+    { id: 'concepto_score', label: 'CONCEPTO', column: 'D' },
+    { id: 'promedio_titulo_score', label: 'PROM.GRAL.TÍTULO DOCEN.', column: 'E' },
+    { id: 'trabajo_publico_score', label: 'TRAB.PUBLIC.', maxValue: 3, column: 'F' },
+    { id: 'becas_otros_score', label: 'BECAS Y OTROS EST.', maxValue: 3, column: 'G' },
+    { id: 'concurso_score', label: 'CONCURSO', maxValue: 2, column: 'H' },
+    { id: 'otros_antecedentes_score', label: 'OTROS ANTEC. DOC.', maxValue: 3, column: 'I' },
+    { id: 'red_federal_score', label: 'RED FEDERAL', maxValue: 3, column: 'J' },
+  ];
 
   const calculateTotal = (): number => {
     return Object.keys(evaluation)
@@ -78,18 +122,31 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({ inscriptionId, t
 
   useEffect(() => {
     fetchExistingEvaluation();
-  }, [inscriptionId, user]);
+  }, [inscriptionId, user, subjectSelection, positionSelection]);
 
   const fetchExistingEvaluation = async () => {
     if (!user) return;
 
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('evaluations')
         .select('*')
         .eq('inscription_id', inscriptionId)
-        .eq('evaluator_id', user.id)
-        .single();
+        .eq('evaluator_id', user.id);
+
+      // Add selection-specific filters for secondary level
+      if (isSecondaryLevel) {
+        if (subjectSelection) {
+          query = query.eq('subject_selection_id', subjectSelection.id);
+        } else if (positionSelection) {
+          query = query.eq('position_selection_id', positionSelection.id);
+        }
+      } else {
+        // For non-secondary levels, ensure we get general evaluations
+        query = query.is('subject_selection_id', null).is('position_selection_id', null);
+      }
+
+      const { data, error } = await query.maybeSingle();
 
       if (error && error.code !== 'PGRST116') {
         throw error;
@@ -108,7 +165,8 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({ inscriptionId, t
           otros_antecedentes_score: data.otros_antecedentes_score || 0,
           red_federal_score: data.red_federal_score || 0,
           notes: data.notes || '',
-          status: (data.status as 'draft' | 'completed') || 'draft'
+          status: (data.status as 'draft' | 'completed') || 'draft',
+          title_type: (data.title_type as 'docente' | 'habilitante' | 'supletorio') || (isSecondaryLevel ? 'docente' : undefined)
         });
       }
     } catch (error) {
@@ -143,12 +201,24 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({ inscriptionId, t
     }));
   };
 
+  const handleTitleTypeChange = (titleType: string) => {
+    const validTitleType = titleType as 'docente' | 'habilitante' | 'supletorio';
+    const newMaxValue = getTitleTypeMaxValue(validTitleType);
+    
+    setEvaluation(prev => ({
+      ...prev,
+      title_type: validTitleType,
+      // Reset titulo_score if it exceeds new max value
+      titulo_score: prev.titulo_score > newMaxValue ? 0 : prev.titulo_score
+    }));
+  };
+
   const handleSave = async (status: 'draft' | 'completed' = 'draft') => {
     if (!user) return;
 
     setSaving(true);
     try {
-      const evaluationData = {
+      const evaluationData: any = {
         inscription_id: inscriptionId,
         evaluator_id: user.id,
         titulo_score: evaluation.titulo_score,
@@ -165,9 +235,19 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({ inscriptionId, t
         status: status
       };
 
+      // Add selection-specific fields for secondary level
+      if (isSecondaryLevel) {
+        evaluationData.title_type = evaluation.title_type;
+        if (subjectSelection) {
+          evaluationData.subject_selection_id = subjectSelection.id;
+        } else if (positionSelection) {
+          evaluationData.position_selection_id = positionSelection.id;
+        }
+      }
+
       const { error } = await supabase
         .from('evaluations')
-        .upsert(evaluationData, { onConflict: 'inscription_id,evaluator_id' });
+        .upsert(evaluationData);
 
       if (error) throw error;
 
@@ -202,6 +282,16 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({ inscriptionId, t
     );
   }
 
+  const getSelectionTitle = () => {
+    if (subjectSelection) {
+      return `${subjectSelection.subject?.name} - ${subjectSelection.subject?.school?.name}`;
+    }
+    if (positionSelection) {
+      return `${positionSelection.administrative_position?.name} - ${positionSelection.administrative_position?.school?.name}`;
+    }
+    return teachingLevel.charAt(0).toUpperCase() + teachingLevel.slice(1);
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -209,10 +299,13 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({ inscriptionId, t
           <div>
             <CardTitle className="flex items-center gap-2">
               <Calculator className="h-5 w-5" />
-              Grilla de Evaluación - {teachingLevel.charAt(0).toUpperCase() + teachingLevel.slice(1)}
+              Grilla de Evaluación
             </CardTitle>
             <CardDescription>
-              Listado de orden de mérito de aspirantes a cobertura de cargos
+              {isSecondaryLevel && (subjectSelection || positionSelection) 
+                ? getSelectionTitle()
+                : `${teachingLevel.charAt(0).toUpperCase() + teachingLevel.slice(1)} - Listado de orden de mérito`
+              }
             </CardDescription>
           </div>
           <Badge variant={evaluation.status === 'completed' ? 'default' : 'secondary'}>
@@ -221,6 +314,29 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({ inscriptionId, t
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Title Type Selector for Secondary Level */}
+        {isSecondaryLevel && (
+          <div className="space-y-2">
+            <label className="block text-sm font-medium">
+              Tipo de Título para {subjectSelection ? 'esta materia' : 'este cargo'}
+            </label>
+            <Select
+              value={evaluation.title_type}
+              onValueChange={handleTitleTypeChange}
+              disabled={evaluation.status === 'completed'}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Seleccionar tipo de título" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="docente">Docente (9 puntos)</SelectItem>
+                <SelectItem value="habilitante">Habilitante (6 puntos)</SelectItem>
+                <SelectItem value="supletorio">Supletorio (3 puntos)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
