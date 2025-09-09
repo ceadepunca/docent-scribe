@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Save, Calculator, User, GraduationCap } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -89,16 +90,16 @@ const getTitleTypeMaxValue = (titleType: string): number => {
 };
 
 const evaluationCriteria = [
-  { id: 'titulo_score', label: 'TÍTULO', maxValue: undefined, column: 'A' },
-  { id: 'antiguedad_titulo_score', label: 'ANTIGÜEDAD TÍTULO', maxValue: 3, column: 'B' },
-  { id: 'antiguedad_docente_score', label: 'ANTIGÜEDAD DOCEN.', maxValue: 6, column: 'C' },
-  { id: 'concepto_score', label: 'CONCEPTO', maxValue: undefined, column: 'D' },
-  { id: 'promedio_titulo_score', label: 'PROM.GRAL.TÍTULO DOCEN.', maxValue: undefined, column: 'E' },
-  { id: 'trabajo_publico_score', label: 'TRAB.PUBLIC.', maxValue: 3, column: 'F' },
-  { id: 'becas_otros_score', label: 'BECAS Y OTROS EST.', maxValue: 3, column: 'G' },
-  { id: 'concurso_score', label: 'CONCURSO', maxValue: 2, column: 'H' },
-  { id: 'otros_antecedentes_score', label: 'OTROS ANTEC. DOC.', maxValue: 3, column: 'I' },
-  { id: 'red_federal_score', label: 'RED FEDERAL', maxValue: 3, column: 'J' },
+  { id: 'titulo_score', label: 'TÍT.', fullLabel: 'TÍTULO', maxValue: undefined, column: 'A' },
+  { id: 'antiguedad_titulo_score', label: 'ANT.TÍT.', fullLabel: 'ANTIGÜEDAD TÍTULO', maxValue: 3, column: 'B' },
+  { id: 'antiguedad_docente_score', label: 'ANT.DOC.', fullLabel: 'ANTIGÜEDAD DOCENTE', maxValue: 6, column: 'C' },
+  { id: 'concepto_score', label: 'CONC.', fullLabel: 'CONCEPTO', maxValue: undefined, column: 'D' },
+  { id: 'promedio_titulo_score', label: 'PROM.', fullLabel: 'PROMEDIO GENERAL TÍTULO DOCENTE', maxValue: undefined, column: 'E' },
+  { id: 'trabajo_publico_score', label: 'T.PUB.', fullLabel: 'TRABAJO PÚBLICO', maxValue: 3, column: 'F' },
+  { id: 'becas_otros_score', label: 'BECAS', fullLabel: 'BECAS Y OTROS ESTUDIOS', maxValue: 3, column: 'G' },
+  { id: 'concurso_score', label: 'CONC.', fullLabel: 'CONCURSO', maxValue: 2, column: 'H' },
+  { id: 'otros_antecedentes_score', label: 'OTROS', fullLabel: 'OTROS ANTECEDENTES DOCENTES', maxValue: 3, column: 'I' },
+  { id: 'red_federal_score', label: 'R.FED.', fullLabel: 'RED FEDERAL', maxValue: 3, column: 'J' },
 ] as const;
 
 export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProps> = ({
@@ -474,35 +475,27 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
         {/* Teacher Profile Information */}
         {profile && (
           <Card className="bg-muted/30">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <User className="h-5 w-5" />
-                Datos del Docente
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <p className="font-medium">
-                    {profile.first_name} {profile.last_name}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    DNI: {profile.dni || 'No especificado'} | Email: {profile.email}
-                  </p>
+            <CardContent className="py-3 px-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <User className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <p className="font-semibold text-sm">
+                      {profile.first_name} {profile.last_name}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      DNI: {profile.dni || 'N/A'} | {profile.email}
+                    </p>
+                  </div>
                 </div>
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <GraduationCap className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium text-sm">Títulos:</span>
-                  </div>
-                  <div className="text-sm text-muted-foreground">
+                <div className="flex items-center gap-2 text-xs">
+                  <GraduationCap className="h-3 w-3 text-muted-foreground" />
+                  <span className="text-muted-foreground">
                     {[
-                      profile.titulo_1_nombre && `${profile.titulo_1_nombre} (Prom: ${profile.titulo_1_promedio || 'N/A'})`,
-                      profile.titulo_2_nombre && `${profile.titulo_2_nombre} (Prom: ${profile.titulo_2_promedio || 'N/A'})`,
-                      profile.titulo_3_nombre && `${profile.titulo_3_nombre} (Prom: ${profile.titulo_3_promedio || 'N/A'})`,
-                      profile.titulo_4_nombre && `${profile.titulo_4_nombre} (Prom: ${profile.titulo_4_promedio || 'N/A'})`
-                    ].filter(Boolean).join(' • ') || 'Sin títulos registrados'}
-                  </div>
+                      profile.titulo_1_nombre && `${profile.titulo_1_nombre.substring(0, 25)}${profile.titulo_1_nombre.length > 25 ? '...' : ''} (${profile.titulo_1_promedio || 'N/A'})`,
+                      profile.titulo_2_nombre && `${profile.titulo_2_nombre.substring(0, 25)}${profile.titulo_2_nombre.length > 25 ? '...' : ''} (${profile.titulo_2_promedio || 'N/A'})`
+                    ].filter(Boolean).slice(0, 2).join(' • ') || 'Sin títulos'}
+                  </span>
                 </div>
               </div>
             </CardContent>
@@ -511,48 +504,58 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
 
         {/* Consolidated Evaluation Table */}
         {hasEvaluations && (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="min-w-[250px] font-semibold">MATERIA / CARGO</TableHead>
-                  <TableHead className="w-[150px] font-semibold">TIPO TÍTULO</TableHead>
-                  {evaluationCriteria.map((criterion) => (
-                    <TableHead key={criterion.id} className="w-16 text-center font-semibold">
-                      {criterion.column}
-                    </TableHead>
-                  ))}
-                  <TableHead className="w-20 text-center font-semibold">TOTAL</TableHead>
-                </TableRow>
-              </TableHeader>
+          <div className="w-full">
+            <TooltipProvider>
+              <Table className="table-fixed w-full text-xs">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[280px] font-semibold text-xs">MATERIA / CARGO</TableHead>
+                    <TableHead className="w-[100px] font-semibold text-xs">TIPO</TableHead>
+                    {evaluationCriteria.map((criterion) => (
+                      <Tooltip key={criterion.id}>
+                        <TooltipTrigger asChild>
+                          <TableHead className="w-12 text-center font-semibold text-2xs p-1">
+                            {criterion.label}
+                            <br />
+                            <span className="text-xs font-normal">({criterion.column})</span>
+                          </TableHead>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{criterion.fullLabel}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    ))}
+                    <TableHead className="w-16 text-center font-semibold text-xs">TOTAL</TableHead>
+                  </TableRow>
+                </TableHeader>
               <TableBody>
                 {groupedItems.map((group, groupIndex) => {
                   const total = calculateTotal(group.evaluation);
                   const titleMaxValue = getTitleTypeMaxValue(group.evaluation.title_type);
                   
                   return (
-                    <TableRow key={group.id}>
-                      <TableCell className="font-medium">
+                    <TableRow key={group.id} className="text-xs">
+                      <TableCell className="p-2">
                         <div>
-                          <p className="font-semibold">{group.displayName}</p>
-                          <Badge variant="outline" className="mt-1">
-                            {group.evaluation.status === 'completed' ? 'Finalizada' : 'Borrador'}
+                          <p className="font-semibold text-xs leading-tight break-words">{group.displayName}</p>
+                          <Badge variant="outline" className="mt-1 text-2xs px-1 py-0">
+                            {group.evaluation.status === 'completed' ? 'Ok' : 'Draft'}
                           </Badge>
                         </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="p-1">
                         <Select
                           value={group.evaluation.title_type}
                           onValueChange={(value) => handleTitleTypeChange(groupIndex, value)}
                           disabled={group.evaluation.status === 'completed'}
                         >
-                          <SelectTrigger className="w-full">
+                          <SelectTrigger className="w-full h-7 text-2xs">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="docente">Docente (9)</SelectItem>
-                            <SelectItem value="habilitante">Habilitante (6)</SelectItem>
-                            <SelectItem value="supletorio">Supletorio (3)</SelectItem>
+                            <SelectItem value="docente" className="text-2xs">Doc (9)</SelectItem>
+                            <SelectItem value="habilitante" className="text-2xs">Hab (6)</SelectItem>
+                            <SelectItem value="supletorio" className="text-2xs">Sup (3)</SelectItem>
                           </SelectContent>
                         </Select>
                       </TableCell>
@@ -563,7 +566,7 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
                         }
                         
                         return (
-                          <TableCell key={criterion.id}>
+                          <TableCell key={criterion.id} className="p-1">
                             <Input
                               type="number"
                               min="0"
@@ -571,14 +574,14 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
                               step="0.1"
                               value={group.evaluation[criterion.id as keyof EvaluationData] || ''}
                               onChange={(e) => handleScoreChange(groupIndex, criterion.id as keyof EvaluationData, e.target.value)}
-                              className="text-center w-16"
+                              className="text-center w-10 h-7 text-2xs px-1"
                               disabled={group.evaluation.status === 'completed'}
                             />
                           </TableCell>
                         );
                       })}
-                      <TableCell className="text-center">
-                        <div className="px-2 py-1 bg-primary/10 rounded font-bold">
+                      <TableCell className="text-center p-1">
+                        <div className="px-1 py-1 bg-primary/10 rounded font-bold text-2xs">
                           {total.toFixed(1)}
                         </div>
                       </TableCell>
@@ -587,20 +590,21 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
                 })}
                 
                 {/* Total Row */}
-                <TableRow className="bg-muted/50 font-semibold">
-                  <TableCell className="font-bold">TOTAL GENERAL</TableCell>
-                  <TableCell>—</TableCell>
+                <TableRow className="bg-muted/50 font-semibold text-xs">
+                  <TableCell className="font-bold p-2 text-xs">TOTAL GENERAL</TableCell>
+                  <TableCell className="p-1">—</TableCell>
                   {evaluationCriteria.map((criterion) => (
-                    <TableCell key={criterion.id} className="text-center">—</TableCell>
+                    <TableCell key={criterion.id} className="text-center p-1">—</TableCell>
                   ))}
-                  <TableCell className="text-center">
-                    <div className="px-3 py-2 bg-primary/20 rounded font-bold text-lg">
+                  <TableCell className="text-center p-1">
+                    <div className="px-2 py-1 bg-primary/20 rounded font-bold text-sm">
                       {groupedItems.reduce((total, group) => total + calculateTotal(group.evaluation), 0).toFixed(1)}
                     </div>
                   </TableCell>
                 </TableRow>
               </TableBody>
             </Table>
+            </TooltipProvider>
           </div>
         )}
 
