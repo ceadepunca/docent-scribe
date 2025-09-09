@@ -7,10 +7,11 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Plus, Calendar, Users, BookOpen, ClipboardList, Eye } from 'lucide-react';
+import { ArrowLeft, Plus, Calendar, Users, BookOpen, ClipboardList, Eye, Clock, Check, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useDeletionRequests } from '@/hooks/useDeletionRequests';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -31,6 +32,7 @@ const AdminPanel = () => {
   const { user, isSuperAdmin } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { requests, fetchAllRequests, respondToRequest } = useDeletionRequests();
   
   const [periodForm, setPeriodForm] = useState({
     name: '',
@@ -51,6 +53,7 @@ const AdminPanel = () => {
     if (isSuperAdmin) {
       fetchStats();
       fetchRecentInscriptions();
+      fetchAllRequests();
     }
   }, [isSuperAdmin]);
 
@@ -266,6 +269,104 @@ const AdminPanel = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Deletion Requests Management */}
+        {requests.filter(r => r.status === 'pending').length > 0 && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Clock className="h-5 w-5" />
+                Solicitudes de Eliminación Pendientes
+              </CardTitle>
+              <CardDescription>
+                Revisar y aprobar/rechazar solicitudes de eliminación de inscripciones
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {requests
+                  .filter(r => r.status === 'pending')
+                  .map((request: any) => (
+                    <div key={request.id} className="border rounded-lg p-4">
+                      <div className="flex items-start justify-between">
+                        <div className="space-y-2 flex-1">
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-medium">
+                              {request.inscriptions?.profiles?.first_name} {request.inscriptions?.profiles?.last_name}
+                            </h4>
+                            <Badge variant="outline">
+                              {request.inscriptions?.teaching_level}
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-muted-foreground">
+                            Área: {request.inscriptions?.subject_area}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            Email: {request.inscriptions?.profiles?.email}
+                          </p>
+                          {request.reason && (
+                            <div className="mt-2">
+                              <p className="text-sm font-medium">Motivo:</p>
+                              <p className="text-sm text-muted-foreground">{request.reason}</p>
+                            </div>
+                          )}
+                          <p className="text-xs text-muted-foreground">
+                            Solicitado: {format(new Date(request.requested_at), 'dd/MM/yyyy HH:mm', { locale: es })}
+                          </p>
+                        </div>
+                        <div className="flex gap-2 ml-4">
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={async () => {
+                              try {
+                                await respondToRequest(request.id, 'approved', 'Solicitud aprobada por administrador');
+                                toast({
+                                  title: "Solicitud aprobada",
+                                  description: "La inscripción ha sido eliminada. El usuario puede crear una nueva."
+                                });
+                              } catch (error) {
+                                toast({
+                                  title: "Error",
+                                  description: "No se pudo aprobar la solicitud.",
+                                  variant: "destructive"
+                                });
+                              }
+                            }}
+                          >
+                            <Check className="h-4 w-4 mr-1" />
+                            Aprobar
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={async () => {
+                              try {
+                                await respondToRequest(request.id, 'rejected', 'Solicitud rechazada por administrador');
+                                toast({
+                                  title: "Solicitud rechazada",
+                                  description: "La solicitud ha sido rechazada."
+                                });
+                              } catch (error) {
+                                toast({
+                                  title: "Error",
+                                  description: "No se pudo rechazar la solicitud.",
+                                  variant: "destructive"
+                                });
+                              }
+                            }}
+                          >
+                            <X className="h-4 w-4 mr-1" />
+                            Rechazar
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Create New Period */}

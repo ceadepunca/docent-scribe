@@ -135,11 +135,21 @@ const InscriptionForm: React.FC<InscriptionFormProps> = ({ initialData, isEdit =
       });
 
       navigate('/inscriptions');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error:', error);
+      
+      let errorMessage = 'Ocurrió un error al procesar la inscripción';
+      
+      // Handle unique constraint violation
+      if (error.code === '23505' && error.message?.includes('unique_user_inscription_per_period')) {
+        errorMessage = 'Ya tiene una inscripción para este período. Si desea crear una nueva inscripción, debe solicitar la eliminación de la existente desde el panel principal.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       toast({
         title: 'Error',
-        description: 'Ocurrió un error al procesar la inscripción',
+        description: errorMessage,
         variant: 'destructive',
       });
     } finally {

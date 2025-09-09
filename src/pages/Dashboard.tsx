@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
 import { 
   User, 
   FileText, 
@@ -11,17 +12,79 @@ import {
   Settings,
   AlertCircle,
   CheckCircle,
-  GraduationCap
+  GraduationCap,
+  Clock,
+  Trash2,
+  Eye
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useProfileCompleteness } from '@/hooks/useProfileCompleteness';
 import { useInscriptionPeriods } from '@/hooks/useInscriptionPeriods';
+import { useDeletionRequests } from '@/hooks/useDeletionRequests';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 const Dashboard = () => {
-  const { isEvaluator, isDocente, isSuperAdmin } = useAuth();
+  const { user, isEvaluator, isDocente, isSuperAdmin } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const { isComplete: profileComplete, completionPercentage, missingFields } = useProfileCompleteness();
-  const { availableLevels, loading: periodsLoading, getPeriodForLevel } = useInscriptionPeriods();
+  const { availableLevels, loading: periodsLoading, getPeriodForLevel, periods } = useInscriptionPeriods();
+  const { createDeletionRequest, requests, loading: requestsLoading, getPendingRequestForInscription } = useDeletionRequests();
+  
+  const [existingInscriptions, setExistingInscriptions] = useState<any[]>([]);
+  const [loadingInscriptions, setLoadingInscriptions] = useState(true);
+
+  useEffect(() => {
+    if (user && isDocente) {
+      fetchExistingInscriptions();
+    }
+  }, [user, isDocente]);
+
+  const fetchExistingInscriptions = async () => {
+    if (!user) return;
+    
+    try {
+      setLoadingInscriptions(true);
+      const { data, error } = await supabase
+        .from('inscriptions')
+        .select('*')
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+      setExistingInscriptions(data || []);
+    } catch (error) {
+      console.error('Error fetching inscriptions:', error);
+    } finally {
+      setLoadingInscriptions(false);
+    }
+  };
+
+  const handleRequestDeletion = async (inscriptionId: string) => {
+    try {
+      await createDeletionRequest(inscriptionId);
+      toast({
+        title: "Solicitud enviada",
+        description: "Su solicitud de eliminación ha sido enviada para revisión del administrador."
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "No se pudo enviar la solicitud. Intente nuevamente.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const getInscriptionForPeriod = (periodId: string) => {
+    return existingInscriptions.find(i => i.inscription_period_id === periodId);
+  };
+
+  const hasInscriptionInPeriod = (level: 'inicial' | 'primario' | 'secundario') => {
+    const period = getPeriodForLevel(level);
+    if (!period) return false;
+    return getInscriptionForPeriod(period.id);
+  };
 
   return (
     <div className="container mx-auto px-6 py-8">
@@ -92,28 +155,94 @@ const Dashboard = () => {
           </Card>
 
           {/* Inscription Cards - Only for teachers */}
-          {isDocente && profileComplete && availableLevels.map((level) => (
-            <Card 
-              key={level} 
-              className="hover:shadow-lg transition-shadow cursor-pointer" 
-          onClick={() => {
+          {isDocente && profileComplete && !loadingInscriptions && availableLevels.map((level) => {
             const period = getPeriodForLevel(level);
-            if (period) {
-              navigate(`/new-inscription?level=${level}&periodId=${period.id}`);
+            const existingInscription = period ? getInscriptionForPeriod(period.id) : null;
+            const pendingRequest = existingInscription ? getPendingRequestForInscription(existingInscription.id) : null;
+            
+            if (existingInscription && !pendingRequest) {
+              // User has an inscription and no pending deletion request
+              return (
+                <Card key={level} className="border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-orange-800 dark:text-orange-200">
+                      <ClipboardList className="h-5 w-5" />
+                      Ya inscrito - {level.charAt(0).toUpperCase() + level.slice(1)}
+                    </CardTitle>
+                    <CardDescription className="text-orange-700 dark:text-orange-300">
+                      Ya tiene una inscripción para este nivel
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex flex-col gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => navigate(`/inscriptions/${existingInscription.id}`)}
+                      >
+                        <Eye className="h-4 w-4 mr-2" />
+                        Ver inscripción
+                      </Button>
+                      <Button 
+                        variant="destructive" 
+                        size="sm"
+                        onClick={() => handleRequestDeletion(existingInscription.id)}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Solicitar nueva inscripción
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
             }
-          }}
-            >
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <GraduationCap className="h-5 w-5" />
-                  Inscribirse - {level.charAt(0).toUpperCase() + level.slice(1)}
-                </CardTitle>
-                <CardDescription>
-                  Crear inscripción para nivel {level}
-                </CardDescription>
-              </CardHeader>
-            </Card>
-          ))}
+            
+            if (pendingRequest) {
+              // User has a pending deletion request
+              return (
+                <Card key={level} className="border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-yellow-800 dark:text-yellow-200">
+                      <Clock className="h-5 w-5" />
+                      Solicitud pendiente - {level.charAt(0).toUpperCase() + level.slice(1)}
+                    </CardTitle>
+                    <CardDescription className="text-yellow-700 dark:text-yellow-300">
+                      Esperando aprobación del administrador
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground">
+                      Su solicitud de eliminación está siendo revisada. 
+                      Una vez aprobada podrá crear una nueva inscripción.
+                    </p>
+                  </CardContent>
+                </Card>
+              );
+            }
+            
+            // User can create a new inscription
+            return (
+              <Card 
+                key={level} 
+                className="hover:shadow-lg transition-shadow cursor-pointer" 
+                onClick={() => {
+                  if (period) {
+                    navigate(`/new-inscription?level=${level}&periodId=${period.id}`);
+                  }
+                }}
+              >
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <GraduationCap className="h-5 w-5" />
+                    Inscribirse - {level.charAt(0).toUpperCase() + level.slice(1)}
+                  </CardTitle>
+                  <CardDescription>
+                    Crear inscripción para nivel {level}
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+            );
+          })}
 
           {/* Ver Inscripciones Card - For teachers and super admins */}
           {(isDocente || isSuperAdmin) && (
