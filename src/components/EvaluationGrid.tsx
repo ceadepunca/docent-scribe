@@ -208,8 +208,8 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
     setEvaluation(prev => ({
       ...prev,
       title_type: validTitleType,
-      // Reset titulo_score if it exceeds new max value
-      titulo_score: prev.titulo_score > newMaxValue ? 0 : prev.titulo_score
+      // Automatically set titulo_score to the maximum value for the selected title type
+      titulo_score: newMaxValue
     }));
   };
 

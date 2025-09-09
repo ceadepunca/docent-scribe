@@ -334,8 +334,8 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
         evaluation: {
           ...currentEvaluation,
           title_type: validTitleType,
-          // Reset titulo_score if it exceeds new max value
-          titulo_score: currentEvaluation.titulo_score > newMaxValue ? 0 : currentEvaluation.titulo_score
+          // Automatically set titulo_score to the maximum value for the selected title type
+          titulo_score: newMaxValue
         }
       };
       return updated;
