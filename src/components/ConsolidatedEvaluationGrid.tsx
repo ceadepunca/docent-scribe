@@ -514,11 +514,27 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
                     {evaluationCriteria.map((criterion) => (
                       <Tooltip key={criterion.id}>
                         <TooltipTrigger asChild>
-                          <TableHead className="w-8 text-center font-semibold p-1 h-24">
-                            <div className="flex items-center justify-center h-full">
-                              <span className="text-sm font-bold">
-                                {criterion.column}
-                              </span>
+                          <TableHead className="w-8 text-center font-semibold p-1 h-32">
+                            <div className="flex flex-col items-center justify-center h-full leading-none">
+                              {criterion.fullLabel.includes(' ') 
+                                ? criterion.fullLabel.split(' ').map((word, wordIndex) => (
+                                    <div key={wordIndex} className="flex flex-col">
+                                      {word.split('').map((letter, letterIndex) => (
+                                        <span key={letterIndex} className="block text-2xs font-bold">
+                                          {letter}
+                                        </span>
+                                      ))}
+                                      {wordIndex < criterion.fullLabel.split(' ').length - 1 && (
+                                        <div className="h-1" />
+                                      )}
+                                    </div>
+                                  ))
+                                : criterion.fullLabel.split('').map((letter, index) => (
+                                    <span key={index} className="block text-2xs font-bold">
+                                      {letter}
+                                    </span>
+                                  ))
+                              }
                             </div>
                           </TableHead>
                         </TooltipTrigger>
