@@ -288,6 +288,29 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
     fetchProfileAndEvaluations();
   }, [inscriptionId, user, subjectSelections, positionSelections, userId]);
 
+  // Function to replicate evaluation values to all other rows
+  const replicateToAllRows = (sourceGroupIndex: number, fieldName: keyof EvaluationData, value: any) => {
+    setGroupedItems(prev => {
+      const updated = [...prev];
+      const sourceEvaluation = updated[sourceGroupIndex].evaluation;
+      
+      // Update all other rows that are not completed
+      updated.forEach((group, index) => {
+        if (index !== sourceGroupIndex && group.evaluation.status !== 'completed') {
+          updated[index] = {
+            ...group,
+            evaluation: {
+              ...group.evaluation,
+              [fieldName]: value
+            }
+          };
+        }
+      });
+      
+      return updated;
+    });
+  };
+
   const handleScoreChange = (groupIndex: number, criterionId: keyof EvaluationData, value: string) => {
     const numericValue = parseFloat(value) || 0;
     const criterion = evaluationCriteria.find(c => c.id === criterionId);
@@ -308,6 +331,7 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
       return;
     }
 
+    // First, update the current row
     setGroupedItems(prev => {
       const updated = [...prev];
       updated[groupIndex] = {
@@ -319,12 +343,18 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
       };
       return updated;
     });
+    
+    // Then, replicate to all other rows
+    setTimeout(() => {
+      replicateToAllRows(groupIndex, criterionId, numericValue);
+    }, 0);
   };
 
   const handleTitleTypeChange = (groupIndex: number, titleType: string) => {
     const validTitleType = titleType as 'docente' | 'habilitante' | 'supletorio';
     const newMaxValue = getTitleTypeMaxValue(validTitleType);
     
+    // First, update the current row
     setGroupedItems(prev => {
       const updated = [...prev];
       const currentEvaluation = updated[groupIndex].evaluation;
@@ -334,12 +364,17 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
         evaluation: {
           ...currentEvaluation,
           title_type: validTitleType,
-          // Automatically set titulo_score to the maximum value for the selected title type
           titulo_score: newMaxValue
         }
       };
       return updated;
     });
+    
+    // Then, replicate both title_type and titulo_score to all other rows
+    setTimeout(() => {
+      replicateToAllRows(groupIndex, 'title_type', validTitleType);
+      replicateToAllRows(groupIndex, 'titulo_score', newMaxValue);
+    }, 0);
   };
 
   const saveEvaluationsForGroup = async (group: GroupedItem) => {
@@ -464,6 +499,9 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
             </CardTitle>
             <CardDescription>
               Evaluación completa para nivel secundario
+              <span className="block mt-1 text-xs text-primary font-medium">
+                ⚡ Los valores se replican automáticamente en todas las filas
+              </span>
             </CardDescription>
           </div>
           <Badge variant={allCompleted ? 'default' : 'secondary'}>
@@ -550,9 +588,16 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
                       <TableCell className="p-2">
                         <div>
                           <p className="font-semibold text-xs leading-tight break-words">{group.displayName}</p>
-                          <Badge variant="outline" className="mt-1 text-2xs px-1 py-0">
-                            {group.evaluation.status === 'completed' ? 'Ok' : 'Draft'}
-                          </Badge>
+                          <div className="flex items-center gap-1 mt-1">
+                            <Badge variant="outline" className="text-2xs px-1 py-0">
+                              {group.evaluation.status === 'completed' ? 'Ok' : 'Draft'}
+                            </Badge>
+                            {group.evaluation.status !== 'completed' && (
+                              <Badge variant="secondary" className="text-2xs px-1 py-0 bg-blue-50 text-blue-600 border-blue-200">
+                                ↔ Sync
+                              </Badge>
+                            )}
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell className="p-1">
