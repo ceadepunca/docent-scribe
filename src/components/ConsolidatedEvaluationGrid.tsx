@@ -514,20 +514,13 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
                     {evaluationCriteria.map((criterion) => (
                       <Tooltip key={criterion.id}>
                         <TooltipTrigger asChild>
-                          <TableHead className="w-8 text-center font-semibold p-1 h-16">
-                            <div className="flex flex-col items-center justify-center h-full leading-tight">
-                              {criterion.label.includes('.') || criterion.label.includes(' ')
-                                ? criterion.label.split(/[.\s]+/).filter(part => part).map((part, index) => (
-                                    <span key={index} className="block text-xs font-bold">
-                                      {part}
-                                    </span>
-                                  ))
-                                : (
-                                    <span className="block text-xs font-bold">
-                                      {criterion.label}
-                                    </span>
-                                  )
-                              }
+                          <TableHead className="w-8 text-center font-semibold p-1 h-20">
+                            <div className="flex flex-col items-center justify-center h-full leading-none">
+                              {criterion.label.split('').map((char, index) => (
+                                <span key={index} className="block text-xs font-bold">
+                                  {char}
+                                </span>
+                              ))}
                             </div>
                           </TableHead>
                         </TooltipTrigger>
