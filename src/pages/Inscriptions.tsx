@@ -21,6 +21,7 @@ interface Inscription {
   created_at: string;
   updated_at: string;
   user_id: string;
+  has_evaluation?: boolean;
   profiles?: {
     first_name: string;
     last_name: string;
@@ -123,10 +124,25 @@ const Inscriptions = () => {
       // Create profiles map for easy lookup
       const profilesMap = new Map(profilesData?.map(profile => [profile.id, profile]) || []);
 
-      // Combine inscriptions with profiles
+      // Get inscription IDs to check for evaluations
+      const inscriptionIds = inscriptionsData?.map(inscription => inscription.id) || [];
+      
+      // Fetch evaluations for these inscriptions
+      const { data: evaluationsData, error: evaluationsError } = await supabase
+        .from('evaluations')
+        .select('inscription_id')
+        .in('inscription_id', inscriptionIds);
+
+      if (evaluationsError) throw evaluationsError;
+
+      // Create set of inscription IDs that have evaluations
+      const evaluatedInscriptionIds = new Set(evaluationsData?.map(evaluation => evaluation.inscription_id) || []);
+
+      // Combine inscriptions with profiles and evaluation status
       const inscriptionsWithProfiles = inscriptionsData?.map(inscription => ({
         ...inscription,
-        profiles: profilesMap.get(inscription.user_id) || null
+        profiles: profilesMap.get(inscription.user_id) || null,
+        has_evaluation: evaluatedInscriptionIds.has(inscription.id)
       })) || [];
 
       console.log('Debug - Inscriptions with profiles:', inscriptionsWithProfiles);
@@ -163,9 +179,11 @@ const Inscriptions = () => {
       });
     }
 
-    // Filter by status
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter(inscription => inscription.status === statusFilter);
+    // Filter by evaluation status
+    if (statusFilter === 'evaluated') {
+      filtered = filtered.filter(inscription => inscription.has_evaluation);
+    } else if (statusFilter === 'not_evaluated') {
+      filtered = filtered.filter(inscription => !inscription.has_evaluation);
     }
 
     setFilteredInscriptions(filtered);
@@ -238,12 +256,8 @@ const Inscriptions = () => {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Todos los estados</SelectItem>
-                      <SelectItem value="draft">Borrador</SelectItem>
-                      <SelectItem value="submitted">Enviada</SelectItem>
-                      <SelectItem value="under_review">En Revisión</SelectItem>
-                      <SelectItem value="approved">Aprobada</SelectItem>
-                      <SelectItem value="rejected">Rechazada</SelectItem>
-                      <SelectItem value="requires_changes">Requiere Cambios</SelectItem>
+                      <SelectItem value="evaluated">Evaluada</SelectItem>
+                      <SelectItem value="not_evaluated">No evaluada</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
