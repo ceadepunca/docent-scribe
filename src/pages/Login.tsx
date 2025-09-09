@@ -69,6 +69,15 @@ const Login = () => {
               {isLoading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
             </Button>
           </form>
+          <div className="mt-4 p-3 bg-muted/50 rounded-md">
+            <p className="text-xs text-muted-foreground text-center">
+              <strong>Usuarios de prueba:</strong><br />
+              Docentes: docente1@test.com - docente10@test.com<br />
+              Evaluadores: evaluador1@test.com - evaluador3@test.com<br />
+              Admin: admin@test.com<br />
+              Contraseña: <code>test123</code>
+            </p>
+          </div>
           <div className="mt-6 text-center">
             <p className="text-sm text-muted-foreground">
               ¿No tienes cuenta?{' '}
