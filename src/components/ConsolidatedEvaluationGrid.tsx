@@ -600,20 +600,6 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
                     </TableRow>
                   );
                 })}
-                
-                {/* Total Row */}
-                <TableRow className="bg-muted/50 font-semibold text-xs">
-                  <TableCell className="font-bold p-2 text-xs">TOTAL GENERAL</TableCell>
-                  <TableCell className="p-1">—</TableCell>
-                  {evaluationCriteria.map((criterion) => (
-                    <TableCell key={criterion.id} className="text-center p-1">—</TableCell>
-                  ))}
-                  <TableCell className="text-center p-1">
-                    <div className="px-2 py-1 bg-primary/20 rounded font-bold text-sm">
-                      {groupedItems.reduce((total, group) => total + calculateTotal(group.evaluation), 0).toFixed(1)}
-                    </div>
-                  </TableCell>
-                </TableRow>
               </TableBody>
             </Table>
             </TooltipProvider>
