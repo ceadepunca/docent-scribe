@@ -79,7 +79,7 @@ export const useTeacherManagement = () => {
       const { data, error } = await supabase
         .from('profiles')
         .insert({
-          id: crypto.randomUUID(), // Independent UUID, not linked to auth.users
+          id: crypto.randomUUID(),
           first_name: teacherData.first_name,
           last_name: teacherData.last_name,
           email: teacherData.email,
@@ -91,7 +91,7 @@ export const useTeacherManagement = () => {
           titulo_1_promedio: teacherData.titulo_1_promedio,
           migrated: teacherData.migrated || false,
           data_complete: true,
-          user_id: teacherData.user_id || null, // Only set if it's a real auth user
+          user_id: teacherData.user_id || null,
         })
         .select()
         .single();
