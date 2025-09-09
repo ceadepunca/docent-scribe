@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -302,79 +303,118 @@ const Inscriptions = () => {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredInscriptions.map((inscription) => (
-              <Card key={inscription.id} className="hover:shadow-lg transition-shadow">
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-2">
-                      <CardTitle className="text-lg">{inscription.subject_area}</CardTitle>
-                      <CardDescription>{getLevelLabel(inscription.teaching_level)}</CardDescription>
-                      
-                      {/* Teacher Information - More prominent for evaluators/admins */}
-                      {(isSuperAdmin || isEvaluator) && inscription.profiles && (
-                        <div className="bg-muted/30 p-3 rounded-md border-l-2 border-primary">
-                          <div className="flex items-center gap-2 mb-1">
-                            <User className="h-4 w-4 text-primary" />
-                            <span className="font-medium text-sm text-foreground">
-                              {inscription.profiles.first_name} {inscription.profiles.last_name}
-                            </span>
+          <Card>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      {(isSuperAdmin || isEvaluator) && (
+                        <>
+                          <TableHead>Docente</TableHead>
+                          <TableHead>Email</TableHead>
+                          <TableHead>DNI</TableHead>
+                        </>
+                      )}
+                      <TableHead>Área/Materia</TableHead>
+                      <TableHead>Nivel Educativo</TableHead>
+                      <TableHead>Experiencia</TableHead>
+                      <TableHead>Estado de Evaluación</TableHead>
+                      <TableHead>Fecha de Creación</TableHead>
+                      <TableHead>Acciones</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredInscriptions.map((inscription) => (
+                      <TableRow key={inscription.id}>
+                        {(isSuperAdmin || isEvaluator) && (
+                          <>
+                            <TableCell>
+                              {inscription.profiles ? (
+                                <div className="flex items-center gap-2">
+                                  <User className="h-4 w-4 text-muted-foreground" />
+                                  <span className="font-medium">
+                                    {inscription.profiles.first_name} {inscription.profiles.last_name}
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="text-muted-foreground">Sin información</span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {inscription.profiles?.email || 'No disponible'}
+                            </TableCell>
+                            <TableCell>
+                              {inscription.profiles?.dni || 'No disponible'}
+                            </TableCell>
+                          </>
+                        )}
+                        <TableCell>
+                          <span className="font-medium">{inscription.subject_area}</span>
+                        </TableCell>
+                        <TableCell>
+                          {getLevelLabel(inscription.teaching_level)}
+                        </TableCell>
+                        <TableCell>
+                          {inscription.experience_years} {inscription.experience_years === 1 ? 'año' : 'años'}
+                        </TableCell>
+                        <TableCell>
+                          <Badge 
+                            className={inscription.has_evaluation 
+                              ? 'bg-green-100 text-green-800 hover:bg-green-100' 
+                              : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100'
+                            }
+                          >
+                            {inscription.has_evaluation ? (
+                              <>
+                                <CheckCircle2 className="h-3 w-3 mr-1" />
+                                Evaluada
+                              </>
+                            ) : (
+                              <>
+                                <Clock className="h-3 w-3 mr-1" />
+                                No evaluada
+                              </>
+                            )}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm">
+                            {format(new Date(inscription.created_at), 'dd/MM/yyyy', { locale: es })}
                           </div>
-                          <div className="text-xs text-muted-foreground space-y-0.5">
-                            <div>Email: {inscription.profiles.email}</div>
-                            {inscription.profiles.dni && (
-                              <div>DNI: {inscription.profiles.dni}</div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => navigate(`/inscriptions/${inscription.id}`)}
+                              className="flex items-center gap-1"
+                            >
+                              <Eye className="h-3 w-3" />
+                              Ver
+                            </Button>
+                            {['draft', 'requires_changes'].includes(inscription.status) && 
+                             (inscription.user_id === user.id || isDocente) && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => navigate(`/inscriptions/${inscription.id}/edit`)}
+                                className="flex items-center gap-1"
+                              >
+                                <Edit2 className="h-3 w-3" />
+                                Editar
+                              </Button>
                             )}
                           </div>
-                        </div>
-                      )}
-                    </div>
-                    <Badge className={`${getStatusColor(inscription.status)} flex items-center gap-1 shrink-0`}>
-                      {getStatusIcon(inscription.status)}
-                      {getStatusLabel(inscription.status)}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <div className="text-sm">
-                      <span className="font-medium">Experiencia:</span>{' '}
-                      {inscription.experience_years} {inscription.experience_years === 1 ? 'año' : 'años'}
-                    </div>
-                    
-                    <div className="text-sm text-muted-foreground">
-                      <div>Creada: {format(new Date(inscription.created_at), 'dd/MM/yyyy', { locale: es })}</div>
-                      <div>Actualizada: {format(new Date(inscription.updated_at), 'dd/MM/yyyy', { locale: es })}</div>
-                    </div>
-
-                    <div className="flex gap-2 pt-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => navigate(`/inscriptions/${inscription.id}`)}
-                        className="flex items-center gap-1"
-                      >
-                        <Eye className="h-3 w-3" />
-                        Ver
-                      </Button>
-                      {['draft', 'requires_changes'].includes(inscription.status) && 
-                       (inscription.user_id === user.id || isDocente) && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => navigate(`/inscriptions/${inscription.id}/edit`)}
-                          className="flex items-center gap-1"
-                        >
-                          <Edit2 className="h-3 w-3" />
-                          Editar
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
         )}
       </div>
     </div>
