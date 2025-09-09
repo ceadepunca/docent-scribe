@@ -514,14 +514,13 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
                     {evaluationCriteria.map((criterion) => (
                       <Tooltip key={criterion.id}>
                         <TooltipTrigger asChild>
-                          <TableHead className="w-8 text-center font-semibold text-2xs p-1 h-20">
-                            <div className="flex flex-col items-center justify-center h-full">
-                              <div 
-                                className="text-2xs font-bold leading-none"
-                                style={{ writingMode: 'vertical-rl', textOrientation: 'upright' }}
-                              >
-                                {criterion.column.split('').join('')}
-                              </div>
+                          <TableHead className="w-8 text-center font-semibold text-2xs p-1 h-24">
+                            <div className="flex flex-col items-center justify-center h-full leading-none">
+                              {criterion.column.split('').map((letter, index) => (
+                                <span key={index} className="block text-2xs font-bold">
+                                  {letter}
+                                </span>
+                              ))}
                             </div>
                           </TableHead>
                         </TooltipTrigger>
@@ -530,12 +529,13 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
                         </TooltipContent>
                       </Tooltip>
                     ))}
-                    <TableHead className="w-16 text-center font-semibold text-xs">
-                      <div 
-                        className="text-2xs font-bold leading-none mx-auto"
-                        style={{ writingMode: 'vertical-rl', textOrientation: 'upright' }}
-                      >
-                        TOTAL
+                    <TableHead className="w-16 text-center font-semibold text-xs h-24">
+                      <div className="flex flex-col items-center justify-center h-full leading-none">
+                        {'TOTAL'.split('').map((letter, index) => (
+                          <span key={index} className="block text-2xs font-bold">
+                            {letter}
+                          </span>
+                        ))}
                       </div>
                     </TableHead>
                   </TableRow>
