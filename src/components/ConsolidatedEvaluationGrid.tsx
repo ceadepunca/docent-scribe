@@ -514,18 +514,30 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
                     {evaluationCriteria.map((criterion) => (
                       <Tooltip key={criterion.id}>
                         <TooltipTrigger asChild>
-                          <TableHead className="w-12 text-center font-semibold text-2xs p-1">
-                            {criterion.label}
-                            <br />
-                            <span className="text-xs font-normal">({criterion.column})</span>
+                          <TableHead className="w-8 text-center font-semibold text-2xs p-1 h-20">
+                            <div className="flex flex-col items-center justify-center h-full">
+                              <div 
+                                className="text-2xs font-bold leading-none"
+                                style={{ writingMode: 'vertical-rl', textOrientation: 'upright' }}
+                              >
+                                {criterion.column.split('').join('')}
+                              </div>
+                            </div>
                           </TableHead>
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p>{criterion.fullLabel}</p>
+                          <p><strong>{criterion.column}:</strong> {criterion.fullLabel}</p>
                         </TooltipContent>
                       </Tooltip>
                     ))}
-                    <TableHead className="w-16 text-center font-semibold text-xs">TOTAL</TableHead>
+                    <TableHead className="w-16 text-center font-semibold text-xs">
+                      <div 
+                        className="text-2xs font-bold leading-none mx-auto"
+                        style={{ writingMode: 'vertical-rl', textOrientation: 'upright' }}
+                      >
+                        TOTAL
+                      </div>
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
               <TableBody>
@@ -567,14 +579,14 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
                         
                         return (
                           <TableCell key={criterion.id} className="p-1">
-                            <Input
+                           <Input
                               type="number"
                               min="0"
                               max={maxValue}
                               step="0.1"
                               value={group.evaluation[criterion.id as keyof EvaluationData] || ''}
                               onChange={(e) => handleScoreChange(groupIndex, criterion.id as keyof EvaluationData, e.target.value)}
-                              className="text-center w-10 h-7 text-2xs px-1"
+                              className="text-center w-8 h-7 text-2xs px-0"
                               disabled={group.evaluation.status === 'completed'}
                             />
                           </TableCell>

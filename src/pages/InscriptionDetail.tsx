@@ -402,24 +402,12 @@ const InscriptionDetail = () => {
             )}
 
             {/* Evaluation Grid - Only for evaluators and super admins */}
-            {(isEvaluator || isSuperAdmin) && (
-              <>
-                {inscription.teaching_level === 'secundario' ? (
-                  // Consolidated evaluation grid for secondary level
-                  <ConsolidatedEvaluationGrid 
-                    inscriptionId={inscription.id}
-                    subjectSelections={subjectSelections}
-                    positionSelections={positionSelections}
-                    userId={inscription.user_id}
-                  />
-                ) : (
-                  // Single evaluation for inicial/primario levels
-                  <EvaluationGrid 
-                    inscriptionId={inscription.id}
-                    teachingLevel={inscription.teaching_level}
-                  />
-                )}
-              </>
+            {(isEvaluator || isSuperAdmin) && inscription.teaching_level !== 'secundario' && (
+              // Single evaluation for inicial/primario levels
+              <EvaluationGrid 
+                inscriptionId={inscription.id}
+                teachingLevel={inscription.teaching_level}
+              />
             )}
           </div>
 
@@ -499,6 +487,18 @@ const InscriptionDetail = () => {
           </div>
         </div>
       </div>
+      
+      {/* Full-width Consolidated Evaluation Grid for Secondary Level */}
+      {(isEvaluator || isSuperAdmin) && inscription.teaching_level === 'secundario' && (
+        <div className="w-full px-4 pb-4">
+          <ConsolidatedEvaluationGrid 
+            inscriptionId={inscription.id}
+            subjectSelections={subjectSelections}
+            positionSelections={positionSelections}
+            userId={inscription.user_id}
+          />
+        </div>
+      )}
     </div>
   );
 };
