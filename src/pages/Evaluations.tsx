@@ -22,6 +22,7 @@ interface InscriptionWithProfile {
   created_at: string;
   updated_at: string;
   user_id: string;
+  evaluation_state: 'evaluada' | 'no_evaluada';
   profiles: {
     first_name: string;
     last_name: string;
@@ -60,8 +61,8 @@ const Evaluations = () => {
     try {
       setLoading(true);
       
-      // Try embedded join first (should work now with foreign key)
-      let { data: inscriptionsData, error: inscriptionsError } = await supabase
+      // Get all inscriptions with evaluation status
+      const { data: allInscriptions, error: allError } = await supabase
         .from('inscriptions')
         .select(`
           id,
@@ -71,60 +72,46 @@ const Evaluations = () => {
           experience_years,
           created_at,
           updated_at,
-          user_id,
-          profiles:profiles!fk_inscriptions_user_profile (
-            first_name,
-            last_name,
-            email,
-            dni
-          )
+          user_id
         `)
         .in('status', ['submitted', 'under_review', 'approved', 'rejected', 'requires_changes'])
         .order('created_at', { ascending: false });
 
-      // If embedded join fails, fall back to separate queries
-      if (inscriptionsError || !inscriptionsData) {
-        console.warn('Embedded join failed, falling back to separate queries:', inscriptionsError);
-        
-        // Get inscriptions first
-        const { data: basicInscriptions, error: basicError } = await supabase
-          .from('inscriptions')
-          .select('id, status, subject_area, teaching_level, experience_years, created_at, updated_at, user_id')
-          .in('status', ['submitted', 'under_review', 'approved', 'rejected', 'requires_changes'])
-          .order('created_at', { ascending: false });
+      if (allError) throw allError;
 
-        if (basicError) throw basicError;
+      // Get evaluations for these inscriptions
+      const inscriptionIds = allInscriptions?.map(i => i.id) || [];
+      const { data: evaluationsData, error: evalError } = await supabase
+        .from('evaluations')
+        .select('inscription_id, id')
+        .in('inscription_id', inscriptionIds);
 
-        // Get unique user IDs and fetch profiles
-        const userIds = [...new Set(basicInscriptions?.map(inscription => inscription.user_id) || [])];
-        
-        const { data: profilesData, error: profilesError } = await supabase
-          .from('profiles')
-          .select('id, first_name, last_name, email, dni')
-          .in('id', userIds);
+      if (evalError) throw evalError;
 
-        if (profilesError) throw profilesError;
+      // Create evaluation map
+      const evaluationMap = new Set(evaluationsData?.map(e => e.inscription_id) || []);
 
-        // Create profiles map and combine data
-        const profilesMap = new Map(profilesData?.map(profile => [profile.id, profile]) || []);
-        
-        inscriptionsData = basicInscriptions?.map(inscription => ({
-          ...inscription,
-          profiles: profilesMap.get(inscription.user_id) || null
-        })) || [];
-      } else {
-        // Transform embedded join data to match our interface (handle object or array)
-        inscriptionsData = (inscriptionsData as any[])?.map((inscription: any) => {
-          let prof = inscription.profiles;
-          if (Array.isArray(prof)) {
-            prof = prof[0] ?? null;
-          }
-          return { ...inscription, profiles: prof ?? null };
-        }) || [];
-      }
+      // Get unique user IDs and fetch profiles
+      const userIds = [...new Set(allInscriptions?.map(inscription => inscription.user_id) || [])];
+      
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, email, dni')
+        .in('id', userIds);
+
+      if (profilesError) throw profilesError;
+
+      // Create profiles map and combine data
+      const profilesMap = new Map(profilesData?.map(profile => [profile.id, profile]) || []);
+      
+      const inscriptionsData: InscriptionWithProfile[] = allInscriptions?.map(inscription => ({
+        ...inscription,
+        evaluation_state: evaluationMap.has(inscription.id) ? 'evaluada' as const : 'no_evaluada' as const,
+        profiles: profilesMap.get(inscription.user_id) || null
+      })) || [];
 
       console.log('Successfully fetched inscriptions:', inscriptionsData?.length || 0);
-      setInscriptions(inscriptionsData as InscriptionWithProfile[] || []);
+      setInscriptions(inscriptionsData);
       
     } catch (error) {
       console.error('Error fetching inscriptions:', error);
@@ -186,7 +173,7 @@ const Evaluations = () => {
     }
 
     if (statusFilter !== 'all') {
-      filtered = filtered.filter(inscription => inscription.status === statusFilter);
+      filtered = filtered.filter(inscription => inscription.evaluation_state === statusFilter);
     }
 
     // Group by teaching level
@@ -267,8 +254,8 @@ const Evaluations = () => {
                   {inscription.experience_years} {inscription.experience_years === 1 ? 'año' : 'años'}
                 </TableCell>
                 <TableCell>
-                  <Badge className={getStatusColor(inscription.status)}>
-                    {getStatusLabel(inscription.status)}
+                  <Badge className={getEvaluationStatusColor(inscription.evaluation_state)}>
+                    {getEvaluationStatusLabel(inscription.evaluation_state)}
                   </Badge>
                 </TableCell>
                 <TableCell>
@@ -314,6 +301,22 @@ const Evaluations = () => {
       case 'approved': return 'Aprobada';
       case 'rejected': return 'Rechazada';
       case 'requires_changes': return 'Requiere Cambios';
+      default: return 'Desconocido';
+    }
+  };
+
+  const getEvaluationStatusColor = (status: 'evaluada' | 'no_evaluada') => {
+    switch (status) {
+      case 'evaluada': return 'bg-green-100 text-green-800';
+      case 'no_evaluada': return 'bg-gray-100 text-gray-800';
+      default: return 'bg-muted text-muted-foreground';
+    }
+  };
+
+  const getEvaluationStatusLabel = (status: 'evaluada' | 'no_evaluada') => {
+    switch (status) {
+      case 'evaluada': return 'Evaluada';
+      case 'no_evaluada': return 'No evaluada';
       default: return 'Desconocido';
     }
   };
@@ -377,15 +380,12 @@ const Evaluations = () => {
               
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Estado" />
+                  <SelectValue placeholder="Estado de Evaluación" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos los estados</SelectItem>
-                  <SelectItem value="submitted">Enviada</SelectItem>
-                  <SelectItem value="under_review">En Revisión</SelectItem>
-                  <SelectItem value="approved">Aprobada</SelectItem>
-                  <SelectItem value="rejected">Rechazada</SelectItem>
-                  <SelectItem value="requires_changes">Requiere Cambios</SelectItem>
+                  <SelectItem value="evaluada">Evaluada</SelectItem>
+                  <SelectItem value="no_evaluada">No evaluada</SelectItem>
                 </SelectContent>
               </Select>
 
