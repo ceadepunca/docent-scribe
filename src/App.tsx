@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import ProtectedLayout from "@/components/ProtectedLayout";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -35,47 +36,65 @@ const App = () => (
             <Route path="/unauthorized" element={<Unauthorized />} />
             <Route path="/dashboard" element={
               <ProtectedRoute>
-                <Dashboard />
+                <ProtectedLayout>
+                  <Dashboard />
+                </ProtectedLayout>
               </ProtectedRoute>
             } />
             <Route path="/profile" element={
               <ProtectedRoute>
-                <Profile />
+                <ProtectedLayout>
+                  <Profile />
+                </ProtectedLayout>
               </ProtectedRoute>
             } />
             <Route path="/admin" element={
               <ProtectedRoute>
-                <AdminPanel />
+                <ProtectedLayout>
+                  <AdminPanel />
+                </ProtectedLayout>
               </ProtectedRoute>
             } />
             <Route path="/inscriptions/new" element={
               <ProtectedRoute requiredRole="docente">
-                <NewInscription />
+                <ProtectedLayout>
+                  <NewInscription />
+                </ProtectedLayout>
               </ProtectedRoute>
             } />
             <Route path="/new-inscription" element={
               <ProtectedRoute requiredRole="docente">
-                <NewInscription />
+                <ProtectedLayout>
+                  <NewInscription />
+                </ProtectedLayout>
               </ProtectedRoute>
             } />
             <Route path="/inscriptions" element={
               <ProtectedRoute allowedRoles={['docente', 'super_admin', 'evaluator']}>
-                <Inscriptions />
+                <ProtectedLayout>
+                  <Inscriptions />
+                </ProtectedLayout>
               </ProtectedRoute>
             } />
             <Route path="/evaluations" element={
               <ProtectedRoute allowedRoles={['evaluator', 'super_admin']}>
-                <Evaluations />
+                <ProtectedLayout>
+                  <Evaluations />
+                </ProtectedLayout>
               </ProtectedRoute>
             } />
             <Route path="/inscriptions/:id" element={
               <ProtectedRoute allowedRoles={['docente', 'super_admin', 'evaluator']}>
-                <InscriptionDetail />
+                <ProtectedLayout>
+                  <InscriptionDetail />
+                </ProtectedLayout>
               </ProtectedRoute>
             } />
             <Route path="/inscriptions/:id/edit" element={
               <ProtectedRoute requiredRole="docente">
-                <EditInscription />
+                <ProtectedLayout>
+                  <EditInscription />
+                </ProtectedLayout>
               </ProtectedRoute>
             } />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
