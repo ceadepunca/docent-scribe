@@ -11,9 +11,11 @@ import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { EvaluationGrid } from '@/components/EvaluationGrid';
+import { ConsolidatedEvaluationGrid } from '@/components/ConsolidatedEvaluationGrid';
 
 interface InscriptionDetail {
   id: string;
+  user_id: string;
   status: string;
   subject_area: string;
   teaching_level: string;
@@ -403,29 +405,15 @@ const InscriptionDetail = () => {
             {(isEvaluator || isSuperAdmin) && (
               <>
                 {inscription.teaching_level === 'secundario' ? (
-                  <div className="space-y-6">
-                    {/* Subject Evaluations */}
-                    {subjectSelections.map((selection) => (
-                      <EvaluationGrid 
-                        key={`subject-${selection.id}`}
-                        inscriptionId={inscription.id}
-                        teachingLevel={inscription.teaching_level}
-                        subjectSelection={selection}
-                      />
-                    ))}
-                    
-                    {/* Position Evaluations */}
-                    {positionSelections.map((selection) => (
-                      <EvaluationGrid 
-                        key={`position-${selection.id}`}
-                        inscriptionId={inscription.id}
-                        teachingLevel={inscription.teaching_level}
-                        positionSelection={selection}
-                      />
-                    ))}
-                  </div>
+                  // Consolidated evaluation grid for secondary level
+                  <ConsolidatedEvaluationGrid 
+                    inscriptionId={inscription.id}
+                    subjectSelections={subjectSelections}
+                    positionSelections={positionSelections}
+                    userId={inscription.user_id}
+                  />
                 ) : (
-                  // Single evaluation for initial/primario levels
+                  // Single evaluation for inicial/primario levels
                   <EvaluationGrid 
                     inscriptionId={inscription.id}
                     teachingLevel={inscription.teaching_level}
