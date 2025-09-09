@@ -7,13 +7,15 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Plus, Calendar, Users, BookOpen, ClipboardList, Eye, Clock, Check, X } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ArrowLeft, Plus, Calendar, Users, BookOpen, ClipboardList, Eye, Clock, Check, X, Settings } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useDeletionRequests } from '@/hooks/useDeletionRequests';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { TeacherManagementTab } from '@/components/admin/TeacherManagementTab';
 
 interface RecentInscription {
   id: string;
@@ -223,12 +225,26 @@ const AdminPanel = () => {
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-foreground mb-2">Panel de Administración</h1>
             <p className="text-muted-foreground">
-              Gestión de períodos de inscripción y configuración del sistema
+              Gestión de períodos de inscripción y administración de docentes
             </p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        <Tabs defaultValue="general" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="general" className="flex items-center gap-2">
+              <Settings className="h-4 w-4" />
+              Panel General
+            </TabsTrigger>
+            <TabsTrigger value="teachers" className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Gestión de Docentes
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="general" className="mt-6">
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           {/* Quick Stats */}
           <Card>
             <CardHeader>
@@ -501,9 +517,16 @@ const AdminPanel = () => {
                   ))}
                 </div>
               )}
-            </CardContent>
-          </Card>
-        </div>
+             </CardContent>
+           </Card>
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="teachers" className="mt-6">
+            <TeacherManagementTab />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );

@@ -20,6 +20,7 @@ import InscriptionDetail from "./pages/InscriptionDetail";
 import EditInscription from "./pages/EditInscription";
 import Evaluations from "./pages/Evaluations";
 import Listings from "./pages/Listings";
+import AssistedInscription from "./pages/admin/AssistedInscription";
 
 const queryClient = new QueryClient();
 
@@ -54,6 +55,11 @@ const App = () => (
                 <ProtectedLayout>
                   <AdminPanel />
                 </ProtectedLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/assisted-inscription" element={
+              <ProtectedRoute requiredRole="super_admin">
+                <AssistedInscription />
               </ProtectedRoute>
             } />
             <Route path="/inscriptions/new" element={

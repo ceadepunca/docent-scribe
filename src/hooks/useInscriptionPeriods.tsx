@@ -34,6 +34,23 @@ export const useInscriptionPeriods = () => {
     }
   };
 
+  const fetchAllPeriods = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('inscription_periods')
+        .select('*')
+        .order('start_date', { ascending: false });
+
+      if (error) throw error;
+      setPeriods(data || []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchActivePeriods();
   }, []);
@@ -73,6 +90,7 @@ export const useInscriptionPeriods = () => {
     loading,
     error,
     refetch: fetchActivePeriods,
+    fetchAllPeriods,
     availableLevels: getAvailableLevelsForUser(),
     getCurrentPeriods,
     getPeriodForLevel,

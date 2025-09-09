@@ -500,11 +500,14 @@ export type Database = {
       profiles: {
         Row: {
           created_at: string
+          data_complete: boolean | null
           dni: string | null
           email: string
           first_name: string
           id: string
           last_name: string
+          legajo_number: string | null
+          migrated: boolean | null
           phone: string | null
           titulo_1_fecha_egreso: string | null
           titulo_1_nombre: string | null
@@ -522,11 +525,14 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          data_complete?: boolean | null
           dni?: string | null
           email: string
           first_name: string
           id: string
           last_name: string
+          legajo_number?: string | null
+          migrated?: boolean | null
           phone?: string | null
           titulo_1_fecha_egreso?: string | null
           titulo_1_nombre?: string | null
@@ -544,11 +550,14 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          data_complete?: boolean | null
           dni?: string | null
           email?: string
           first_name?: string
           id?: string
           last_name?: string
+          legajo_number?: string | null
+          migrated?: boolean | null
           phone?: string | null
           titulo_1_fecha_egreso?: string | null
           titulo_1_nombre?: string | null
