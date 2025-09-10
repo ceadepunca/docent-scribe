@@ -2,8 +2,10 @@ import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Progress } from '@/components/ui/progress';
 import { useTeacherManagement } from '@/hooks/useTeacherManagement';
-import { Upload, FileSpreadsheet, AlertCircle, CheckCircle } from 'lucide-react';
+import { Upload, FileSpreadsheet, AlertCircle, CheckCircle, RefreshCw } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 interface TeacherImportModalProps {
@@ -22,7 +24,15 @@ export const TeacherImportModal: React.FC<TeacherImportModalProps> = ({
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<any[]>([]);
   const [importing, setImporting] = useState(false);
-  const [importResult, setImportResult] = useState<{ imported: number; errors: number } | null>(null);
+  const [progress, setProgress] = useState(0);
+  const [overwriteExisting, setOverwriteExisting] = useState(false);
+  const [importResult, setImportResult] = useState<{
+    imported: number;
+    updated: number;
+    skipped: number;
+    errors: number;
+    errorDetails: string[];
+  } | null>(null);
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -75,6 +85,8 @@ export const TeacherImportModal: React.FC<TeacherImportModalProps> = ({
     if (!file) return;
 
     setImporting(true);
+    setProgress(0);
+    
     try {
       const reader = new FileReader();
       reader.onload = async (e) => {
@@ -84,7 +96,14 @@ export const TeacherImportModal: React.FC<TeacherImportModalProps> = ({
         const worksheet = workbook.Sheets[sheetName];
         const jsonData = XLSX.utils.sheet_to_json(worksheet);
         
-        const result = await importTeachersFromExcel(jsonData as any[]);
+        const result = await importTeachersFromExcel(jsonData as any[], {
+          overwriteExisting,
+          batchSize: 5, // Smaller batches for better UX
+          onProgress: (current, total) => {
+            setProgress(Math.round((current / total) * 100));
+          }
+        });
+        
         setImportResult(result);
         onImportComplete();
       };
@@ -93,6 +112,7 @@ export const TeacherImportModal: React.FC<TeacherImportModalProps> = ({
       console.error('Error during import:', error);
     } finally {
       setImporting(false);
+      setProgress(0);
     }
   };
 
@@ -100,6 +120,8 @@ export const TeacherImportModal: React.FC<TeacherImportModalProps> = ({
     setFile(null);
     setPreview([]);
     setImportResult(null);
+    setProgress(0);
+    setOverwriteExisting(false);
     onOpenChange(false);
   };
 
@@ -145,17 +167,17 @@ export const TeacherImportModal: React.FC<TeacherImportModalProps> = ({
                 </div>
 
                 <div className="mt-6 p-4 bg-muted/50 rounded-lg">
-                  <h4 className="font-medium mb-2">Formato esperado:</h4>
+                  <h4 className="font-medium mb-2">Formato esperado (se auto-detecta):</h4>
                   <div className="text-sm text-muted-foreground space-y-1">
-                    <p>• <strong>NRO DE LEGAJO</strong>: Número de legajo</p>
-                    <p>• <strong>APELLIDO</strong>: Apellido del docente</p>
-                    <p>• <strong>NOMBRES</strong>: Nombres del docente</p>
-                    <p>• <strong>Nº DE DOCUMENTO</strong>: DNI (se limpiarán los puntos automáticamente)</p>
-                    <p>• <strong>TELEFONO CELULAR</strong>: Teléfono</p>
-                    <p>• <strong>MAIL</strong>: Email</p>
-                    <p>• <strong>TITULO 1</strong>: Título académico</p>
+                    <p>• <strong>Nº DE LEGAJO / NRO DE LEGAJO / LEGAJO</strong>: Número de legajo</p>
+                    <p>• <strong>APELLIDO / APELLIDOS</strong>: Apellido del docente</p>
+                    <p>• <strong>NOMBRES / NOMBRE</strong>: Nombres del docente</p>
+                    <p>• <strong>Nº DE DOCUMENTO / DNI</strong>: DNI (se limpiarán los puntos automáticamente)</p>
+                    <p>• <strong>TELEFONO CELULAR / CELULAR</strong>: Teléfono</p>
+                    <p>• <strong>MAIL / EMAIL</strong>: Email</p>
+                    <p>• <strong>TITULO 1 / TITULO</strong>: Título académico</p>
                     <p>• <strong>FECHA DE EGRESO</strong>: Fecha de egreso</p>
-                    <p>• <strong>PROMEDIO GRAL</strong>: Promedio general</p>
+                    <p>• <strong>PROMEDIO GRAL / PROMEDIO</strong>: Promedio general</p>
                   </div>
                   <div className="mt-3 flex items-center gap-2 text-sm text-amber-600">
                     <AlertCircle className="h-4 w-4" />
@@ -195,13 +217,37 @@ export const TeacherImportModal: React.FC<TeacherImportModalProps> = ({
                     </tbody>
                   </table>
                 </div>
-                <div className="flex gap-2 mt-4">
-                  <Button onClick={handleImport} disabled={importing}>
-                    {importing ? 'Importando...' : 'Confirmar Importación'}
-                  </Button>
-                  <Button variant="outline" onClick={() => setFile(null)}>
-                    Cancelar
-                  </Button>
+                
+                <div className="space-y-4 mt-4">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox 
+                      id="overwrite" 
+                      checked={overwriteExisting}
+                      onCheckedChange={(checked) => setOverwriteExisting(checked as boolean)}
+                    />
+                    <label htmlFor="overwrite" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                      Actualizar docentes existentes (útil para actualizar antigüedad y otros datos)
+                    </label>
+                  </div>
+                  
+                  {importing && (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                        <span className="text-sm">Procesando... {progress}%</span>
+                      </div>
+                      <Progress value={progress} className="w-full" />
+                    </div>
+                  )}
+                  
+                  <div className="flex gap-2">
+                    <Button onClick={handleImport} disabled={importing}>
+                      {importing ? `Importando... ${progress}%` : 'Confirmar Importación'}
+                    </Button>
+                    <Button variant="outline" onClick={() => setFile(null)} disabled={importing}>
+                      Cancelar
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -216,9 +262,37 @@ export const TeacherImportModal: React.FC<TeacherImportModalProps> = ({
                   <h4 className="font-medium">Importación Completada</h4>
                 </div>
                 <div className="space-y-2">
-                  <p>✅ <strong>{importResult.imported}</strong> docentes importados exitosamente</p>
-                  {importResult.errors > 0 && (
-                    <p>⚠️ <strong>{importResult.errors}</strong> registros con errores (duplicados, campos faltantes o DNI admin)</p>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                    <div className="text-center p-3 bg-green-50 rounded-lg">
+                      <div className="text-2xl font-bold text-green-600">{importResult.imported}</div>
+                      <div className="text-sm text-green-700">Nuevos</div>
+                    </div>
+                    <div className="text-center p-3 bg-blue-50 rounded-lg">
+                      <div className="text-2xl font-bold text-blue-600">{importResult.updated}</div>
+                      <div className="text-sm text-blue-700">Actualizados</div>
+                    </div>
+                    <div className="text-center p-3 bg-yellow-50 rounded-lg">
+                      <div className="text-2xl font-bold text-yellow-600">{importResult.skipped}</div>
+                      <div className="text-sm text-yellow-700">Omitidos</div>
+                    </div>
+                    <div className="text-center p-3 bg-red-50 rounded-lg">
+                      <div className="text-2xl font-bold text-red-600">{importResult.errors}</div>
+                      <div className="text-sm text-red-700">Errores</div>
+                    </div>
+                  </div>
+                  
+                  {importResult.errorDetails.length > 0 && (
+                    <div className="mt-4 p-3 bg-red-50 rounded-lg">
+                      <h5 className="font-medium text-red-800 mb-2">Detalles de errores:</h5>
+                      <div className="text-sm text-red-700 space-y-1 max-h-32 overflow-y-auto">
+                        {importResult.errorDetails.slice(0, 10).map((error, idx) => (
+                          <div key={idx}>• {error}</div>
+                        ))}
+                        {importResult.errorDetails.length > 10 && (
+                          <div>... y {importResult.errorDetails.length - 10} errores más</div>
+                        )}
+                      </div>
+                    </div>
                   )}
                 </div>
                 <Button onClick={resetModal} className="mt-4">
