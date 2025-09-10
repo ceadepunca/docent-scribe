@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, Plus, Calendar, Users, BookOpen, ClipboardList, Eye, Clock, Check, X, Settings } from 'lucide-react';
+import { ArrowLeft, Plus, Calendar, Users, BookOpen, ClipboardList, Eye, Clock, Check, X, Settings, Upload } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -16,6 +16,7 @@ import { useDeletionRequests } from '@/hooks/useDeletionRequests';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { TeacherManagementTab } from '@/components/admin/TeacherManagementTab';
+import { ImportPreviousInscriptionsModal } from '@/components/admin/ImportPreviousInscriptionsModal';
 
 interface RecentInscription {
   id: string;
@@ -36,6 +37,7 @@ const AdminPanel = () => {
   const { toast } = useToast();
   const { requests, fetchAllRequests, respondToRequest } = useDeletionRequests();
   
+  const [importModalOpen, setImportModalOpen] = useState(false);
   const [periodForm, setPeriodForm] = useState({
     name: '',
     description: '',
@@ -231,7 +233,7 @@ const AdminPanel = () => {
         </div>
 
         <Tabs defaultValue="general" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="general" className="flex items-center gap-2">
               <Settings className="h-4 w-4" />
               Panel General
@@ -239,6 +241,10 @@ const AdminPanel = () => {
             <TabsTrigger value="teachers" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
               Gestión de Docentes
+            </TabsTrigger>
+            <TabsTrigger value="import" className="flex items-center gap-2">
+              <Upload className="h-4 w-4" />
+              Importar Datos
             </TabsTrigger>
           </TabsList>
 
@@ -526,7 +532,36 @@ const AdminPanel = () => {
           <TabsContent value="teachers" className="mt-6">
             <TeacherManagementTab />
           </TabsContent>
+
+          <TabsContent value="import" className="mt-6">
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Importar Inscripciones Anteriores</CardTitle>
+                  <CardDescription>
+                    Importe puntajes de inscripciones anteriores desde archivos Excel. 
+                    Los docentes podrán luego completar la información de materias y cargos.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Button onClick={() => setImportModalOpen(true)} className="w-full">
+                    <Upload className="h-4 w-4 mr-2" />
+                    Importar desde Excel
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
         </Tabs>
+
+        <ImportPreviousInscriptionsModal 
+          open={importModalOpen}
+          onOpenChange={setImportModalOpen}
+          onImportComplete={() => {
+            fetchStats();
+            fetchRecentInscriptions();
+          }}
+        />
       </div>
     </div>
   );
