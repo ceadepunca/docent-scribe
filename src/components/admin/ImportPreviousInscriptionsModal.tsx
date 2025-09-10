@@ -19,18 +19,58 @@ interface ImportPreviousInscriptionsModalProps {
 }
 
 interface ExcelInscriptionData {
-  NRO_LEGAJO: string;
-  TITULO: number;
-  ANTIGUEDAD_TITULO: number;
-  ANTIGUEDAD_DOCENTE: number; 
+  LEGAJO: string;
+  TÍTULO: number;
+  'ANTIGÜEDAD TÍTULO': number;
+  'ANTIGÜEDAD DOCEN': number; 
   CONCEPTO: number;
-  PROMEDIO_TITULO: number;
-  TRABAJO_PUBLICO: number;
-  BECAS_OTROS: number;
-  CONCURSO: number;
-  OTROS_ANTECEDENTES: number;
-  RED_FEDERAL: number;
+  'PROM.GRAL.TIT.DOCEN.': number;
+  'TRAB.PUBLIC.': number;
+  'BECAS Y OTROS EST.': number;
+  CONCURSOS: number;
+  'OTROS ANTEC. DOC.': number;
+  'RED FEDERAL MAX. 3': number;
+  TOTAL?: number; // Optional, will be recalculated
 }
+
+// Column mapping to handle variations in Excel headers
+const COLUMN_MAPPING = {
+  // Legajo variations
+  LEGAJO: ['LEGAJO', 'NRO_LEGAJO', 'NRO LEGAJO', 'NUMERO LEGAJO'],
+  
+  // Título variations  
+  TÍTULO: ['TÍTULO', 'TITULO', 'TITLE'],
+  
+  // Antigüedad Título variations
+  'ANTIGÜEDAD TÍTULO': ['ANTIGÜEDAD TÍTULO', 'ANTIGUEDAD TITULO', 'ANTIGUEDAD_TITULO', 'ANT TITULO', 'ANT. TÍTULO'],
+  
+  // Antigüedad Docente variations
+  'ANTIGÜEDAD DOCEN': ['ANTIGÜEDAD DOCEN', 'ANTIGUEDAD DOCENTE', 'ANTIGUEDAD_DOCENTE', 'ANT DOCENTE', 'ANT. DOCENTE'],
+  
+  // Concepto variations
+  CONCEPTO: ['CONCEPTO', 'CONCEPT'],
+  
+  // Promedio variations
+  'PROM.GRAL.TIT.DOCEN.': ['PROM.GRAL.TIT.DOCEN.', 'PROMEDIO_TITULO', 'PROMEDIO TITULO', 'PROM TITULO', 'PROMEDIO'],
+  
+  // Trabajo Público variations
+  'TRAB.PUBLIC.': ['TRAB.PUBLIC.', 'TRABAJO_PUBLICO', 'TRABAJO PUBLICO', 'TRAB PUBLICO'],
+  
+  // Becas variations
+  'BECAS Y OTROS EST.': ['BECAS Y OTROS EST.', 'BECAS_OTROS', 'BECAS OTROS', 'BECAS Y OTROS'],
+  
+  // Concursos variations
+  CONCURSOS: ['CONCURSOS', 'CONCURSO', 'CONTESTS'],
+  
+  // Otros Antecedentes variations
+  'OTROS ANTEC. DOC.': ['OTROS ANTEC. DOC.', 'OTROS_ANTECEDENTES', 'OTROS ANTECEDENTES', 'OTROS ANT'],
+  
+  // Red Federal variations
+  'RED FEDERAL MAX. 3': ['RED FEDERAL MAX. 3', 'RED_FEDERAL', 'RED FEDERAL', 'RED FED'],
+  
+  // Total variations (optional)
+  TOTAL: ['TOTAL', 'SUMA', 'SUM']
+};
 
 export const ImportPreviousInscriptionsModal = ({ open, onOpenChange, onImportComplete }: ImportPreviousInscriptionsModalProps) => {
   const { toast } = useToast();
@@ -42,6 +82,9 @@ export const ImportPreviousInscriptionsModal = ({ open, onOpenChange, onImportCo
   const [selectedPeriodId, setSelectedPeriodId] = useState<string>('');
   const [dragActive, setDragActive] = useState(false);
   const [importResult, setImportResult] = useState<any>(null);
+  const [columnValidation, setColumnValidation] = useState<{found: string[], missing: string[], suggestions: string[]}>({
+    found: [], missing: [], suggestions: []
+  });
 
   React.useEffect(() => {
     if (open) {
@@ -54,6 +97,41 @@ export const ImportPreviousInscriptionsModal = ({ open, onOpenChange, onImportCo
     if (tituloScore === 6) return 'habilitante';
     if (tituloScore === 3) return 'supletorio';
     return 'desconocido';
+  };
+
+  // Function to map Excel column names to our expected format
+  const mapColumns = (excelHeaders: string[]): { [key: string]: string } => {
+    const mapping: { [key: string]: string } = {};
+    
+    Object.entries(COLUMN_MAPPING).forEach(([targetColumn, variations]) => {
+      const found = excelHeaders.find(header => 
+        variations.some(variation => 
+          header.trim().toUpperCase() === variation.toUpperCase()
+        )
+      );
+      if (found) {
+        mapping[found] = targetColumn;
+      }
+    });
+    
+    return mapping;
+  };
+
+  const validateColumns = (excelHeaders: string[]) => {
+    const columnMap = mapColumns(excelHeaders);
+    const foundColumns = Object.keys(columnMap);
+    const requiredColumns = Object.keys(COLUMN_MAPPING).filter(col => col !== 'TOTAL');
+    
+    const missing = requiredColumns.filter(col => !foundColumns.some(found => columnMap[found] === col));
+    const suggestions = excelHeaders.filter(header => !foundColumns.includes(header));
+    
+    setColumnValidation({
+      found: foundColumns,
+      missing,
+      suggestions
+    });
+    
+    return missing.length === 0;
   };
 
   const handleDrag = useCallback((e: React.DragEvent) => {
@@ -100,20 +178,65 @@ export const ImportPreviousInscriptionsModal = ({ open, onOpenChange, onImportCo
       const worksheet = workbook.Sheets[workbook.SheetNames[0]];
       const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
-      // Validate and process data
-      const processedData: ExcelInscriptionData[] = jsonData.map((row: any) => ({
-        NRO_LEGAJO: String(row.NRO_LEGAJO || '').trim(),
-        TITULO: Number(row.TITULO || 0),
-        ANTIGUEDAD_TITULO: Number(row.ANTIGUEDAD_TITULO || 0),
-        ANTIGUEDAD_DOCENTE: Number(row.ANTIGUEDAD_DOCENTE || 0),
-        CONCEPTO: Number(row.CONCEPTO || 0),
-        PROMEDIO_TITULO: Number(row.PROMEDIO_TITULO || 0),
-        TRABAJO_PUBLICO: Number(row.TRABAJO_PUBLICO || 0),
-        BECAS_OTROS: Number(row.BECAS_OTROS || 0),
-        CONCURSO: Number(row.CONCURSO || 0),
-        OTROS_ANTECEDENTES: Number(row.OTROS_ANTECEDENTES || 0),
-        RED_FEDERAL: Number(row.RED_FEDERAL || 0),
-      })).filter(row => row.NRO_LEGAJO); // Filter out empty rows
+      if (jsonData.length === 0) {
+        toast({
+          title: "Error",
+          description: "El archivo Excel está vacío o no contiene datos válidos",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Get headers from first row
+      const firstRow = jsonData[0] as any;
+      const excelHeaders = Object.keys(firstRow);
+      
+      // Validate columns
+      const isValid = validateColumns(excelHeaders);
+      
+      if (!isValid) {
+        toast({
+          title: "Columnas faltantes",
+          description: "El archivo no contiene todas las columnas requeridas. Verifique la estructura.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Create column mapping
+      const columnMap = mapColumns(excelHeaders);
+
+      // Process data with flexible mapping
+      const processedData: ExcelInscriptionData[] = jsonData.map((row: any) => {
+        const mappedRow: any = {};
+        
+        // Map each column using our flexible mapping
+        Object.entries(columnMap).forEach(([excelCol, targetCol]) => {
+          if (targetCol === 'LEGAJO') {
+            mappedRow[targetCol] = String(row[excelCol] || '').trim();
+          } else if (targetCol === 'TOTAL') {
+            mappedRow[targetCol] = Number(row[excelCol] || 0);
+          } else {
+            mappedRow[targetCol] = Number(row[excelCol] || 0);
+          }
+        });
+
+        // Calculate total if not provided
+        if (!mappedRow.TOTAL) {
+          mappedRow.TOTAL = (mappedRow['TÍTULO'] || 0) + 
+                           (mappedRow['ANTIGÜEDAD TÍTULO'] || 0) + 
+                           (mappedRow['ANTIGÜEDAD DOCEN'] || 0) + 
+                           (mappedRow.CONCEPTO || 0) + 
+                           (mappedRow['PROM.GRAL.TIT.DOCEN.'] || 0) + 
+                           (mappedRow['TRAB.PUBLIC.'] || 0) + 
+                           (mappedRow['BECAS Y OTROS EST.'] || 0) + 
+                           (mappedRow.CONCURSOS || 0) + 
+                           (mappedRow['OTROS ANTEC. DOC.'] || 0) + 
+                           (mappedRow['RED FEDERAL MAX. 3'] || 0);
+        }
+
+        return mappedRow;
+      }).filter(row => row.LEGAJO); // Filter out empty rows
 
       setPreview(processedData.slice(0, 10)); // Show first 10 rows
     } catch (error) {
@@ -141,19 +264,25 @@ export const ImportPreviousInscriptionsModal = ({ open, onOpenChange, onImportCo
       const worksheet = workbook.Sheets[workbook.SheetNames[0]];
       const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
-      const processedData: ExcelInscriptionData[] = jsonData.map((row: any) => ({
-        NRO_LEGAJO: String(row.NRO_LEGAJO || '').trim(),
-        TITULO: Number(row.TITULO || 0),
-        ANTIGUEDAD_TITULO: Number(row.ANTIGUEDAD_TITULO || 0),
-        ANTIGUEDAD_DOCENTE: Number(row.ANTIGUEDAD_DOCENTE || 0),
-        CONCEPTO: Number(row.CONCEPTO || 0),
-        PROMEDIO_TITULO: Number(row.PROMEDIO_TITULO || 0),
-        TRABAJO_PUBLICO: Number(row.TRABAJO_PUBLICO || 0),
-        BECAS_OTROS: Number(row.BECAS_OTROS || 0),
-        CONCURSO: Number(row.CONCURSO || 0),
-        OTROS_ANTECEDENTES: Number(row.OTROS_ANTECEDENTES || 0),
-        RED_FEDERAL: Number(row.RED_FEDERAL || 0),
-      })).filter(row => row.NRO_LEGAJO);
+      // Get headers and create mapping
+      const firstRow = jsonData[0] as any;
+      const excelHeaders = Object.keys(firstRow);
+      const columnMap = mapColumns(excelHeaders);
+
+      // Process data with flexible mapping
+      const processedData: ExcelInscriptionData[] = jsonData.map((row: any) => {
+        const mappedRow: any = {};
+        
+        Object.entries(columnMap).forEach(([excelCol, targetCol]) => {
+          if (targetCol === 'LEGAJO') {
+            mappedRow[targetCol] = String(row[excelCol] || '').trim();
+          } else {
+            mappedRow[targetCol] = Number(row[excelCol] || 0);
+          }
+        });
+
+        return mappedRow;
+      }).filter(row => row.LEGAJO);
 
       const result = await importInscriptions(processedData, selectedPeriodId);
       setImportResult(result);
@@ -179,6 +308,7 @@ export const ImportPreviousInscriptionsModal = ({ open, onOpenChange, onImportCo
     setPreview([]);
     setSelectedPeriodId('');
     setImportResult(null);
+    setColumnValidation({ found: [], missing: [], suggestions: [] });
     onOpenChange(false);
   };
 
@@ -194,6 +324,28 @@ export const ImportPreviousInscriptionsModal = ({ open, onOpenChange, onImportCo
         </DialogHeader>
 
         <div className="space-y-6">
+          {/* Expected Excel Structure Documentation */}
+          <div className="bg-muted/50 p-4 rounded-lg border">
+            <h4 className="font-medium mb-2">Estructura esperada del Excel</h4>
+            <p className="text-sm text-muted-foreground mb-3">
+              El archivo Excel debe contener las siguientes columnas (los nombres pueden variar):
+            </p>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
+              <div>• LEGAJO</div>
+              <div>• TÍTULO (9, 6, o 3)</div>
+              <div>• ANTIGÜEDAD TÍTULO</div>
+              <div>• ANTIGÜEDAD DOCEN</div>
+              <div>• CONCEPTO</div>
+              <div>• PROM.GRAL.TIT.DOCEN.</div>
+              <div>• TRAB.PUBLIC.</div>
+              <div>• BECAS Y OTROS EST.</div>
+              <div>• CONCURSOS</div>
+              <div>• OTROS ANTEC. DOC.</div>
+              <div>• RED FEDERAL MAX. 3</div>
+              <div>• TOTAL (opcional)</div>
+            </div>
+          </div>
+
           {/* Period Selection */}
           <div>
             <Label htmlFor="period">Período de Inscripción de Destino</Label>
@@ -210,6 +362,47 @@ export const ImportPreviousInscriptionsModal = ({ open, onOpenChange, onImportCo
               </SelectContent>
             </Select>
           </div>
+
+          {/* Column Validation Results */}
+          {(columnValidation.found.length > 0 || columnValidation.missing.length > 0) && (
+            <div className="space-y-3">
+              {columnValidation.found.length > 0 && (
+                <div className="bg-green-50 p-3 rounded-lg border border-green-200">
+                  <div className="flex items-center gap-2 mb-2">
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                    <span className="text-sm font-medium text-green-800">Columnas detectadas</span>
+                  </div>
+                  <div className="text-xs text-green-700">
+                    {columnValidation.found.join(', ')}
+                  </div>
+                </div>
+              )}
+              
+              {columnValidation.missing.length > 0 && (
+                <div className="bg-red-50 p-3 rounded-lg border border-red-200">
+                  <div className="flex items-center gap-2 mb-2">
+                    <AlertCircle className="h-4 w-4 text-red-600" />
+                    <span className="text-sm font-medium text-red-800">Columnas faltantes</span>
+                  </div>
+                  <div className="text-xs text-red-700">
+                    {columnValidation.missing.join(', ')}
+                  </div>
+                </div>
+              )}
+              
+              {columnValidation.suggestions.length > 0 && (
+                <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
+                  <div className="flex items-center gap-2 mb-2">
+                    <AlertCircle className="h-4 w-4 text-yellow-600" />
+                    <span className="text-sm font-medium text-yellow-800">Columnas no reconocidas</span>
+                  </div>
+                  <div className="text-xs text-yellow-700">
+                    {columnValidation.suggestions.join(', ')}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* File Upload */}
           {!importResult && (
@@ -332,24 +525,41 @@ export const ImportPreviousInscriptionsModal = ({ open, onOpenChange, onImportCo
                   </TableHeader>
                   <TableBody>
                     {preview.map((row, index) => {
-                      const total = row.TITULO + row.ANTIGUEDAD_TITULO + row.ANTIGUEDAD_DOCENTE + 
-                                  row.CONCEPTO + row.PROMEDIO_TITULO + row.TRABAJO_PUBLICO + 
-                                  row.BECAS_OTROS + row.CONCURSO + row.OTROS_ANTECEDENTES + row.RED_FEDERAL;
+                      const calculatedTotal = (row['TÍTULO'] || 0) + 
+                                            (row['ANTIGÜEDAD TÍTULO'] || 0) + 
+                                            (row['ANTIGÜEDAD DOCEN'] || 0) + 
+                                            (row.CONCEPTO || 0) + 
+                                            (row['PROM.GRAL.TIT.DOCEN.'] || 0) + 
+                                            (row['TRAB.PUBLIC.'] || 0) + 
+                                            (row['BECAS Y OTROS EST.'] || 0) + 
+                                            (row.CONCURSOS || 0) + 
+                                            (row['OTROS ANTEC. DOC.'] || 0) + 
+                                            (row['RED FEDERAL MAX. 3'] || 0);
+                      
+                      const excelTotal = row.TOTAL || calculatedTotal;
+                      const totalMismatch = excelTotal !== calculatedTotal;
                       
                       return (
                         <TableRow key={index}>
-                          <TableCell className="font-mono">{row.NRO_LEGAJO}</TableCell>
-                          <TableCell>{row.TITULO}</TableCell>
+                          <TableCell className="font-mono">{row.LEGAJO}</TableCell>
+                          <TableCell>{row['TÍTULO']}</TableCell>
                           <TableCell>
-                            <Badge variant={row.TITULO === 9 ? 'default' : row.TITULO === 6 ? 'secondary' : 'outline'}>
-                              {getTitleType(row.TITULO)}
+                            <Badge variant={row['TÍTULO'] === 9 ? 'default' : row['TÍTULO'] === 6 ? 'secondary' : 'outline'}>
+                              {getTitleType(row['TÍTULO'])}
                             </Badge>
                           </TableCell>
-                          <TableCell>{row.ANTIGUEDAD_TITULO}</TableCell>
-                          <TableCell>{row.ANTIGUEDAD_DOCENTE}</TableCell>
+                          <TableCell>{row['ANTIGÜEDAD TÍTULO']}</TableCell>
+                          <TableCell>{row['ANTIGÜEDAD DOCEN']}</TableCell>
                           <TableCell>{row.CONCEPTO}</TableCell>
-                          <TableCell>{row.PROMEDIO_TITULO}</TableCell>
-                          <TableCell className="font-semibold">{total}</TableCell>
+                          <TableCell>{row['PROM.GRAL.TIT.DOCEN.']}</TableCell>
+                          <TableCell className={`font-semibold ${totalMismatch ? 'text-yellow-600' : ''}`}>
+                            {calculatedTotal}
+                            {totalMismatch && (
+                              <span className="text-xs text-muted-foreground ml-1">
+                                (Excel: {excelTotal})
+                              </span>
+                            )}
+                          </TableCell>
                         </TableRow>
                       );
                     })}

@@ -3,17 +3,18 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface ExcelInscriptionData {
-  NRO_LEGAJO: string;
-  TITULO: number;
-  ANTIGUEDAD_TITULO: number;
-  ANTIGUEDAD_DOCENTE: number; 
+  LEGAJO: string;
+  TÍTULO: number;
+  'ANTIGÜEDAD TÍTULO': number;
+  'ANTIGÜEDAD DOCEN': number; 
   CONCEPTO: number;
-  PROMEDIO_TITULO: number;
-  TRABAJO_PUBLICO: number;
-  BECAS_OTROS: number;
-  CONCURSO: number;
-  OTROS_ANTECEDENTES: number;
-  RED_FEDERAL: number;
+  'PROM.GRAL.TIT.DOCEN.': number;
+  'TRAB.PUBLIC.': number;
+  'BECAS Y OTROS EST.': number;
+  CONCURSOS: number;
+  'OTROS ANTEC. DOC.': number;
+  'RED FEDERAL MAX. 3': number;
+  TOTAL?: number;
 }
 
 interface ImportResult {
@@ -82,11 +83,17 @@ export const useImportPreviousInscriptions = () => {
     evaluatorId: string, 
     excelData: ExcelInscriptionData
   ) => {
-    const titleType = getTitleTypeFromScore(excelData.TITULO);
-    const totalScore = excelData.TITULO + excelData.ANTIGUEDAD_TITULO + excelData.ANTIGUEDAD_DOCENTE + 
-                      excelData.CONCEPTO + excelData.PROMEDIO_TITULO + excelData.TRABAJO_PUBLICO + 
-                      excelData.BECAS_OTROS + excelData.CONCURSO + excelData.OTROS_ANTECEDENTES + 
-                      excelData.RED_FEDERAL;
+    const titleType = getTitleTypeFromScore(excelData['TÍTULO']);
+    const totalScore = excelData['TÍTULO'] + 
+                      excelData['ANTIGÜEDAD TÍTULO'] + 
+                      excelData['ANTIGÜEDAD DOCEN'] + 
+                      excelData.CONCEPTO + 
+                      excelData['PROM.GRAL.TIT.DOCEN.'] + 
+                      excelData['TRAB.PUBLIC.'] + 
+                      excelData['BECAS Y OTROS EST.'] + 
+                      excelData.CONCURSOS + 
+                      excelData['OTROS ANTEC. DOC.'] + 
+                      excelData['RED FEDERAL MAX. 3'];
 
     const { data, error } = await supabase
       .from('evaluations')
@@ -94,16 +101,16 @@ export const useImportPreviousInscriptions = () => {
         inscription_id: inscriptionId,
         evaluator_id: evaluatorId,
         title_type: titleType,
-        titulo_score: excelData.TITULO,
-        antiguedad_titulo_score: excelData.ANTIGUEDAD_TITULO,
-        antiguedad_docente_score: excelData.ANTIGUEDAD_DOCENTE,
+        titulo_score: excelData['TÍTULO'],
+        antiguedad_titulo_score: excelData['ANTIGÜEDAD TÍTULO'],
+        antiguedad_docente_score: excelData['ANTIGÜEDAD DOCEN'],
         concepto_score: excelData.CONCEPTO,
-        promedio_titulo_score: excelData.PROMEDIO_TITULO,
-        trabajo_publico_score: excelData.TRABAJO_PUBLICO,
-        becas_otros_score: excelData.BECAS_OTROS,
-        concurso_score: excelData.CONCURSO,
-        otros_antecedentes_score: excelData.OTROS_ANTECEDENTES,
-        red_federal_score: excelData.RED_FEDERAL,
+        promedio_titulo_score: excelData['PROM.GRAL.TIT.DOCEN.'],
+        trabajo_publico_score: excelData['TRAB.PUBLIC.'],
+        becas_otros_score: excelData['BECAS Y OTROS EST.'],
+        concurso_score: excelData.CONCURSOS,
+        otros_antecedentes_score: excelData['OTROS ANTEC. DOC.'],
+        red_federal_score: excelData['RED FEDERAL MAX. 3'],
         total_score: totalScore,
         status: 'completed'
       })
@@ -138,17 +145,17 @@ export const useImportPreviousInscriptions = () => {
 
         try {
           // Find teacher by legajo number
-          const teacher = await findTeacherByLegajo(row.NRO_LEGAJO);
+          const teacher = await findTeacherByLegajo(row.LEGAJO);
           
           if (!teacher) {
             result.skipped++;
-            result.errorDetails.push(`Legajo ${row.NRO_LEGAJO}: Docente no encontrado`);
+            result.errorDetails.push(`Legajo ${row.LEGAJO}: Docente no encontrado`);
             continue;
           }
 
           if (!teacher.user_id) {
             result.skipped++;
-            result.errorDetails.push(`Legajo ${row.NRO_LEGAJO}: Perfil sin usuario asociado`);
+            result.errorDetails.push(`Legajo ${row.LEGAJO}: Perfil sin usuario asociado`);
             continue;
           }
 
@@ -157,16 +164,23 @@ export const useImportPreviousInscriptions = () => {
           
           if (existingInscription) {
             result.skipped++;
-            result.errorDetails.push(`Legajo ${row.NRO_LEGAJO}: Ya tiene inscripción en este período`);
+            result.errorDetails.push(`Legajo ${row.LEGAJO}: Ya tiene inscripción en este período`);
             continue;
           }
 
           // Validate scores are within reasonable ranges
-          if (row.TITULO < 0 || row.TITULO > 10 || 
-              row.ANTIGUEDAD_TITULO < 0 || row.ANTIGUEDAD_TITULO > 10 ||
-              row.ANTIGUEDAD_DOCENTE < 0 || row.ANTIGUEDAD_DOCENTE > 10) {
+          if (row['TÍTULO'] < 0 || row['TÍTULO'] > 10 || 
+              row['ANTIGÜEDAD TÍTULO'] < 0 || row['ANTIGÜEDAD TÍTULO'] > 10 ||
+              row['ANTIGÜEDAD DOCEN'] < 0 || row['ANTIGÜEDAD DOCEN'] > 10) {
             result.errors++;
-            result.errorDetails.push(`Legajo ${row.NRO_LEGAJO}: Puntajes fuera de rango válido`);
+            result.errorDetails.push(`Legajo ${row.LEGAJO}: Puntajes fuera de rango válido`);
+            continue;
+          }
+
+          // Validate title score is valid (3, 6, or 9)
+          if (![3, 6, 9].includes(row['TÍTULO'])) {
+            result.errors++;
+            result.errorDetails.push(`Legajo ${row.LEGAJO}: Puntaje de título debe ser 3, 6 o 9 (actual: ${row['TÍTULO']})`);
             continue;
           }
 
@@ -181,7 +195,7 @@ export const useImportPreviousInscriptions = () => {
         } catch (error) {
           result.errors++;
           result.errorDetails.push(
-            `Legajo ${row.NRO_LEGAJO}: ${error instanceof Error ? error.message : 'Error desconocido'}`
+            `Legajo ${row.LEGAJO}: ${error instanceof Error ? error.message : 'Error desconocido'}`
           );
         }
       }
