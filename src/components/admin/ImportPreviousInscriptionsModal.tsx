@@ -123,7 +123,14 @@ export const ImportPreviousInscriptionsModal = ({ open, onOpenChange, onImportCo
     const requiredColumns = Object.keys(COLUMN_MAPPING).filter(col => col !== 'TOTAL');
     
     const missing = requiredColumns.filter(col => !foundColumns.some(found => columnMap[found] === col));
-    const suggestions = excelHeaders.filter(header => !foundColumns.includes(header));
+    
+    // Filter out empty columns and __EMPTY columns from suggestions
+    const suggestions = excelHeaders.filter(header => 
+      !foundColumns.includes(header) && 
+      !header.startsWith('__EMPTY') && 
+      header.trim() !== '' &&
+      header.trim() !== '__EMPTY'
+    );
     
     setColumnValidation({
       found: foundColumns,
