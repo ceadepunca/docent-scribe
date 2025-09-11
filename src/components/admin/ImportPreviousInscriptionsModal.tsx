@@ -168,10 +168,31 @@ export const ImportPreviousInscriptionsModal = ({ open, onOpenChange, onImportCo
   };
 
   const handleFile = async (file: File) => {
-    if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
+    // Normalize file name and type for case-insensitive validation
+    const fileName = file.name.toLowerCase();
+    const fileType = file.type.toLowerCase();
+    
+    // Accept .xlsx, .xls, .xlsm files (case-insensitive) and relevant MIME types
+    const validExtensions = ['.xlsx', '.xls', '.xlsm'];
+    const validMimeTypes = [
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.ms-excel',
+      'application/vnd.ms-excel.sheet.macroEnabled.12'
+    ];
+    
+    const hasValidExtension = validExtensions.some(ext => fileName.endsWith(ext));
+    const hasValidMimeType = validMimeTypes.some(mime => fileType.includes(mime));
+    
+    if (!hasValidExtension && !hasValidMimeType) {
+      console.log('File validation failed:', {
+        fileName: file.name,
+        fileType: file.type,
+        size: file.size
+      });
+      
       toast({
         title: "Error",
-        description: "Por favor seleccione un archivo Excel (.xlsx o .xls)",
+        description: "Por favor seleccione un archivo Excel (.xlsx, .xls, .xlsm)",
         variant: "destructive"
       });
       return;
@@ -428,11 +449,11 @@ export const ImportPreviousInscriptionsModal = ({ open, onOpenChange, onImportCo
                   {file ? file.name : 'Arrastra el archivo Excel aquí'}
                 </p>
                 <p className="text-muted-foreground">
-                  O haz clic para seleccionar un archivo (.xlsx, .xls)
+                  O haz clic para seleccionar un archivo (.xlsx, .xls, .xlsm)
                 </p>
                 <input
                   type="file"
-                  accept=".xlsx,.xls"
+                  accept=".xlsx,.xls,.xlsm,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
                   onChange={handleFileInput}
                   className="hidden"
                   id="excel-upload"
