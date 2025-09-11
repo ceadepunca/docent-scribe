@@ -17,6 +17,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { TeacherManagementTab } from '@/components/admin/TeacherManagementTab';
 import { ImportPreviousInscriptionsModal } from '@/components/admin/ImportPreviousInscriptionsModal';
+import { PeriodInscriptionsView } from '@/components/admin/PeriodInscriptionsView';
 
 interface RecentInscription {
   id: string;
@@ -233,10 +234,14 @@ const AdminPanel = () => {
         </div>
 
         <Tabs defaultValue="general" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="general" className="flex items-center gap-2">
               <Settings className="h-4 w-4" />
               Panel General
+            </TabsTrigger>
+            <TabsTrigger value="periods" className="flex items-center gap-2">
+              <ClipboardList className="h-4 w-4" />
+              Períodos y Listados
             </TabsTrigger>
             <TabsTrigger value="teachers" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
@@ -527,6 +532,10 @@ const AdminPanel = () => {
            </Card>
               </div>
             </div>
+          </TabsContent>
+
+          <TabsContent value="periods" className="mt-6">
+            <PeriodInscriptionsView />
           </TabsContent>
 
           <TabsContent value="teachers" className="mt-6">

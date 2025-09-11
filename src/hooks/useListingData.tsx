@@ -18,6 +18,7 @@ export interface ListingFilters {
   listingType: 'all' | 'subjects' | 'positions' | 'specific-subject' | 'specific-position';
   specificItemId?: string;
   evaluationStatus: 'all' | 'completed' | 'draft';
+  periodId?: string;
 }
 
 export const useListingData = () => {
@@ -87,6 +88,11 @@ export const useListingData = () => {
         `)
         .eq('inscriptions.teaching_level', 'secundario');
 
+      // Apply period filter if specified
+      if (filters.periodId) {
+        subjectQuery = subjectQuery.eq('inscriptions.inscription_period_id', filters.periodId);
+      }
+
       // Base query for position selections
       let positionQuery = supabase
         .from('inscription_position_selections')
@@ -114,6 +120,11 @@ export const useListingData = () => {
           )
         `)
         .eq('inscriptions.teaching_level', 'secundario');
+
+      // Apply period filter if specified
+      if (filters.periodId) {
+        positionQuery = positionQuery.eq('inscriptions.inscription_period_id', filters.periodId);
+      }
 
       // Apply school filter
       if (filters.schoolId !== 'all') {

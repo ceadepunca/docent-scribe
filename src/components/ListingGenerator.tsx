@@ -13,7 +13,11 @@ interface GroupedListings {
   };
 }
 
-export const ListingGenerator: React.FC = () => {
+interface Props {
+  selectedPeriodId?: string;
+}
+
+export const ListingGenerator: React.FC<Props> = ({ selectedPeriodId }) => {
   const { listings, schools, subjects, positions, loading, error, fetchListings } = useListingData();
   const [filters, setFilters] = useState<ListingFilters>({
     schoolId: 'all',
@@ -33,7 +37,10 @@ export const ListingGenerator: React.FC = () => {
   };
 
   const generateListings = () => {
-    fetchListings(filters);
+    const filtersWithPeriod = selectedPeriodId 
+      ? { ...filters, periodId: selectedPeriodId }
+      : filters;
+    fetchListings(filtersWithPeriod);
   };
 
   const groupListings = (listings: ListingItem[]): GroupedListings => {
