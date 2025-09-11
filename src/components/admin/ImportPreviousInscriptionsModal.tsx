@@ -278,9 +278,11 @@ export const ImportPreviousInscriptionsModal = ({ open, onOpenChange, onImportCo
       const data = await file.arrayBuffer();
       const workbook = XLSX.read(data);
       const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-      const jsonData = XLSX.utils.sheet_to_json(worksheet);
+      
+      // Get raw data as array of arrays to properly detect headers
+      const rawData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
 
-      if (jsonData.length === 0) {
+      if (rawData.length === 0) {
         toast({
           title: "Error",
           description: "El archivo Excel está vacío o no contiene datos válidos",
@@ -292,24 +294,48 @@ export const ImportPreviousInscriptionsModal = ({ open, onOpenChange, onImportCo
       console.log('Excel file loaded:', {
         fileName: file.name,
         sheets: workbook.SheetNames,
-        totalRows: jsonData.length
+        totalRows: rawData.length,
+        firstFewRows: rawData.slice(0, 3)
       });
 
-      // Auto-detect header row
-      const headerRowIndex = findHeaderRow(jsonData);
-      const headerRow = jsonData[headerRowIndex] as any;
-      const dataRows = jsonData.slice(headerRowIndex + 1);
+      // Find header row from raw data
+      let headerRowIndex = 0;
+      let maxMatches = 0;
+
+      for (let i = 0; i < Math.min(5, rawData.length); i++) {
+        const row = rawData[i];
+        if (!row || row.length === 0) continue;
+        
+        const matches = row.filter(cell => {
+          if (!cell || typeof cell !== 'string') return false;
+          const normalized = normalizeHeader(cell);
+          return Object.values(COLUMN_MAPPING).some(variations =>
+            variations.some(variation => 
+              normalizeHeader(variation).includes(normalized) || 
+              normalized.includes(normalizeHeader(variation))
+            )
+          );
+        }).length;
+
+        console.log(`Raw row ${i} analysis:`, { row, matches });
+
+        if (matches > maxMatches) {
+          maxMatches = matches;
+          headerRowIndex = i;
+        }
+      }
+
+      console.log(`Best header row detected: ${headerRowIndex} with ${maxMatches} matches`);
       
-      // Get clean headers (filter out __EMPTY columns)
-      const excelHeaders = Object.keys(headerRow).filter(key => 
-        !key.startsWith('__EMPTY') && 
-        key.trim() !== '' && 
-        headerRow[key] !== null && 
-        headerRow[key] !== undefined &&
-        String(headerRow[key]).trim() !== ''
+      // Get actual headers from detected row
+      const rawHeaders = rawData[headerRowIndex];
+      const excelHeaders = rawHeaders.filter((header: any) => 
+        header && 
+        typeof header === 'string' && 
+        header.trim() !== ''
       );
       
-      console.log('Detected headers:', excelHeaders);
+      console.log('Detected headers from row:', excelHeaders);
       
       // Validate columns
       const isValid = validateColumns(excelHeaders);
@@ -324,9 +350,19 @@ export const ImportPreviousInscriptionsModal = ({ open, onOpenChange, onImportCo
         return;
       }
 
+      // Now convert to JSON using the correct header row
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { 
+        range: headerRowIndex 
+      });
+      
+      console.log('JSON data with correct headers:', jsonData.slice(0, 2));
+
       // Create column mapping
       const columnMap = mapColumns(excelHeaders);
       console.log('Column mapping:', columnMap);
+
+      // Get data rows (excluding header row)
+      const dataRows = jsonData;
 
       // Process data with robust parsing
       const processedData: ExcelInscriptionData[] = dataRows.map((row: any, index: number) => {
@@ -407,26 +443,52 @@ export const ImportPreviousInscriptionsModal = ({ open, onOpenChange, onImportCo
       const data = await file.arrayBuffer();
       const workbook = XLSX.read(data);
       const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-      const jsonData = XLSX.utils.sheet_to_json(worksheet);
-
-      // Auto-detect header row (same logic as in handleFile)
-      const headerRowIndex = findHeaderRow(jsonData);
-      const headerRow = jsonData[headerRowIndex] as any;
-      const dataRows = jsonData.slice(headerRowIndex + 1);
       
-      // Get clean headers
-      const excelHeaders = Object.keys(headerRow).filter(key => 
-        !key.startsWith('__EMPTY') && 
-        key.trim() !== '' && 
-        headerRow[key] !== null && 
-        headerRow[key] !== undefined &&
-        String(headerRow[key]).trim() !== ''
+      // Get raw data as array of arrays to properly detect headers
+      const rawData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
+
+      // Find header row from raw data (same logic as handleFile)
+      let headerRowIndex = 0;
+      let maxMatches = 0;
+
+      for (let i = 0; i < Math.min(5, rawData.length); i++) {
+        const row = rawData[i];
+        if (!row || row.length === 0) continue;
+        
+        const matches = row.filter(cell => {
+          if (!cell || typeof cell !== 'string') return false;
+          const normalized = normalizeHeader(cell);
+          return Object.values(COLUMN_MAPPING).some(variations =>
+            variations.some(variation => 
+              normalizeHeader(variation).includes(normalized) || 
+              normalized.includes(normalizeHeader(variation))
+            )
+          );
+        }).length;
+
+        if (matches > maxMatches) {
+          maxMatches = matches;
+          headerRowIndex = i;
+        }
+      }
+      
+      // Get actual headers from detected row
+      const rawHeaders = rawData[headerRowIndex];
+      const excelHeaders = rawHeaders.filter((header: any) => 
+        header && 
+        typeof header === 'string' && 
+        header.trim() !== ''
       );
+      
+      // Now convert to JSON using the correct header row
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { 
+        range: headerRowIndex 
+      });
       
       const columnMap = mapColumns(excelHeaders);
 
       // Process data with robust parsing (same logic as in handleFile)
-      const processedData: ExcelInscriptionData[] = dataRows.map((row: any) => {
+      const processedData: ExcelInscriptionData[] = jsonData.map((row: any) => {
         const mappedRow: any = {};
         
         Object.entries(columnMap).forEach(([excelCol, targetCol]) => {
