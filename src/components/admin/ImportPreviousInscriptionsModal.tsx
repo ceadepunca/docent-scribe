@@ -36,37 +36,67 @@ interface ExcelInscriptionData {
 // Column mapping to handle variations in Excel headers
 const COLUMN_MAPPING = {
   // Legajo variations
-  LEGAJO: ['LEGAJO', 'NRO_LEGAJO', 'NRO LEGAJO', 'NUMERO LEGAJO'],
+  LEGAJO: [
+    'LEGAJO', 'NRO_LEGAJO', 'NRO LEGAJO', 'NUMERO LEGAJO',
+    'NÚMERO LEGAJO', 'NRO. LEGAJO', 'LEGAJO NRO'
+  ],
   
   // Título variations  
-  TÍTULO: ['TÍTULO', 'TITULO', 'TITLE'],
+  TÍTULO: [
+    'TÍTULO', 'TITULO', 'TIT.', 'TITLE'
+  ],
   
   // Antigüedad Título variations
-  'ANTIGÜEDAD TÍTULO': ['ANTIGÜEDAD TÍTULO', 'ANTIGUEDAD TITULO', 'ANTIGUEDAD_TITULO', 'ANT TITULO', 'ANT. TÍTULO'],
+  'ANTIGÜEDAD TÍTULO': [
+    'ANTIGÜEDAD TÍTULO', 'ANTIGUEDAD TITULO', 'ANTIGÜEDAD TITULO',
+    'ANTIGÜEDAD_TÍTULO', 'ANTIGUEDAD_TITULO', 'ANT TITULO', 'ANT. TÍTULO', 'ANT. TITULO',
+    'ANTIG. TÍTULO', 'ANTIG. TITULO', 'ANTIG TITULO'
+  ],
   
   // Antigüedad Docente variations
-  'ANTIGÜEDAD DOCEN': ['ANTIGÜEDAD DOCEN', 'ANTIGUEDAD DOCENTE', 'ANTIGUEDAD_DOCENTE', 'ANT DOCENTE', 'ANT. DOCENTE'],
+  'ANTIGÜEDAD DOCEN': [
+    'ANTIGÜEDAD DOCEN', 'ANTIGUEDAD DOCEN', 'ANTIGÜEDAD DOCENTE', 'ANTIGUEDAD DOCENTE',
+    'ANTIGÜEDAD_DOCENTE', 'ANT DOCENTE', 'ANT. DOCENTE', 'ANT. DOCEN', 'ANTIG. DOCENTE'
+  ],
   
   // Concepto variations
-  CONCEPTO: ['CONCEPTO', 'CONCEPT'],
+  CONCEPTO: [
+    'CONCEPTO', 'CONCEPT'
+  ],
   
   // Promedio variations
-  'PROM.GRAL.TIT.DOCEN.': ['PROM.GRAL.TIT.DOCEN.', 'PROMEDIO_TITULO', 'PROMEDIO TITULO', 'PROM TITULO', 'PROMEDIO'],
+  'PROM.GRAL.TIT.DOCEN.': [
+    'PROM.GRAL.TIT.DOCEN.', 'PROM GRAL TIT DOCEN', 'PROM GRAL. TIT. DOCEN.',
+    'PROMEDIO_TITULO', 'PROMEDIO TITULO', 'PROM TITULO', 'PROMEDIO', 'PROMEDIO GENERAL TITULO DOCENTE'
+  ],
   
   // Trabajo Público variations
-  'TRAB.PUBLIC.': ['TRAB.PUBLIC.', 'TRABAJO_PUBLICO', 'TRABAJO PUBLICO', 'TRAB PUBLICO'],
+  'TRAB.PUBLIC.': [
+    'TRAB.PUBLIC.', 'TRAB PUBLIC', 'TRAB. PUBLIC.', 'TRABAJO_PUBLICO', 'TRABAJO PUBLICO', 'TRAB PUBLICO',
+    'TRABAJOS PUBLICADOS', 'TRAB. PUBLICADOS'
+  ],
   
   // Becas variations
-  'BECAS Y OTROS EST.': ['BECAS Y OTROS EST.', 'BECAS_OTROS', 'BECAS OTROS', 'BECAS Y OTROS'],
+  'BECAS Y OTROS EST.': [
+    'BECAS Y OTROS EST.', 'BECAS Y OTROS EST', 'BECAS_OTROS', 'BECAS OTROS', 'BECAS Y OTROS',
+    'BECAS Y OTROS ESTUDIOS'
+  ],
   
   // Concursos variations
-  CONCURSOS: ['CONCURSOS', 'CONCURSO', 'CONTESTS'],
+  CONCURSOS: [
+    'CONCURSOS', 'CONCURSO', 'CONTESTS'
+  ],
   
   // Otros Antecedentes variations
-  'OTROS ANTEC. DOC.': ['OTROS ANTEC. DOC.', 'OTROS_ANTECEDENTES', 'OTROS ANTECEDENTES', 'OTROS ANT'],
+  'OTROS ANTEC. DOC.': [
+    'OTROS ANTEC. DOC.', 'OTROS ANTEC DOC', 'OTROS_ANTECEDENTES', 'OTROS ANTECEDENTES', 'OTROS ANT',
+    'OTROS ANTECEDENTES DOCENTES'
+  ],
   
   // Red Federal variations
-  'RED FEDERAL MAX. 3': ['RED FEDERAL MAX. 3', 'RED_FEDERAL', 'RED FEDERAL', 'RED FED'],
+  'RED FEDERAL MAX. 3': [
+    'RED FEDERAL MAX. 3', 'RED FEDERAL MAX 3', 'RED_FEDERAL', 'RED FEDERAL', 'RED FED', 'RED FEDERAL (MAX 3)'
+  ],
   
   // Total variations (optional)
   TOTAL: ['TOTAL', 'SUMA', 'SUM']
@@ -99,17 +129,21 @@ export const ImportPreviousInscriptionsModal = ({ open, onOpenChange, onImportCo
     return 'desconocido';
   };
 
-  // Normalize header text (remove accents, extra spaces, punctuation)
-  const normalizeHeader = (header: string): string => {
-    return header
-      .trim()
-      .toUpperCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '') // Remove accents
-      .replace(/[^\w\s]/g, ' ') // Replace punctuation with spaces
-      .replace(/\s+/g, ' ') // Normalize multiple spaces
-      .trim();
-  };
+// Normalize header text (remove accents, normalize spaces/punctuation)
+const normalizeHeader = (header: string): string => {
+  if (!header) return '';
+  return header
+    .toString()
+    .replace(/[\u00A0\u1680\u180E\u2000-\u200A\u202F\u205F\u3000\uFEFF]/g, ' ') // NBSP & unicode spaces -> space
+    .replace(/[\r\n\t]/g, ' ') // newlines/tabs -> space
+    .trim()
+    .toUpperCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // Remove accents
+    .replace(/[^\w\s]/g, ' ') // Replace punctuation with spaces
+    .replace(/\s+/g, ' ') // Collapse spaces
+    .trim();
+};
 
   // Auto-detect header row by finding row with most recognizable columns
   const findHeaderRow = (jsonData: any[]): number => {
@@ -147,31 +181,71 @@ export const ImportPreviousInscriptionsModal = ({ open, onOpenChange, onImportCo
     return bestRowIndex;
   };
 
-  // Function to map Excel column names to our expected format
-  const mapColumns = (excelHeaders: string[]): { [key: string]: string } => {
-    const mapping: { [key: string]: string } = {};
-    
-    console.log('Mapping columns:', { excelHeaders, normalizedHeaders: excelHeaders.map(normalizeHeader) });
-    
-    Object.entries(COLUMN_MAPPING).forEach(([targetColumn, variations]) => {
-      const found = excelHeaders.find(header => {
-        const normalizedHeader = normalizeHeader(header);
-        return variations.some(variation => {
-          const normalizedVariation = normalizeHeader(variation);
-          return normalizedHeader === normalizedVariation || 
-                 normalizedHeader.includes(normalizedVariation) ||
-                 normalizedVariation.includes(normalizedHeader);
-        });
-      });
-      
-      if (found) {
-        mapping[found] = targetColumn;
-        console.log(`Mapped column: "${found}" -> "${targetColumn}"`);
+// Function to map Excel column names to our expected format (exact first, then safe fuzzy)
+const mapColumns = (excelHeaders: string[]): { [key: string]: string } => {
+  const mapping: { [key: string]: string } = {};
+
+  // Build normalized lookup for excel headers -> original
+  const excelNormToOrig = new Map<string, string>();
+  excelHeaders.forEach((h) => {
+    excelNormToOrig.set(normalizeHeader(h), h);
+  });
+
+  console.log('Mapping columns:', {
+    excelHeaders,
+    normalizedHeaders: excelHeaders.map(normalizeHeader)
+  });
+
+  // Build normalized variations per target
+  const normalizedVariations: Record<string, Set<string>> = {};
+  Object.entries(COLUMN_MAPPING).forEach(([target, variations]) => {
+    normalizedVariations[target] = new Set(variations.map(v => normalizeHeader(v)));
+  });
+
+  const alreadyMappedTargets = new Set<string>();
+  const alreadyMappedExcel = new Set<string>();
+
+  // Pass 1: exact normalized equality
+  for (const [target, norms] of Object.entries(normalizedVariations)) {
+    for (const [normHeader, origHeader] of excelNormToOrig.entries()) {
+      if (alreadyMappedExcel.has(origHeader)) continue;
+      if (norms.has(normHeader)) {
+        mapping[origHeader] = target;
+        alreadyMappedTargets.add(target);
+        alreadyMappedExcel.add(origHeader);
+        console.log(`Exact map: "${origHeader}" -> "${target}"`);
+        break;
       }
-    });
-    
-    return mapping;
-  };
+    }
+  }
+
+  // Pass 2: safe fuzzy (unique includes match)
+  for (const [normHeader, origHeader] of excelNormToOrig.entries()) {
+    if (alreadyMappedExcel.has(origHeader)) continue;
+
+    // Find candidate targets where any variation includes the header or vice versa
+    const candidates: string[] = [];
+    for (const [target, norms] of Object.entries(normalizedVariations)) {
+      if (alreadyMappedTargets.has(target)) continue;
+      for (const nv of norms) {
+        if (nv.includes(normHeader) || normHeader.includes(nv)) {
+          candidates.push(target);
+          break;
+        }
+      }
+    }
+
+    if (candidates.length === 1) {
+      const target = candidates[0];
+      mapping[origHeader] = target;
+      alreadyMappedTargets.add(target);
+      alreadyMappedExcel.add(origHeader);
+      console.log(`Fuzzy map: "${origHeader}" -> "${target}"`);
+    }
+  }
+
+  return mapping;
+};
 
   // Robust numeric parsing
   const parseNumericValue = (value: any): number => {
