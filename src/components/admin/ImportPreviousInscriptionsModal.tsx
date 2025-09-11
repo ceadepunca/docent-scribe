@@ -10,6 +10,7 @@ import { Upload, FileSpreadsheet, AlertCircle, CheckCircle, X } from 'lucide-rea
 import { useToast } from '@/hooks/use-toast';
 import { useInscriptionPeriods } from '@/hooks/useInscriptionPeriods';
 import { useImportPreviousInscriptions } from '@/hooks/useImportPreviousInscriptions';
+import { supabase } from '@/integrations/supabase/client';
 import * as XLSX from 'xlsx';
 
 interface ImportPreviousInscriptionsModalProps {
@@ -114,6 +115,19 @@ export const ImportPreviousInscriptionsModal = ({ open, onOpenChange, onImportCo
   const [importResult, setImportResult] = useState<any>(null);
   const [columnValidation, setColumnValidation] = useState<{found: string[], missing: string[], suggestions: string[]}>({
     found: [], missing: [], suggestions: []
+  });
+  const [preValidation, setPreValidation] = useState<{
+    checking: boolean;
+    total: number;
+    foundTeachers: number;
+    notFoundTeachers: number;
+    errors: string[];
+  }>({
+    checking: false,
+    total: 0,
+    foundTeachers: 0,
+    notFoundTeachers: 0,
+    errors: []
   });
 
   React.useEffect(() => {
@@ -287,6 +301,82 @@ const mapColumns = (excelHeaders: string[]): { [key: string]: string } => {
     });
     
     return missing.length === 0;
+  };
+
+  // Pre-validate teachers by checking how many can be found
+  const preValidateTeachers = async (data: ExcelInscriptionData[]) => {
+    if (!data.length) return;
+    
+    setPreValidation(prev => ({ ...prev, checking: true }));
+    
+    let foundCount = 0;
+    let notFoundCount = 0;
+    const errors: string[] = [];
+    
+    // Test first 10 records for quick validation
+    const sampleSize = Math.min(10, data.length);
+    const sampleData = data.slice(0, sampleSize);
+    
+    for (const row of sampleData) {
+      try {
+        // Use same normalization as the import hook
+        const normalizeNumeric = (value: string): string => {
+          if (!value) return '';
+          return value.toString().replace(/\D/g, '');
+        };
+
+        // Strategy 1: Exact legajo match
+        let teacher = null;
+        if (row.LEGAJO) {
+          const { data: exactMatch } = await supabase
+            .from('profiles')
+            .select('legajo_number, dni, first_name, last_name')
+            .eq('legajo_number', row.LEGAJO)
+            .maybeSingle();
+          
+          if (exactMatch) {
+            teacher = exactMatch;
+          } else {
+            // Strategy 2: Normalized legajo
+            const normalizedLegajo = normalizeNumeric(row.LEGAJO);
+            if (normalizedLegajo !== row.LEGAJO) {
+              const { data: normalizedMatch } = await supabase
+                .from('profiles')
+                .select('legajo_number, dni, first_name, last_name')
+                .ilike('legajo_number', `%${normalizedLegajo}%`)
+                .maybeSingle();
+              
+              if (normalizedMatch) {
+                teacher = normalizedMatch;
+              }
+            }
+          }
+        }
+        
+        if (teacher) {
+          foundCount++;
+        } else {
+          notFoundCount++;
+          errors.push(`${row.LEGAJO}: No se encuentra en el sistema`);
+        }
+      } catch (error) {
+        notFoundCount++;
+        errors.push(`${row.LEGAJO}: Error en búsqueda`);
+      }
+    }
+    
+    // Estimate for full dataset
+    const foundRatio = foundCount / sampleSize;
+    const estimatedFound = Math.round(data.length * foundRatio);
+    const estimatedNotFound = data.length - estimatedFound;
+    
+    setPreValidation({
+      checking: false,
+      total: data.length,
+      foundTeachers: estimatedFound,
+      notFoundTeachers: estimatedNotFound,
+      errors: errors.slice(0, 5) // Show first 5 errors
+    });
   };
 
   const handleDrag = useCallback((e: React.DragEvent) => {
@@ -489,6 +579,9 @@ const mapColumns = (excelHeaders: string[]): { [key: string]: string } => {
 
       setPreview(processedData.slice(0, 10)); // Show first 10 rows
 
+      // Run pre-validation
+      preValidateTeachers(processedData);
+
       toast({
         title: "Archivo procesado",
         description: `Se detectaron ${processedData.length} registros válidos. Revise la vista previa y proceda con la importación.`,
@@ -577,7 +670,7 @@ const mapColumns = (excelHeaders: string[]): { [key: string]: string } => {
         return mappedRow;
       }).filter(row => row.LEGAJO && row.LEGAJO.trim() !== '');
 
-      const result = await importInscriptions(processedData, selectedPeriodId);
+      const result = await importInscriptions(processedData, selectedPeriodId, onImportComplete);
       setImportResult(result);
 
       if (result.imported > 0) {
@@ -693,6 +786,57 @@ const mapColumns = (excelHeaders: string[]): { [key: string]: string } => {
                     {columnValidation.suggestions.join(', ')}
                   </div>
                 </div>
+              )}
+            </div>
+          )}
+
+          {/* Pre-validation Results */}
+          {(preValidation.total > 0 || preValidation.checking) && (
+            <div className="space-y-3">
+              {preValidation.checking ? (
+                <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                  <div className="flex items-center gap-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                    <span className="text-sm font-medium text-blue-800">Validando docentes en el sistema...</span>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                    <div className="flex items-center gap-2 mb-2">
+                      <CheckCircle className="h-4 w-4 text-blue-600" />
+                      <span className="text-sm font-medium text-blue-800">Validación de Docentes</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-xs">
+                      <div className="text-center">
+                        <div className="font-bold text-blue-700">{preValidation.total}</div>
+                        <div className="text-blue-600">Total registros</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="font-bold text-green-700">{preValidation.foundTeachers}</div>
+                        <div className="text-green-600">Docentes encontrados</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="font-bold text-red-700">{preValidation.notFoundTeachers}</div>
+                        <div className="text-red-600">No encontrados</div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {preValidation.errors.length > 0 && (
+                    <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
+                      <div className="flex items-center gap-2 mb-2">
+                        <AlertCircle className="h-4 w-4 text-yellow-600" />
+                        <span className="text-sm font-medium text-yellow-800">Ejemplos de no encontrados</span>
+                      </div>
+                      <div className="text-xs text-yellow-700 space-y-1">
+                        {preValidation.errors.map((error, idx) => (
+                          <div key={idx}>• {error}</div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           )}

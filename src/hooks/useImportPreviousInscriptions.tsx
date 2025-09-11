@@ -37,15 +37,73 @@ export const useImportPreviousInscriptions = () => {
     return 'docente'; // Default fallback
   };
 
-  const findTeacherByLegajo = async (legajoNumber: string) => {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('legajo_number', legajoNumber)
-      .maybeSingle();
+  // Normalize values for better matching
+  const normalizeValue = (value: string): string => {
+    if (!value) return '';
+    return value.toString()
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, '')
+      .replace(/[^\w@.-]/g, ''); // Keep alphanumeric, email chars
+  };
 
-    if (error) throw error;
-    return data;
+  const normalizeNumeric = (value: string): string => {
+    if (!value) return '';
+    return value.toString()
+      .replace(/\D/g, ''); // Keep only digits
+  };
+
+  // Enhanced teacher finding with multiple strategies
+  const findTeacher = async (legajoNumber: string, profile?: any) => {
+    const searches = [];
+
+    // Strategy 1: Exact legajo match
+    if (legajoNumber) {
+      searches.push(
+        supabase.from('profiles')
+          .select('*')
+          .eq('legajo_number', legajoNumber)
+          .maybeSingle()
+      );
+    }
+
+    // Strategy 2: Normalized legajo match
+    if (legajoNumber) {
+      const normalizedLegajo = normalizeNumeric(legajoNumber);
+      if (normalizedLegajo !== legajoNumber) {
+        searches.push(
+          supabase.from('profiles')
+            .select('*')
+            .ilike('legajo_number', `%${normalizedLegajo}%`)
+            .maybeSingle()
+        );
+      }
+    }
+
+    // Strategy 3: DNI match (if available in profile data)
+    if (profile?.dni) {
+      const normalizedDNI = normalizeNumeric(profile.dni);
+      searches.push(
+        supabase.from('profiles')
+          .select('*')
+          .eq('dni', normalizedDNI)
+          .maybeSingle()
+      );
+    }
+
+    // Execute all searches
+    for (const search of searches) {
+      try {
+        const { data, error } = await search;
+        if (!error && data) {
+          return data;
+        }
+      } catch (err) {
+        console.warn('Search strategy failed:', err);
+      }
+    }
+
+    return null;
   };
 
   const checkExistingInscription = async (userId: string, periodId: string) => {
@@ -123,7 +181,8 @@ export const useImportPreviousInscriptions = () => {
 
   const importInscriptions = async (
     excelData: ExcelInscriptionData[], 
-    periodId: string
+    periodId: string,
+    onImportComplete?: () => void
   ): Promise<ImportResult> => {
     if (!user) throw new Error('Usuario no autenticado');
 
@@ -144,12 +203,12 @@ export const useImportPreviousInscriptions = () => {
         setProgress((i / excelData.length) * 100);
 
         try {
-          // Find teacher by legajo number
-          const teacher = await findTeacherByLegajo(row.LEGAJO);
+          // Find teacher using enhanced matching
+          const teacher = await findTeacher(row.LEGAJO);
           
           if (!teacher) {
             result.skipped++;
-            result.errorDetails.push(`Legajo ${row.LEGAJO}: Docente no encontrado`);
+            result.errorDetails.push(`Legajo ${row.LEGAJO}: Docente no encontrado (intentado: legajo exacto, normalizado)`);
             continue;
           }
 
@@ -201,6 +260,11 @@ export const useImportPreviousInscriptions = () => {
       }
 
       setProgress(100);
+      
+      // Trigger callback if provided
+      if (onImportComplete) {
+        onImportComplete();
+      }
       
     } finally {
       setImporting(false);

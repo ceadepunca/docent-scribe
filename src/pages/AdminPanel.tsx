@@ -16,8 +16,7 @@ import { useDeletionRequests } from '@/hooks/useDeletionRequests';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { TeacherManagementTab } from '@/components/admin/TeacherManagementTab';
-import { ImportPreviousInscriptionsModal } from '@/components/admin/ImportPreviousInscriptionsModal';
-import { PeriodInscriptionsView } from '@/components/admin/PeriodInscriptionsView';
+import { AdminImportWrapper } from '@/components/admin/AdminImportWrapper';
 
 interface RecentInscription {
   id: string;
@@ -38,7 +37,6 @@ const AdminPanel = () => {
   const { toast } = useToast();
   const { requests, fetchAllRequests, respondToRequest } = useDeletionRequests();
   
-  const [importModalOpen, setImportModalOpen] = useState(false);
   const [periodForm, setPeriodForm] = useState({
     name: '',
     description: '',
@@ -535,7 +533,7 @@ const AdminPanel = () => {
           </TabsContent>
 
           <TabsContent value="periods" className="mt-6">
-            <PeriodInscriptionsView />
+            <AdminImportWrapper />
           </TabsContent>
 
           <TabsContent value="teachers" className="mt-6">
@@ -548,29 +546,18 @@ const AdminPanel = () => {
                 <CardHeader>
                   <CardTitle>Importar Inscripciones Anteriores</CardTitle>
                   <CardDescription>
-                    Importe puntajes de inscripciones anteriores desde archivos Excel. 
-                    Los docentes podrán luego completar la información de materias y cargos.
+                    Esta funcionalidad se ha movido a la pestaña "Períodos y Listados" para mejor integración.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Button onClick={() => setImportModalOpen(true)} className="w-full">
-                    <Upload className="h-4 w-4 mr-2" />
-                    Importar desde Excel
-                  </Button>
+                  <p className="text-muted-foreground">
+                    Use la pestaña "Períodos y Listados" para importar inscripciones y ver los resultados inmediatamente.
+                  </p>
                 </CardContent>
               </Card>
             </div>
           </TabsContent>
         </Tabs>
-
-        <ImportPreviousInscriptionsModal 
-          open={importModalOpen}
-          onOpenChange={setImportModalOpen}
-          onImportComplete={() => {
-            fetchStats();
-            fetchRecentInscriptions();
-          }}
-        />
       </div>
     </div>
   );

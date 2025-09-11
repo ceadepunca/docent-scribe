@@ -19,7 +19,8 @@ export const PeriodInscriptionsView: React.FC = () => {
     inscriptions, 
     stats, 
     loading: inscriptionsLoading, 
-    fetchInscriptionsByPeriod 
+    fetchInscriptionsByPeriod,
+    refreshInscriptions
   } = usePeriodInscriptions();
 
   React.useEffect(() => {
@@ -181,10 +182,23 @@ export const PeriodInscriptionsView: React.FC = () => {
               ) : (
                 <Card>
                   <CardHeader>
-                    <CardTitle>Inscripciones del Período</CardTitle>
-                    <CardDescription>
-                      Lista de todas las inscripciones para este período
-                    </CardDescription>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle>Inscripciones del Período</CardTitle>
+                        <CardDescription>
+                          Lista de todas las inscripciones para este período
+                        </CardDescription>
+                      </div>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={refreshInscriptions}
+                        disabled={inscriptionsLoading}
+                      >
+                        <ArrowRight className="h-4 w-4 mr-1" />
+                        Actualizar
+                      </Button>
+                    </div>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">

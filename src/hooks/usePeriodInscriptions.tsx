@@ -8,6 +8,7 @@ interface PeriodInscription {
   teaching_level: string;
   status: string;
   created_at: string;
+  inscription_period_id?: string;
   profiles?: {
     first_name: string;
     last_name: string;
@@ -27,13 +28,15 @@ export const usePeriodInscriptions = () => {
   const [stats, setStats] = useState<PeriodStats>({ total: 0, evaluated: 0, pending: 0 });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [currentPeriodId, setCurrentPeriodId] = useState<string | null>(null);
 
   const fetchInscriptionsByPeriod = useCallback(async (periodId: string) => {
     try {
       setLoading(true);
       setError(null);
+      setCurrentPeriodId(periodId);
 
-      // Fetch inscriptions for the period
+      // Fetch inscriptions for the period with explicit join
       const { data: inscriptionsData, error: inscriptionsError } = await supabase
         .from('inscriptions')
         .select(`
@@ -43,11 +46,12 @@ export const usePeriodInscriptions = () => {
           teaching_level,
           status,
           created_at,
-          profiles(
+          profiles!inscriptions_user_id_fkey(
             first_name,
             last_name,
             email,
-            dni
+            dni,
+            user_id
           )
         `)
         .eq('inscription_period_id', periodId)
@@ -92,11 +96,18 @@ export const usePeriodInscriptions = () => {
     }
   }, []);
 
+  const refreshInscriptions = useCallback(() => {
+    if (currentPeriodId) {
+      fetchInscriptionsByPeriod(currentPeriodId);
+    }
+  }, [currentPeriodId, fetchInscriptionsByPeriod]);
+
   return {
     inscriptions,
     stats,
     loading,
     error,
-    fetchInscriptionsByPeriod
+    fetchInscriptionsByPeriod,
+    refreshInscriptions
   };
 };
