@@ -99,22 +99,96 @@ export const ImportPreviousInscriptionsModal = ({ open, onOpenChange, onImportCo
     return 'desconocido';
   };
 
+  // Normalize header text (remove accents, extra spaces, punctuation)
+  const normalizeHeader = (header: string): string => {
+    return header
+      .trim()
+      .toUpperCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '') // Remove accents
+      .replace(/[^\w\s]/g, ' ') // Replace punctuation with spaces
+      .replace(/\s+/g, ' ') // Normalize multiple spaces
+      .trim();
+  };
+
+  // Auto-detect header row by finding row with most recognizable columns
+  const findHeaderRow = (jsonData: any[]): number => {
+    let bestRowIndex = 0;
+    let maxMatches = 0;
+
+    for (let i = 0; i < Math.min(5, jsonData.length); i++) {
+      const row = jsonData[i];
+      const headers = Object.keys(row).filter(key => 
+        !key.startsWith('__EMPTY') && 
+        key.trim() !== '' && 
+        row[key] !== null && 
+        row[key] !== undefined
+      );
+
+      const matches = headers.filter(header => {
+        const normalized = normalizeHeader(header);
+        return Object.values(COLUMN_MAPPING).some(variations =>
+          variations.some(variation => 
+            normalizeHeader(variation).includes(normalized) || 
+            normalized.includes(normalizeHeader(variation))
+          )
+        );
+      }).length;
+
+      console.log(`Row ${i} header analysis:`, { headers, matches, normalized: headers.map(normalizeHeader) });
+
+      if (matches > maxMatches) {
+        maxMatches = matches;
+        bestRowIndex = i;
+      }
+    }
+
+    console.log(`Best header row detected: ${bestRowIndex} with ${maxMatches} matches`);
+    return bestRowIndex;
+  };
+
   // Function to map Excel column names to our expected format
   const mapColumns = (excelHeaders: string[]): { [key: string]: string } => {
     const mapping: { [key: string]: string } = {};
     
+    console.log('Mapping columns:', { excelHeaders, normalizedHeaders: excelHeaders.map(normalizeHeader) });
+    
     Object.entries(COLUMN_MAPPING).forEach(([targetColumn, variations]) => {
-      const found = excelHeaders.find(header => 
-        variations.some(variation => 
-          header.trim().toUpperCase() === variation.toUpperCase()
-        )
-      );
+      const found = excelHeaders.find(header => {
+        const normalizedHeader = normalizeHeader(header);
+        return variations.some(variation => {
+          const normalizedVariation = normalizeHeader(variation);
+          return normalizedHeader === normalizedVariation || 
+                 normalizedHeader.includes(normalizedVariation) ||
+                 normalizedVariation.includes(normalizedHeader);
+        });
+      });
+      
       if (found) {
         mapping[found] = targetColumn;
+        console.log(`Mapped column: "${found}" -> "${targetColumn}"`);
       }
     });
     
     return mapping;
+  };
+
+  // Robust numeric parsing
+  const parseNumericValue = (value: any): number => {
+    if (value === null || value === undefined || value === '') return 0;
+    
+    // If already a number
+    if (typeof value === 'number') return isNaN(value) ? 0 : value;
+    
+    // If string, try to parse
+    if (typeof value === 'string') {
+      // Remove common non-numeric characters
+      const cleaned = value.replace(/[^\d.,\-]/g, '');
+      const parsed = parseFloat(cleaned.replace(',', '.'));
+      return isNaN(parsed) ? 0 : parsed;
+    }
+    
+    return 0;
   };
 
   const validateColumns = (excelHeaders: string[]) => {
@@ -215,17 +289,36 @@ export const ImportPreviousInscriptionsModal = ({ open, onOpenChange, onImportCo
         return;
       }
 
-      // Get headers from first row
-      const firstRow = jsonData[0] as any;
-      const excelHeaders = Object.keys(firstRow);
+      console.log('Excel file loaded:', {
+        fileName: file.name,
+        sheets: workbook.SheetNames,
+        totalRows: jsonData.length
+      });
+
+      // Auto-detect header row
+      const headerRowIndex = findHeaderRow(jsonData);
+      const headerRow = jsonData[headerRowIndex] as any;
+      const dataRows = jsonData.slice(headerRowIndex + 1);
+      
+      // Get clean headers (filter out __EMPTY columns)
+      const excelHeaders = Object.keys(headerRow).filter(key => 
+        !key.startsWith('__EMPTY') && 
+        key.trim() !== '' && 
+        headerRow[key] !== null && 
+        headerRow[key] !== undefined &&
+        String(headerRow[key]).trim() !== ''
+      );
+      
+      console.log('Detected headers:', excelHeaders);
       
       // Validate columns
       const isValid = validateColumns(excelHeaders);
       
       if (!isValid) {
+        console.log('Column validation failed:', columnValidation);
         toast({
           title: "Columnas faltantes",
-          description: "El archivo no contiene todas las columnas requeridas. Verifique la estructura.",
+          description: `El archivo no contiene todas las columnas requeridas. Faltan: ${columnValidation.missing.join(', ')}`,
           variant: "destructive"
         });
         return;
@@ -233,24 +326,30 @@ export const ImportPreviousInscriptionsModal = ({ open, onOpenChange, onImportCo
 
       // Create column mapping
       const columnMap = mapColumns(excelHeaders);
+      console.log('Column mapping:', columnMap);
 
-      // Process data with flexible mapping
-      const processedData: ExcelInscriptionData[] = jsonData.map((row: any) => {
+      // Process data with robust parsing
+      const processedData: ExcelInscriptionData[] = dataRows.map((row: any, index: number) => {
         const mappedRow: any = {};
         
         // Map each column using our flexible mapping
         Object.entries(columnMap).forEach(([excelCol, targetCol]) => {
           if (targetCol === 'LEGAJO') {
-            mappedRow[targetCol] = String(row[excelCol] || '').trim();
-          } else if (targetCol === 'TOTAL') {
-            mappedRow[targetCol] = Number(row[excelCol] || 0);
+            const legajoValue = row[excelCol];
+            mappedRow[targetCol] = String(legajoValue || '').trim();
           } else {
-            mappedRow[targetCol] = Number(row[excelCol] || 0);
+            const numericValue = parseNumericValue(row[excelCol]);
+            mappedRow[targetCol] = numericValue;
+            
+            // Debug logging for problematic values
+            if (row[excelCol] !== null && row[excelCol] !== undefined && isNaN(numericValue)) {
+              console.warn(`Row ${index + headerRowIndex + 2}: Could not parse "${targetCol}" value:`, row[excelCol]);
+            }
           }
         });
 
-        // Calculate total if not provided
-        if (!mappedRow.TOTAL) {
+        // Calculate total if not provided or invalid
+        if (!mappedRow.TOTAL || mappedRow.TOTAL === 0) {
           mappedRow.TOTAL = (mappedRow['TÍTULO'] || 0) + 
                            (mappedRow['ANTIGÜEDAD TÍTULO'] || 0) + 
                            (mappedRow['ANTIGÜEDAD DOCEN'] || 0) + 
@@ -264,9 +363,27 @@ export const ImportPreviousInscriptionsModal = ({ open, onOpenChange, onImportCo
         }
 
         return mappedRow;
-      }).filter(row => row.LEGAJO); // Filter out empty rows
+      }).filter(row => row.LEGAJO && row.LEGAJO.trim() !== ''); // Filter out rows without legajo
+
+      console.log('Processed data sample:', processedData.slice(0, 3));
+      console.log('Total valid rows:', processedData.length);
+
+      if (processedData.length === 0) {
+        toast({
+          title: "Error",
+          description: "No se encontraron filas válidas con datos de legajo",
+          variant: "destructive"
+        });
+        return;
+      }
 
       setPreview(processedData.slice(0, 10)); // Show first 10 rows
+
+      toast({
+        title: "Archivo procesado",
+        description: `Se detectaron ${processedData.length} registros válidos. Revise la vista previa y proceda con la importación.`,
+        variant: "default"
+      });
     } catch (error) {
       toast({
         title: "Error",
@@ -292,25 +409,37 @@ export const ImportPreviousInscriptionsModal = ({ open, onOpenChange, onImportCo
       const worksheet = workbook.Sheets[workbook.SheetNames[0]];
       const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
-      // Get headers and create mapping
-      const firstRow = jsonData[0] as any;
-      const excelHeaders = Object.keys(firstRow);
+      // Auto-detect header row (same logic as in handleFile)
+      const headerRowIndex = findHeaderRow(jsonData);
+      const headerRow = jsonData[headerRowIndex] as any;
+      const dataRows = jsonData.slice(headerRowIndex + 1);
+      
+      // Get clean headers
+      const excelHeaders = Object.keys(headerRow).filter(key => 
+        !key.startsWith('__EMPTY') && 
+        key.trim() !== '' && 
+        headerRow[key] !== null && 
+        headerRow[key] !== undefined &&
+        String(headerRow[key]).trim() !== ''
+      );
+      
       const columnMap = mapColumns(excelHeaders);
 
-      // Process data with flexible mapping
-      const processedData: ExcelInscriptionData[] = jsonData.map((row: any) => {
+      // Process data with robust parsing (same logic as in handleFile)
+      const processedData: ExcelInscriptionData[] = dataRows.map((row: any) => {
         const mappedRow: any = {};
         
         Object.entries(columnMap).forEach(([excelCol, targetCol]) => {
           if (targetCol === 'LEGAJO') {
-            mappedRow[targetCol] = String(row[excelCol] || '').trim();
+            const legajoValue = row[excelCol];
+            mappedRow[targetCol] = String(legajoValue || '').trim();
           } else {
-            mappedRow[targetCol] = Number(row[excelCol] || 0);
+            mappedRow[targetCol] = parseNumericValue(row[excelCol]);
           }
         });
 
         return mappedRow;
-      }).filter(row => row.LEGAJO);
+      }).filter(row => row.LEGAJO && row.LEGAJO.trim() !== '');
 
       const result = await importInscriptions(processedData, selectedPeriodId);
       setImportResult(result);
