@@ -21,6 +21,7 @@ import EditInscription from "./pages/EditInscription";
 import Evaluations from "./pages/Evaluations";
 import Listings from "./pages/Listings";
 import AssistedInscription from "./pages/admin/AssistedInscription";
+import BulkInscription from "./pages/admin/BulkInscription";
 
 const queryClient = new QueryClient();
 
@@ -60,6 +61,11 @@ const App = () => (
             <Route path="/admin/assisted-inscription" element={
               <ProtectedRoute requiredRole="super_admin">
                 <AssistedInscription />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/bulk-inscription" element={
+              <ProtectedRoute requiredRole="super_admin">
+                <BulkInscription />
               </ProtectedRoute>
             } />
             <Route path="/inscriptions/new" element={

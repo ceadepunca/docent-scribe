@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, Plus, Calendar, Users, BookOpen, ClipboardList, Eye, Clock, Check, X, Settings, Upload } from 'lucide-react';
+import { ArrowLeft, Plus, Calendar, Users, BookOpen, ClipboardList, Eye, Clock, Check, X, Settings, Upload, UserPlus2, UserPlus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -526,9 +526,61 @@ const AdminPanel = () => {
                   ))}
                 </div>
               )}
-             </CardContent>
-           </Card>
-              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Quick Actions */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Settings className="h-5 w-5" />
+              Acciones Rápidas
+            </CardTitle>
+            <CardDescription>
+              Herramientas administrativas y accesos directos
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <Button
+                variant="outline"
+                onClick={() => navigate('/admin/assisted-inscription')}
+                className="flex items-center gap-2 h-auto p-4"
+              >
+                <UserPlus className="h-5 w-5" />
+                <div className="text-left">
+                  <div className="font-medium">Inscripción Asistida</div>
+                  <div className="text-sm text-muted-foreground">Crear inscripción individual</div>
+                </div>
+              </Button>
+              
+              <Button
+                variant="outline"
+                onClick={() => navigate('/admin/bulk-inscription')}
+                className="flex items-center gap-2 h-auto p-4"
+              >
+                <UserPlus2 className="h-5 w-5" />
+                <div className="text-left">
+                  <div className="font-medium">Inscripción Masiva</div>
+                  <div className="text-sm text-muted-foreground">Inscribir múltiples docentes</div>
+                </div>
+              </Button>
+              
+              <Button
+                variant="outline"
+                onClick={() => navigate('/inscriptions')}
+                className="flex items-center gap-2 h-auto p-4"
+              >
+                <Eye className="h-5 w-5" />
+                <div className="text-left">
+                  <div className="font-medium">Ver Inscripciones</div>
+                  <div className="text-sm text-muted-foreground">Revisar todas las inscripciones</div>
+                </div>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
             </div>
           </TabsContent>
 
