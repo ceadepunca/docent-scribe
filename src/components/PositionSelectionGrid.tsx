@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { UserCheck, Building } from 'lucide-react';
-import { PositionSelection, School, AdministrativePosition } from '@/hooks/useSecondaryInscriptionDataOptimized';
+import { PositionSelection, School, AdministrativePosition } from '@/hooks/useSecondaryInscriptionData';
 
 interface PositionSelectionGridProps {
   selectedPositions: PositionSelection[];

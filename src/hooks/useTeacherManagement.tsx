@@ -310,7 +310,7 @@ export const useTeacherManagement = () => {
   }, [searchTeacherByDNI, createTeacher, updateTeacher, normalizeHeaders, toast]);
 
   const searchTeachers = useCallback(async (query: string): Promise<TeacherProfile[]> => {
-    if (!query.trim()) {
+    if (!query.trim() || query.trim().length < 3) {
       setSearchResults([]);
       return [];
     }
@@ -321,7 +321,7 @@ export const useTeacherManagement = () => {
       
       const { data, error } = await supabase
         .from('profiles')
-        .select('*')
+        .select('id, first_name, last_name, dni, email, phone, migrated, data_complete, legajo_number')
         .or(`first_name.ilike.%${cleanQuery}%,last_name.ilike.%${cleanQuery}%,dni.eq.${cleanQuery.replace(/\./g, '')}`)
         .order('last_name', { ascending: true })
         .limit(50);

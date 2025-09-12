@@ -72,7 +72,7 @@ export const TeacherSearchGrid: React.FC<TeacherSearchGridProps> = ({
           {/* Search Input */}
           <div className="flex gap-2">
             <Input
-              placeholder="Buscar por apellido, nombres o DNI..."
+              placeholder="Buscar por apellido, nombres o DNI (mínimo 3 caracteres)..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="flex-1"
@@ -93,7 +93,15 @@ export const TeacherSearchGrid: React.FC<TeacherSearchGridProps> = ({
           )}
 
           {/* No Results */}
-          {searchQuery && !searchLoading && searchResults.length === 0 && (
+          {searchQuery.trim() && searchQuery.trim().length < 3 && (
+            <div className="text-center py-6">
+              <p className="text-muted-foreground">
+                Ingrese al menos 3 caracteres para buscar docentes
+              </p>
+            </div>
+          )}
+
+          {searchQuery && !searchLoading && searchResults.length === 0 && searchQuery.trim().length >= 3 && (
             <div className="text-center py-6 space-y-2">
               <p className="text-muted-foreground">
                 No se encontraron docentes con "{searchQuery}"

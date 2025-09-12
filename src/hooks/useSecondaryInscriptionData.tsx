@@ -1,20 +1,20 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
-interface School {
+export interface School {
   id: string;
   name: string;
   teaching_level: 'inicial' | 'primario' | 'secundario';
 }
 
-interface Subject {
+export interface Subject {
   id: string;
   name: string;
   school_id: string;
   school?: School;
 }
 
-interface AdministrativePosition {
+export interface AdministrativePosition {
   id: string;
   name: string;
   school_id: string;
@@ -39,45 +39,45 @@ export const useSecondaryInscriptionData = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      
-      // Fetch schools
-      const { data: schoolsData, error: schoolsError } = await supabase
-        .from('schools')
-        .select('*')
-        .eq('teaching_level', 'secundario')
-        .eq('is_active', true)
-        .order('name');
+      setError(null);
 
-      if (schoolsError) throw schoolsError;
+      // Parallel fetch all data
+      const [schoolsResult, subjectsResult, positionsResult] = await Promise.all([
+        supabase
+          .from('schools')
+          .select('id, name, teaching_level')
+          .eq('is_active', true)
+          .eq('teaching_level', 'secundario'),
+        
+        supabase
+          .from('subjects')
+          .select('id, name, school_id')
+          .eq('is_active', true),
+        
+        supabase
+          .from('administrative_positions')
+          .select('id, name, school_id')
+          .eq('is_active', true)
+      ]);
 
-      // Fetch subjects with school data
-      const { data: subjectsData, error: subjectsError } = await supabase
-        .from('subjects')
-        .select(`
-          *,
-          school:schools(*)
-        `)
-        .eq('is_active', true)
-        .order('name');
+      if (schoolsResult.error) throw schoolsResult.error;
+      if (subjectsResult.error) throw subjectsResult.error;
+      if (positionsResult.error) throw positionsResult.error;
 
-      if (subjectsError) throw subjectsError;
+      const schoolsData = schoolsResult.data || [];
+      const subjectsData = subjectsResult.data || [];
+      const positionsData = positionsResult.data || [];
 
-      // Fetch administrative positions with school data
-      const { data: positionsData, error: positionsError } = await supabase
-        .from('administrative_positions')
-        .select(`
-          *,
-          school:schools(*)
-        `)
-        .eq('is_active', true)
-        .order('name');
+      // Filter subjects and positions by secondary schools only
+      const schoolIds = schoolsData.map(school => school.id);
+      const filteredSubjects = subjectsData.filter(subject => schoolIds.includes(subject.school_id));
+      const filteredPositions = positionsData.filter(position => schoolIds.includes(position.school_id));
 
-      if (positionsError) throw positionsError;
-
-      setSchools(schoolsData || []);
-      setSubjects(subjectsData || []);
-      setAdministrativePositions(positionsData || []);
+      setSchools(schoolsData);
+      setSubjects(filteredSubjects);
+      setAdministrativePositions(filteredPositions);
     } catch (err) {
+      console.error('Error fetching secondary inscription data:', err);
       setError(err instanceof Error ? err.message : 'Error desconocido');
     } finally {
       setLoading(false);
@@ -88,60 +88,66 @@ export const useSecondaryInscriptionData = () => {
     fetchData();
   }, []);
 
-  const getSubjectsBySchool = (schoolId: string) => {
+  const getSubjectsBySchool = (schoolId: string): Subject[] => {
     return subjects.filter(subject => subject.school_id === schoolId);
   };
 
-  const getPositionsBySchool = (schoolId: string) => {
+  const getPositionsBySchool = (schoolId: string): AdministrativePosition[] => {
     return administrativePositions.filter(position => position.school_id === schoolId);
   };
 
   const saveSubjectSelections = async (inscriptionId: string, selections: SubjectSelection[]) => {
-    // First, delete existing selections
-    const { error: deleteError } = await supabase
-      .from('inscription_subject_selections')
-      .delete()
-      .eq('inscription_id', inscriptionId);
-
-    if (deleteError) throw deleteError;
-
-    // Insert new selections if any
-    if (selections.length > 0) {
-      const { error: insertError } = await supabase
+    try {
+      // Delete existing selections
+      await supabase
         .from('inscription_subject_selections')
-        .insert(
-          selections.map(selection => ({
-            inscription_id: inscriptionId,
-            subject_id: selection.subject_id,
-            position_type: 'profesor'
-          }))
-        );
+        .delete()
+        .eq('inscription_id', inscriptionId);
 
-      if (insertError) throw insertError;
+      // Insert new selections
+      if (selections.length > 0) {
+        const selectionsToInsert = selections.map(selection => ({
+          inscription_id: inscriptionId,
+          subject_id: selection.subject_id,
+          position_type: 'profesor' // Default for secondary
+        }));
+
+        const { error } = await supabase
+          .from('inscription_subject_selections')
+          .insert(selectionsToInsert);
+
+        if (error) throw error;
+      }
+    } catch (error) {
+      console.error('Error saving subject selections:', error);
+      throw error;
     }
   };
 
   const savePositionSelections = async (inscriptionId: string, selections: PositionSelection[]) => {
-    // First, delete existing selections
-    const { error: deleteError } = await supabase
-      .from('inscription_position_selections')
-      .delete()
-      .eq('inscription_id', inscriptionId);
-
-    if (deleteError) throw deleteError;
-
-    // Insert new selections if any
-    if (selections.length > 0) {
-      const { error: insertError } = await supabase
+    try {
+      // Delete existing selections
+      await supabase
         .from('inscription_position_selections')
-        .insert(
-          selections.map(selection => ({
-            inscription_id: inscriptionId,
-            ...selection
-          }))
-        );
+        .delete()
+        .eq('inscription_id', inscriptionId);
 
-      if (insertError) throw insertError;
+      // Insert new selections
+      if (selections.length > 0) {
+        const selectionsToInsert = selections.map(selection => ({
+          inscription_id: inscriptionId,
+          administrative_position_id: selection.administrative_position_id
+        }));
+
+        const { error } = await supabase
+          .from('inscription_position_selections')
+          .insert(selectionsToInsert);
+
+        if (error) throw error;
+      }
+    } catch (error) {
+      console.error('Error saving position selections:', error);
+      throw error;
     }
   };
 

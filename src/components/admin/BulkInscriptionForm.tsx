@@ -12,7 +12,7 @@ import { useInscriptionPeriods } from '@/hooks/useInscriptionPeriods';
 import { useToast } from '@/hooks/use-toast';
 import { SubjectSelectionGrid } from '@/components/SubjectSelectionGrid';
 import { PositionSelectionGrid } from '@/components/PositionSelectionGrid';
-import { SubjectSelection, PositionSelection } from '@/hooks/useSecondaryInscriptionData';
+import { SubjectSelection, PositionSelection, useSecondaryInscriptionData } from '@/hooks/useSecondaryInscriptionData';
 
 interface BulkInscriptionFormProps {
   selectedTeachersCount: number;
@@ -38,6 +38,7 @@ export const BulkInscriptionForm: React.FC<BulkInscriptionFormProps> = ({
 }) => {
   const { toast } = useToast();
   const { periods, fetchAllPeriods } = useInscriptionPeriods();
+  const { schools, subjects, administrativePositions, loading: secondaryDataLoading } = useSecondaryInscriptionData();
   
   const [formData, setFormData] = useState<BulkInscriptionConfig>({
     inscription_period_id: '',
@@ -238,11 +239,17 @@ export const BulkInscriptionForm: React.FC<BulkInscriptionFormProps> = ({
                 <SubjectSelectionGrid
                   selectedSubjects={formData.subjectSelections || []}
                   onSelectionChange={handleSubjectSelectionChange}
+                  schools={schools}
+                  subjects={subjects}
+                  loading={secondaryDataLoading}
                 />
                 
                 <PositionSelectionGrid
                   selectedPositions={formData.positionSelections || []}
                   onSelectionChange={handlePositionSelectionChange}
+                  schools={schools}
+                  administrativePositions={administrativePositions}
+                  loading={secondaryDataLoading}
                 />
               </div>
             </div>

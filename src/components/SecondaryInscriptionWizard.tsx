@@ -32,7 +32,7 @@ export const SecondaryInscriptionWizard: React.FC<SecondaryInscriptionWizardProp
   const [subjectSelections, setSubjectSelections] = useState<SubjectSelection[]>(initialSubjectSelections);
   const [positionSelections, setPositionSelections] = useState<PositionSelection[]>(initialPositionSelections);
   
-  const { schools, subjects, administrativePositions } = useSecondaryInscriptionData();
+  const { schools, subjects, administrativePositions, loading } = useSecondaryInscriptionData();
 
   const handleSubjectSelectionsChange = (selections: SubjectSelection[]) => {
     setSubjectSelections(selections);

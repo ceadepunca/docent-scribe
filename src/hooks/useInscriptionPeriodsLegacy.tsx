@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface InscriptionPeriod {
@@ -12,15 +12,13 @@ interface InscriptionPeriod {
 }
 
 export const useInscriptionPeriods = () => {
-  const queryClient = useQueryClient();
+  const [periods, setPeriods] = useState<InscriptionPeriod[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const {
-    data: periods = [],
-    isLoading: loading,
-    error: queryError
-  } = useQuery({
-    queryKey: ['inscription-periods'],
-    queryFn: async (): Promise<InscriptionPeriod[]> => {
+  const fetchActivePeriods = async () => {
+    try {
+      setLoading(true);
       const { data, error } = await supabase
         .from('inscription_periods')
         .select('*')
@@ -28,26 +26,34 @@ export const useInscriptionPeriods = () => {
         .order('start_date', { ascending: true });
 
       if (error) throw error;
-      return data || [];
-    },
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    refetchOnWindowFocus: false,
-  });
-
-  const fetchAllPeriods = async () => {
-    const { data, error } = await supabase
-      .from('inscription_periods')
-      .select('*')
-      .order('start_date', { ascending: false });
-
-    if (error) throw error;
-    
-    // Update the cache with all periods
-    queryClient.setQueryData(['inscription-periods-all'], data || []);
-    return data || [];
+      setPeriods(data || []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const error = queryError instanceof Error ? queryError.message : null;
+  const fetchAllPeriods = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('inscription_periods')
+        .select('*')
+        .order('start_date', { ascending: false });
+
+      if (error) throw error;
+      setPeriods(data || []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchActivePeriods();
+  }, []);
 
   const getCurrentPeriods = (): InscriptionPeriod[] => {
     const now = new Date();
@@ -79,15 +85,11 @@ export const useInscriptionPeriods = () => {
     return allLevels;
   };
 
-  const refetch = async () => {
-    await queryClient.invalidateQueries({ queryKey: ['inscription-periods'] });
-  };
-
   return {
     periods,
     loading,
     error,
-    refetch,
+    refetch: fetchActivePeriods,
     fetchAllPeriods,
     availableLevels: getAvailableLevelsForUser(),
     getCurrentPeriods,
