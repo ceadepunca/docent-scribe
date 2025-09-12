@@ -418,7 +418,11 @@ const AssistedInscription = () => {
               {inscriptionForm.teaching_level === 'secundario' ? (
                 <div className="space-y-6">
                   <SecondaryInscriptionWizard
-                    onComplete={() => handleSubmitInscription()}
+                    onComplete={(data) => {
+                      setSubjectSelections(data.subjectSelections);
+                      setPositionSelections(data.positionSelections);
+                      handleSubmitInscription();
+                    }}
                     initialSubjectSelections={subjectSelections}
                     initialPositionSelections={positionSelections}
                     onSubjectSelectionsChange={setSubjectSelections}
