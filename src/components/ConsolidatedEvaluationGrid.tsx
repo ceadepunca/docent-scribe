@@ -344,17 +344,20 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
       return updated;
     });
     
-    // Then, replicate to all other rows
-    setTimeout(() => {
-      replicateToAllRows(groupIndex, criterionId, numericValue);
-    }, 0);
+    // Don't replicate titulo_score to other rows as teachers can have different titles per subject/position
+    if (criterionId !== 'titulo_score') {
+      setTimeout(() => {
+        replicateToAllRows(groupIndex, criterionId, numericValue);
+      }, 0);
+    }
   };
 
   const handleTitleTypeChange = (groupIndex: number, titleType: string) => {
     const validTitleType = titleType as 'docente' | 'habilitante' | 'supletorio';
     const newMaxValue = getTitleTypeMaxValue(validTitleType);
     
-    // First, update the current row
+    // Only update the current row - don't replicate to other rows
+    // as teachers can have different title types for different subjects/positions
     setGroupedItems(prev => {
       const updated = [...prev];
       const currentEvaluation = updated[groupIndex].evaluation;
@@ -369,12 +372,6 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
       };
       return updated;
     });
-    
-    // Then, replicate both title_type and titulo_score to all other rows
-    setTimeout(() => {
-      replicateToAllRows(groupIndex, 'title_type', validTitleType);
-      replicateToAllRows(groupIndex, 'titulo_score', newMaxValue);
-    }, 0);
   };
 
   const saveEvaluationsForGroup = async (group: GroupedItem) => {
@@ -503,7 +500,7 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
             <CardDescription>
               Evaluación completa para nivel secundario
               <span className="block mt-1 text-xs text-primary font-medium">
-                ⚡ Los valores se replican automáticamente en todas las filas
+                ⚡ Los valores se replican automáticamente (excepto títulos que son individuales)
               </span>
             </CardDescription>
           </div>
