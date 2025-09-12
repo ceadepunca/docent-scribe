@@ -402,6 +402,7 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
     for (const selection of group.selections) {
       const data = {
         ...evaluationData,
+        last_modified_by: user.id,
         ...(group.type === 'subject' 
           ? { subject_selection_id: selection.id }
           : { position_selection_id: selection.id }
@@ -410,7 +411,9 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
 
       const { error } = await supabase
         .from('evaluations')
-        .upsert(data);
+        .upsert(data, { 
+          onConflict: 'inscription_id,evaluator_id,subject_selection_id,position_selection_id' 
+        });
 
       if (error) throw error;
     }
@@ -430,11 +433,11 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
         title: 'Evaluaciones guardadas',
         description: 'Todas las evaluaciones han sido guardadas correctamente',
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving evaluations:', error);
       toast({
         title: 'Error',
-        description: 'No se pudieron guardar las evaluaciones',
+        description: `No se pudieron guardar las evaluaciones: ${error.message || error}`,
         variant: 'destructive',
       });
     } finally {
@@ -462,11 +465,11 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
         title: 'Evaluaciones finalizadas',
         description: 'Todas las evaluaciones han sido finalizadas correctamente',
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error completing evaluations:', error);
       toast({
         title: 'Error',
-        description: 'No se pudieron finalizar las evaluaciones',
+        description: `No se pudieron finalizar las evaluaciones: ${error.message || error}`,
         variant: 'destructive',
       });
     } finally {
@@ -668,23 +671,41 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
 
           {!allCompleted && (
             <div className="flex gap-3 justify-end">
-              <Button
-                variant="outline"
-                onClick={handleSaveAll}
-                disabled={saving || !hasEvaluations}
-                className="flex items-center gap-2"
-              >
-                <Save className="h-4 w-4" />
-                Guardar Todo
-              </Button>
-              <Button
-                onClick={handleCompleteAll}
-                disabled={saving || !hasEvaluations}
-                className="flex items-center gap-2"
-              >
-                <Calculator className="h-4 w-4" />
-                Finalizar Todas las Evaluaciones
-              </Button>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      onClick={handleSaveAll}
+                      disabled={saving || !hasEvaluations}
+                      className="flex items-center gap-2"
+                    >
+                      <Save className="h-4 w-4" />
+                      Guardar Todo
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Guarda como borrador - se puede seguir editando</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      onClick={handleCompleteAll}
+                      disabled={saving || !hasEvaluations}
+                      className="flex items-center gap-2"
+                    >
+                      <Calculator className="h-4 w-4" />
+                      Finalizar Todas las Evaluaciones
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Marca como completadas y bloquea la edición</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
           )}
 

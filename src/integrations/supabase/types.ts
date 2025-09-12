@@ -60,6 +60,7 @@ export type Database = {
           evaluator_id: string
           id: string
           inscription_id: string
+          last_modified_by: string | null
           notes: string | null
           otros_antecedentes_score: number | null
           position_selection_id: string | null
@@ -83,6 +84,7 @@ export type Database = {
           evaluator_id: string
           id?: string
           inscription_id: string
+          last_modified_by?: string | null
           notes?: string | null
           otros_antecedentes_score?: number | null
           position_selection_id?: string | null
@@ -106,6 +108,7 @@ export type Database = {
           evaluator_id?: string
           id?: string
           inscription_id?: string
+          last_modified_by?: string | null
           notes?: string | null
           otros_antecedentes_score?: number | null
           position_selection_id?: string | null
