@@ -3,9 +3,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ArrowLeft, CheckCircle, AlertCircle } from 'lucide-react';
+import { ArrowLeft, CheckCircle, AlertCircle, BookOpen, UserCheck } from 'lucide-react';
 import { useBulkInscription } from '@/hooks/useBulkInscription';
 import { useInscriptionPeriods } from '@/hooks/useInscriptionPeriods';
+import { useSecondaryInscriptionData } from '@/hooks/useSecondaryInscriptionData';
 
 interface InscriptionPreviewProps {
   selectedTeachers: any[];
@@ -22,6 +23,7 @@ export const InscriptionPreview: React.FC<InscriptionPreviewProps> = ({
 }) => {
   const { createBulkInscriptions, loading, progress } = useBulkInscription();
   const { periods } = useInscriptionPeriods();
+  const { schools, subjects, administrativePositions } = useSecondaryInscriptionData();
 
   const selectedPeriod = periods.find(p => p.id === inscriptionConfig.inscription_period_id);
 
@@ -68,10 +70,23 @@ export const InscriptionPreview: React.FC<InscriptionPreviewProps> = ({
                 {inscriptionConfig.teaching_level}
               </Badge>
             </div>
-            <div>
-              <span className="font-medium">Área:</span>
-              <p className="text-muted-foreground">{inscriptionConfig.subject_area}</p>
-            </div>
+            {inscriptionConfig.teaching_level === 'secundario' ? (
+              <>
+                <div>
+                  <span className="font-medium">Materias:</span>
+                  <p className="text-muted-foreground">{inscriptionConfig.subjectSelections?.length || 0} seleccionadas</p>
+                </div>
+                <div>
+                  <span className="font-medium">Cargos:</span>
+                  <p className="text-muted-foreground">{inscriptionConfig.positionSelections?.length || 0} seleccionados</p>
+                </div>
+              </>
+            ) : (
+              <div>
+                <span className="font-medium">Área:</span>
+                <p className="text-muted-foreground">{inscriptionConfig.subject_area}</p>
+              </div>
+            )}
             <div>
               <span className="font-medium">Experiencia:</span>
               <p className="text-muted-foreground">{inscriptionConfig.experience_years} años</p>
@@ -104,6 +119,53 @@ export const InscriptionPreview: React.FC<InscriptionPreviewProps> = ({
                   ⚠ El nivel seleccionado no está disponible en este período
                 </span>
               </>
+            )}
+          </div>
+        )}
+
+        {/* Secondary Level Selections Detail */}
+        {inscriptionConfig.teaching_level === 'secundario' && (
+          <div className="space-y-4">
+            {/* Subject Selections */}
+            {inscriptionConfig.subjectSelections && inscriptionConfig.subjectSelections.length > 0 && (
+              <div className="bg-muted/30 p-4 rounded-lg">
+                <h4 className="font-medium mb-3 flex items-center gap-2">
+                  <BookOpen className="h-4 w-4" />
+                  Materias Seleccionadas ({inscriptionConfig.subjectSelections.length})
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                  {inscriptionConfig.subjectSelections.map((selection, index) => {
+                    const subject = subjects.find(s => s.id === selection.subject_id);
+                    const school = schools.find(s => s.id === subject?.school_id);
+                    return (
+                      <Badge key={index} variant="secondary" className="text-xs">
+                        {subject?.name} - {school?.name}
+                      </Badge>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Position Selections */}
+            {inscriptionConfig.positionSelections && inscriptionConfig.positionSelections.length > 0 && (
+              <div className="bg-muted/30 p-4 rounded-lg">
+                <h4 className="font-medium mb-3 flex items-center gap-2">
+                  <UserCheck className="h-4 w-4" />
+                  Cargos Administrativos Seleccionados ({inscriptionConfig.positionSelections.length})
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                  {inscriptionConfig.positionSelections.map((selection, index) => {
+                    const position = administrativePositions.find(p => p.id === selection.administrative_position_id);
+                    const school = schools.find(s => s.id === position?.school_id);
+                    return (
+                      <Badge key={index} variant="secondary" className="text-xs">
+                        {position?.name} - {school?.name}
+                      </Badge>
+                    );
+                  })}
+                </div>
+              </div>
             )}
           </div>
         )}

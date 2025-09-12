@@ -6,14 +6,29 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
 import { Settings, ArrowLeft } from 'lucide-react';
 import { useInscriptionPeriods } from '@/hooks/useInscriptionPeriods';
 import { useToast } from '@/hooks/use-toast';
+import { SubjectSelectionGrid } from '@/components/SubjectSelectionGrid';
+import { PositionSelectionGrid } from '@/components/PositionSelectionGrid';
+import { SubjectSelection, PositionSelection } from '@/hooks/useSecondaryInscriptionData';
 
 interface BulkInscriptionFormProps {
   selectedTeachersCount: number;
   onSubmit: (config: any) => void;
   onBack: () => void;
+}
+
+interface BulkInscriptionConfig {
+  inscription_period_id: string;
+  teaching_level: string;
+  subject_area: string;
+  experience_years: string;
+  availability: string;
+  motivational_letter: string;
+  subjectSelections?: SubjectSelection[];
+  positionSelections?: PositionSelection[];
 }
 
 export const BulkInscriptionForm: React.FC<BulkInscriptionFormProps> = ({
@@ -24,13 +39,15 @@ export const BulkInscriptionForm: React.FC<BulkInscriptionFormProps> = ({
   const { toast } = useToast();
   const { periods, fetchAllPeriods } = useInscriptionPeriods();
   
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<BulkInscriptionConfig>({
     inscription_period_id: '',
     teaching_level: '',
     subject_area: '',
     experience_years: '0',
     availability: '',
     motivational_letter: '',
+    subjectSelections: [],
+    positionSelections: [],
   });
 
   useEffect(() => {
@@ -38,7 +55,7 @@ export const BulkInscriptionForm: React.FC<BulkInscriptionFormProps> = ({
   }, [fetchAllPeriods]);
 
   const handleSubmit = () => {
-    if (!formData.inscription_period_id || !formData.teaching_level || !formData.subject_area) {
+    if (!formData.inscription_period_id || !formData.teaching_level) {
       toast({
         title: 'Error',
         description: 'Complete todos los campos obligatorios',
@@ -47,7 +64,40 @@ export const BulkInscriptionForm: React.FC<BulkInscriptionFormProps> = ({
       return;
     }
 
+    // For secundario level, validate selections
+    if (formData.teaching_level === 'secundario') {
+      const hasSelections = (formData.subjectSelections?.length || 0) > 0 || 
+                           (formData.positionSelections?.length || 0) > 0;
+      
+      if (!hasSelections) {
+        toast({
+          title: 'Error',
+          description: 'Para nivel secundario debe seleccionar al menos una materia o cargo administrativo',
+          variant: 'destructive',
+        });
+        return;
+      }
+    } else {
+      // For inicial/primario, require subject_area
+      if (!formData.subject_area) {
+        toast({
+          title: 'Error',
+          description: 'Complete el área temática',
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
+
     onSubmit(formData);
+  };
+
+  const handleSubjectSelectionChange = (selections: SubjectSelection[]) => {
+    setFormData(prev => ({ ...prev, subjectSelections: selections }));
+  };
+
+  const handlePositionSelectionChange = (selections: PositionSelection[]) => {
+    setFormData(prev => ({ ...prev, positionSelections: selections }));
   };
 
   const selectedPeriod = periods.find(p => p.id === formData.inscription_period_id);
@@ -121,19 +171,21 @@ export const BulkInscriptionForm: React.FC<BulkInscriptionFormProps> = ({
           )}
         </div>
 
-        {/* Subject Area */}
-        <div>
-          <Label htmlFor="subject_area">Área/Materia *</Label>
-          <Input
-            id="subject_area"
-            placeholder="Ej: Matemática, Lengua, General, etc."
-            value={formData.subject_area}
-            onChange={(e) => setFormData(prev => ({ ...prev, subject_area: e.target.value }))}
-          />
-          <p className="text-sm text-muted-foreground mt-1">
-            Se aplicará la misma área a todas las inscripciones
-          </p>
-        </div>
+        {/* Subject Area - Only for inicial/primario */}
+        {formData.teaching_level && formData.teaching_level !== 'secundario' && (
+          <div>
+            <Label htmlFor="subject_area">Área/Materia *</Label>
+            <Input
+              id="subject_area"
+              placeholder="Ej: Matemática, Lengua, General, etc."
+              value={formData.subject_area}
+              onChange={(e) => setFormData(prev => ({ ...prev, subject_area: e.target.value }))}
+            />
+            <p className="text-sm text-muted-foreground mt-1">
+              Se aplicará la misma área a todas las inscripciones
+            </p>
+          </div>
+        )}
 
         {/* Experience Years */}
         <div>
@@ -173,6 +225,30 @@ export const BulkInscriptionForm: React.FC<BulkInscriptionFormProps> = ({
           />
         </div>
 
+        {/* Secondary Level Selections */}
+        {formData.teaching_level === 'secundario' && (
+          <div className="space-y-6">
+            <div className="border-t pt-6">
+              <h3 className="text-lg font-medium mb-4">Selecciones para Nivel Secundario</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Estas selecciones se aplicarán a todas las inscripciones de nivel secundario
+              </p>
+              
+              <div className="space-y-6">
+                <SubjectSelectionGrid
+                  selectedSubjects={formData.subjectSelections || []}
+                  onSelectionChange={handleSubjectSelectionChange}
+                />
+                
+                <PositionSelectionGrid
+                  selectedPositions={formData.positionSelections || []}
+                  onSelectionChange={handlePositionSelectionChange}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Summary */}
         <div className="bg-muted/50 p-4 rounded-lg">
           <h4 className="font-medium mb-2">Resumen de la Inscripción Masiva:</h4>
@@ -180,7 +256,14 @@ export const BulkInscriptionForm: React.FC<BulkInscriptionFormProps> = ({
             <li>• <strong>{selectedTeachersCount}</strong> docentes serán inscritos</li>
             <li>• Período: {selectedPeriod?.name || 'No seleccionado'}</li>
             <li>• Nivel: {formData.teaching_level || 'No seleccionado'}</li>
-            <li>• Área: {formData.subject_area || 'No especificada'}</li>
+            {formData.teaching_level === 'secundario' ? (
+              <>
+                <li>• Materias seleccionadas: {formData.subjectSelections?.length || 0}</li>
+                <li>• Cargos administrativos: {formData.positionSelections?.length || 0}</li>
+              </>
+            ) : (
+              <li>• Área: {formData.subject_area || 'No especificada'}</li>
+            )}
           </ul>
         </div>
 

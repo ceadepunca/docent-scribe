@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { SubjectSelection, PositionSelection } from '@/hooks/useSecondaryInscriptionData';
 
 interface BulkInscriptionResult {
   success: boolean;
@@ -28,7 +29,16 @@ export const useBulkInscription = () => {
 
   const createBulkInscriptions = async (
     teachers: any[], 
-    config: any
+    config: {
+      inscription_period_id: string;
+      teaching_level: string;
+      subject_area: string;
+      experience_years: string;
+      availability: string;
+      motivational_letter: string;
+      subjectSelections?: SubjectSelection[];
+      positionSelections?: PositionSelection[];
+    }
   ): Promise<BulkInscriptionResult> => {
     setLoading(true);
     setProgress(0);
@@ -59,20 +69,54 @@ export const useBulkInscription = () => {
           }
 
           // Create inscription
-          const { error } = await supabase
+          const { data: inscription, error } = await supabase
             .from('inscriptions')
             .insert({
               user_id: userId,
               inscription_period_id: config.inscription_period_id,
-              teaching_level: config.teaching_level,
-              subject_area: config.subject_area,
+              teaching_level: config.teaching_level as 'inicial' | 'primario' | 'secundario',
+              subject_area: config.teaching_level === 'secundario' ? 'Secundario' : config.subject_area,
               experience_years: parseInt(config.experience_years) || 0,
               availability: config.availability,
               motivational_letter: config.motivational_letter,
-              status: 'submitted', // Admin-created inscriptions are submitted directly
-            });
+              status: 'submitted' as const, // Admin-created inscriptions are submitted directly
+            })
+            .select()
+            .single();
 
           if (error) throw error;
+
+          // For secondary level, create subject and position selections
+          if (config.teaching_level === 'secundario' && inscription) {
+            // Create subject selections
+            if (config.subjectSelections && config.subjectSelections.length > 0) {
+              const { error: subjectError } = await supabase
+                .from('inscription_subject_selections')
+                .insert(
+                  config.subjectSelections.map(selection => ({
+                    inscription_id: inscription.id,
+                    subject_id: selection.subject_id,
+                    position_type: 'profesor'
+                  }))
+                );
+
+              if (subjectError) throw subjectError;
+            }
+
+            // Create position selections
+            if (config.positionSelections && config.positionSelections.length > 0) {
+              const { error: positionError } = await supabase
+                .from('inscription_position_selections')
+                .insert(
+                  config.positionSelections.map(selection => ({
+                    inscription_id: inscription.id,
+                    administrative_position_id: selection.administrative_position_id
+                  }))
+                );
+
+              if (positionError) throw positionError;
+            }
+          }
 
           result.created++;
         } catch (error: any) {
