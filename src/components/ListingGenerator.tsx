@@ -3,15 +3,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { Download, FileText, Table as TableIcon } from 'lucide-react';
-import { useListingData, ListingFilters, ListingItem } from '@/hooks/useListingData';
-
-interface GroupedListings {
-  [schoolName: string]: {
-    [itemName: string]: ListingItem[];
-  };
-}
+import { Download, FileText, Table as TableIcon, Calendar } from 'lucide-react';
+import { useListingData, ListingFilters } from '@/hooks/useListingData';
+import { useInscriptionPeriods } from '@/hooks/useInscriptionPeriods';
+import { ListingTable } from './ListingTable';
 
 interface Props {
   selectedPeriodId?: string;
@@ -19,6 +14,8 @@ interface Props {
 
 export const ListingGenerator: React.FC<Props> = ({ selectedPeriodId }) => {
   const { listings, schools, subjects, positions, loading, error, fetchListings } = useListingData();
+  const { periods } = useInscriptionPeriods();
+  const [periodId, setPeriodId] = useState<string>('');
   const [filters, setFilters] = useState<ListingFilters>({
     schoolId: 'all',
     listingType: 'all',
@@ -37,82 +34,11 @@ export const ListingGenerator: React.FC<Props> = ({ selectedPeriodId }) => {
   };
 
   const generateListings = () => {
-    const filtersWithPeriod = selectedPeriodId 
-      ? { ...filters, periodId: selectedPeriodId }
-      : filters;
+    if (!periodId) return;
+    const filtersWithPeriod = { ...filters, periodId };
     fetchListings(filtersWithPeriod);
   };
 
-  const groupListings = (listings: ListingItem[]): GroupedListings => {
-    const grouped: GroupedListings = {};
-    
-    listings.forEach(item => {
-      if (!grouped[item.school_name]) {
-        grouped[item.school_name] = {};
-      }
-      if (!grouped[item.school_name][item.item_name]) {
-        grouped[item.school_name][item.item_name] = [];
-      }
-      grouped[item.school_name][item.item_name].push(item);
-    });
-
-    // Sort each group by total_score (descending) then by name
-    Object.keys(grouped).forEach(school => {
-      Object.keys(grouped[school]).forEach(item => {
-        grouped[school][item].sort((a, b) => {
-          if (a.total_score === null && b.total_score === null) {
-            return a.teacher_name.localeCompare(b.teacher_name);
-          }
-          if (a.total_score === null) return 1;
-          if (b.total_score === null) return -1;
-          if (a.total_score !== b.total_score) {
-            return (b.total_score || 0) - (a.total_score || 0);
-          }
-          return a.teacher_name.localeCompare(b.teacher_name);
-        });
-      });
-    });
-
-    return grouped;
-  };
-
-  const renderListingSection = (itemName: string, items: ListingItem[]) => (
-    <div key={itemName} className="mb-8">
-      <div className="flex items-center gap-2 mb-4">
-        <h3 className="text-lg font-semibold text-primary">{itemName.toUpperCase()}</h3>
-        <Badge variant="outline" className="text-xs">
-          {items.length} {items.length === 1 ? 'inscripto' : 'inscriptos'}
-        </Badge>
-      </div>
-      
-      <div className="space-y-2">
-        {items.map((item, index) => (
-          <div key={`${item.inscription_id}-${index}`} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors">
-            <div className="flex items-center gap-4">
-              <span className="w-8 text-center font-mono text-sm text-muted-foreground">
-                {index + 1}.
-              </span>
-              <div>
-                <p className="font-medium">{item.teacher_name}</p>
-                <p className="text-sm text-muted-foreground">DNI: {item.teacher_dni}</p>
-              </div>
-            </div>
-            
-            <div className="flex items-center gap-4">
-              <div className="text-right">
-                <p className="font-semibold">
-                  {item.total_score !== null ? `${item.total_score.toFixed(1)} pts` : '--'}
-                </p>
-              </div>
-              <Badge variant={item.evaluation_status === 'completed' ? 'default' : 'secondary'}>
-                {item.evaluation_status === 'completed' ? '✓ Evaluado' : '⏳ Pendiente'}
-              </Badge>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
 
   const getAvailableItems = () => {
     if (filters.listingType === 'specific-subject') {
@@ -125,8 +51,8 @@ export const ListingGenerator: React.FC<Props> = ({ selectedPeriodId }) => {
   };
 
   const needsSpecificSelection = filters.listingType === 'specific-subject' || filters.listingType === 'specific-position';
-  const canGenerate = !needsSpecificSelection || filters.specificItemId;
-  const groupedListings = groupListings(listings);
+  const canGenerate = periodId && (!needsSpecificSelection || filters.specificItemId);
+  const selectedPeriod = periods.find(p => p.id === periodId);
 
   return (
     <div className="space-y-6">
@@ -142,7 +68,27 @@ export const ListingGenerator: React.FC<Props> = ({ selectedPeriodId }) => {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            {/* Period Filter - MANDATORY */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium flex items-center gap-2">
+                <Calendar className="h-4 w-4" />
+                Período <span className="text-destructive">*</span>
+              </label>
+              <Select value={periodId} onValueChange={setPeriodId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar período" />
+                </SelectTrigger>
+                <SelectContent>
+                  {periods.map(period => (
+                    <SelectItem key={period.id} value={period.id}>
+                      {period.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             {/* School Filter */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Escuela</label>
@@ -248,9 +194,10 @@ export const ListingGenerator: React.FC<Props> = ({ selectedPeriodId }) => {
       {listings.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Listado Generado</CardTitle>
+            <CardTitle>Listado de Mérito - Formato Grilla de Evaluación</CardTitle>
             <CardDescription>
               {listings.length} {listings.length === 1 ? 'inscripción encontrada' : 'inscripciones encontradas'}
+              {selectedPeriod && ` • Período: ${selectedPeriod.name}`}
               {' • '}
               Generado el {new Date().toLocaleDateString('es-AR', { 
                 year: 'numeric', 
@@ -261,23 +208,8 @@ export const ListingGenerator: React.FC<Props> = ({ selectedPeriodId }) => {
               })}
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
-            {Object.entries(groupedListings).map(([schoolName, schoolGroups]) => (
-              <div key={schoolName}>
-                <div className="flex items-center gap-2 mb-6">
-                  <h2 className="text-xl font-bold text-primary">{schoolName}</h2>
-                  <Badge variant="secondary">
-                    {Object.values(schoolGroups).flat().length} inscripciones
-                  </Badge>
-                </div>
-                
-                {Object.entries(schoolGroups).map(([itemName, items]) =>
-                  renderListingSection(itemName, items)
-                )}
-                
-                <Separator className="my-8" />
-              </div>
-            ))}
+          <CardContent>
+            <ListingTable listings={listings} />
           </CardContent>
         </Card>
       )}

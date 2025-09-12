@@ -11,6 +11,23 @@ export interface ListingItem {
   total_score: number | null;
   evaluation_status: 'completed' | 'draft';
   evaluation_id: string | null;
+  
+  // Detailed evaluation scores
+  titulo_score: number | null;
+  antiguedad_titulo_score: number | null;
+  antiguedad_docente_score: number | null;
+  concepto_score: number | null;
+  promedio_titulo_score: number | null;
+  trabajo_publico_score: number | null;
+  becas_otros_score: number | null;
+  concurso_score: number | null;
+  otros_antecedentes_score: number | null;
+  red_federal_score: number | null;
+  title_type: 'docente' | 'habilitante' | 'supletorio' | null;
+  
+  // Additional teacher information
+  teacher_email: string;
+  teacher_titles: string;
 }
 
 export interface ListingFilters {
@@ -72,7 +89,16 @@ export const useListingData = () => {
             profiles!inner(
               first_name,
               last_name,
-              dni
+              dni,
+              email,
+              titulo_1_nombre,
+              titulo_1_promedio,
+              titulo_2_nombre,
+              titulo_2_promedio,
+              titulo_3_nombre,
+              titulo_3_promedio,
+              titulo_4_nombre,
+              titulo_4_promedio
             )
           ),
           subjects!inner(
@@ -83,7 +109,18 @@ export const useListingData = () => {
           evaluations(
             id,
             total_score,
-            status
+            status,
+            titulo_score,
+            antiguedad_titulo_score,
+            antiguedad_docente_score,
+            concepto_score,
+            promedio_titulo_score,
+            trabajo_publico_score,
+            becas_otros_score,
+            concurso_score,
+            otros_antecedentes_score,
+            red_federal_score,
+            title_type
           )
         `)
         .eq('inscriptions.teaching_level', 'secundario');
@@ -105,7 +142,16 @@ export const useListingData = () => {
             profiles!inner(
               first_name,
               last_name,
-              dni
+              dni,
+              email,
+              titulo_1_nombre,
+              titulo_1_promedio,
+              titulo_2_nombre,
+              titulo_2_promedio,
+              titulo_3_nombre,
+              titulo_3_promedio,
+              titulo_4_nombre,
+              titulo_4_promedio
             )
           ),
           administrative_positions!inner(
@@ -116,7 +162,18 @@ export const useListingData = () => {
           evaluations(
             id,
             total_score,
-            status
+            status,
+            titulo_score,
+            antiguedad_titulo_score,
+            antiguedad_docente_score,
+            concepto_score,
+            promedio_titulo_score,
+            trabajo_publico_score,
+            becas_otros_score,
+            concurso_score,
+            otros_antecedentes_score,
+            red_federal_score,
+            title_type
           )
         `)
         .eq('inscriptions.teaching_level', 'secundario');
@@ -145,16 +202,41 @@ export const useListingData = () => {
 
         subjectSelections?.forEach((selection: any) => {
           const evaluation = selection.evaluations?.[0];
+          const profile = selection.inscriptions.profiles;
+          const titles = [
+            profile.titulo_1_nombre && `${profile.titulo_1_nombre} (${profile.titulo_1_promedio || 'N/A'})`,
+            profile.titulo_2_nombre && `${profile.titulo_2_nombre} (${profile.titulo_2_promedio || 'N/A'})`,
+            profile.titulo_3_nombre && `${profile.titulo_3_nombre} (${profile.titulo_3_promedio || 'N/A'})`,
+            profile.titulo_4_nombre && `${profile.titulo_4_nombre} (${profile.titulo_4_promedio || 'N/A'})`
+          ].filter(Boolean).join(' • ') || 'Sin títulos';
+
           results.push({
             inscription_id: selection.inscription_id,
-            teacher_name: `${selection.inscriptions.profiles.last_name}, ${selection.inscriptions.profiles.first_name}`,
-            teacher_dni: selection.inscriptions.profiles.dni || 'Sin DNI',
+            teacher_name: `${profile.last_name}, ${profile.first_name}`,
+            teacher_dni: profile.dni || 'Sin DNI',
             school_name: selection.subjects.schools.name,
             item_name: selection.subjects.name,
             item_type: 'subject',
             total_score: evaluation?.total_score || null,
             evaluation_status: evaluation?.status || 'draft',
-            evaluation_id: evaluation?.id || null
+            evaluation_id: evaluation?.id || null,
+            
+            // Detailed evaluation scores
+            titulo_score: evaluation?.titulo_score || null,
+            antiguedad_titulo_score: evaluation?.antiguedad_titulo_score || null,
+            antiguedad_docente_score: evaluation?.antiguedad_docente_score || null,
+            concepto_score: evaluation?.concepto_score || null,
+            promedio_titulo_score: evaluation?.promedio_titulo_score || null,
+            trabajo_publico_score: evaluation?.trabajo_publico_score || null,
+            becas_otros_score: evaluation?.becas_otros_score || null,
+            concurso_score: evaluation?.concurso_score || null,
+            otros_antecedentes_score: evaluation?.otros_antecedentes_score || null,
+            red_federal_score: evaluation?.red_federal_score || null,
+            title_type: evaluation?.title_type || null,
+            
+            // Additional teacher information
+            teacher_email: profile.email || 'Sin email',
+            teacher_titles: titles
           });
         });
       }
@@ -170,16 +252,41 @@ export const useListingData = () => {
 
         positionSelections?.forEach((selection: any) => {
           const evaluation = selection.evaluations?.[0];
+          const profile = selection.inscriptions.profiles;
+          const titles = [
+            profile.titulo_1_nombre && `${profile.titulo_1_nombre} (${profile.titulo_1_promedio || 'N/A'})`,
+            profile.titulo_2_nombre && `${profile.titulo_2_nombre} (${profile.titulo_2_promedio || 'N/A'})`,
+            profile.titulo_3_nombre && `${profile.titulo_3_nombre} (${profile.titulo_3_promedio || 'N/A'})`,
+            profile.titulo_4_nombre && `${profile.titulo_4_nombre} (${profile.titulo_4_promedio || 'N/A'})`
+          ].filter(Boolean).join(' • ') || 'Sin títulos';
+
           results.push({
             inscription_id: selection.inscription_id,
-            teacher_name: `${selection.inscriptions.profiles.last_name}, ${selection.inscriptions.profiles.first_name}`,
-            teacher_dni: selection.inscriptions.profiles.dni || 'Sin DNI',
+            teacher_name: `${profile.last_name}, ${profile.first_name}`,
+            teacher_dni: profile.dni || 'Sin DNI',
             school_name: selection.administrative_positions.schools.name,
             item_name: selection.administrative_positions.name,
             item_type: 'position',
             total_score: evaluation?.total_score || null,
             evaluation_status: evaluation?.status || 'draft',
-            evaluation_id: evaluation?.id || null
+            evaluation_id: evaluation?.id || null,
+            
+            // Detailed evaluation scores
+            titulo_score: evaluation?.titulo_score || null,
+            antiguedad_titulo_score: evaluation?.antiguedad_titulo_score || null,
+            antiguedad_docente_score: evaluation?.antiguedad_docente_score || null,
+            concepto_score: evaluation?.concepto_score || null,
+            promedio_titulo_score: evaluation?.promedio_titulo_score || null,
+            trabajo_publico_score: evaluation?.trabajo_publico_score || null,
+            becas_otros_score: evaluation?.becas_otros_score || null,
+            concurso_score: evaluation?.concurso_score || null,
+            otros_antecedentes_score: evaluation?.otros_antecedentes_score || null,
+            red_federal_score: evaluation?.red_federal_score || null,
+            title_type: evaluation?.title_type || null,
+            
+            // Additional teacher information
+            teacher_email: profile.email || 'Sin email',
+            teacher_titles: titles
           });
         });
       }
@@ -188,6 +295,22 @@ export const useListingData = () => {
       const filteredResults = results.filter(item => {
         if (filters.evaluationStatus === 'all') return true;
         return item.evaluation_status === filters.evaluationStatus;
+      });
+
+      // Sort: completed evaluations first (by score), then draft (alphabetically)
+      filteredResults.sort((a, b) => {
+        // First by status (completed first)
+        if (a.evaluation_status === 'completed' && b.evaluation_status !== 'completed') return -1;
+        if (a.evaluation_status !== 'completed' && b.evaluation_status === 'completed') return 1;
+        
+        // Then by score (for completed) or name (for drafts)
+        if (a.evaluation_status === 'completed' && b.evaluation_status === 'completed') {
+          const scoreA = a.total_score || 0;
+          const scoreB = b.total_score || 0;
+          if (scoreA !== scoreB) return scoreB - scoreA;
+        }
+        
+        return a.teacher_name.localeCompare(b.teacher_name);
       });
 
       setListings(filteredResults);
