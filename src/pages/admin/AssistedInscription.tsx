@@ -15,6 +15,8 @@ import { useInscriptionPeriods } from '@/hooks/useInscriptionPeriods';
 import { usePositionTypes } from '@/hooks/usePositionTypes';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { SecondaryInscriptionWizard } from '@/components/SecondaryInscriptionWizard';
+import { SubjectSelection, PositionSelection, useSecondaryInscriptionData } from '@/hooks/useSecondaryInscriptionData';
 
 const AssistedInscription = () => {
   const { user, isSuperAdmin } = useAuth();
@@ -23,11 +25,14 @@ const AssistedInscription = () => {
   const { searchTeacherByDNI, createTeacher } = useTeacherManagement();
   const { periods, fetchAllPeriods } = useInscriptionPeriods();
   const { positionTypes } = usePositionTypes();
+  const { saveSubjectSelections, savePositionSelections } = useSecondaryInscriptionData();
 
   const [searchDNI, setSearchDNI] = useState('');
   const [selectedTeacher, setSelectedTeacher] = useState<any>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [subjectSelections, setSubjectSelections] = useState<SubjectSelection[]>([]);
+  const [positionSelections, setPositionSelections] = useState<PositionSelection[]>([]);
 
   const [teacherForm, setTeacherForm] = useState({
     first_name: '',
@@ -112,7 +117,7 @@ const AssistedInscription = () => {
   };
 
   const handleSubmitInscription = async () => {
-    if (!selectedTeacher || !inscriptionForm.teaching_level || !inscriptionForm.inscription_period_id || !inscriptionForm.subject_area) {
+    if (!selectedTeacher || !inscriptionForm.teaching_level || !inscriptionForm.inscription_period_id) {
       toast({
         title: 'Error',
         description: 'Complete todos los campos obligatorios',
@@ -121,23 +126,57 @@ const AssistedInscription = () => {
       return;
     }
 
+    // Validate secondary selections
+    if (inscriptionForm.teaching_level === 'secundario') {
+      if (subjectSelections.length === 0 && positionSelections.length === 0) {
+        toast({
+          title: 'Error',
+          description: 'Debe seleccionar al menos una materia o cargo administrativo para nivel secundario',
+          variant: 'destructive',
+        });
+        return;
+      }
+    } else {
+      // For inicial/primario validate subject_area
+      if (!inscriptionForm.subject_area) {
+        toast({
+          title: 'Error',
+          description: 'Complete el área/materia',
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
+
     setSubmitting(true);
     try {
-      const { error } = await supabase
+      const { data: inscription, error } = await supabase
         .from('inscriptions')
         .insert({
           user_id: selectedTeacher.id,
           teaching_level: inscriptionForm.teaching_level as 'inicial' | 'primario' | 'secundario',
           inscription_period_id: inscriptionForm.inscription_period_id,
-          subject_area: inscriptionForm.subject_area,
+          subject_area: inscriptionForm.subject_area || 'Secundario',
           experience_years: parseInt(inscriptionForm.experience_years),
           availability: inscriptionForm.availability,
           motivational_letter: inscriptionForm.motivational_letter,
           target_position_type_id: inscriptionForm.target_position_type_id || null,
           status: 'submitted', // Administrative inscriptions are submitted directly
-        });
+        })
+        .select()
+        .single();
 
       if (error) throw error;
+
+      // Save secondary selections if applicable
+      if (inscriptionForm.teaching_level === 'secundario' && inscription) {
+        if (subjectSelections.length > 0) {
+          await saveSubjectSelections(inscription.id, subjectSelections);
+        }
+        if (positionSelections.length > 0) {
+          await savePositionSelections(inscription.id, positionSelections);
+        }
+      }
 
       toast({
         title: 'Inscripción creada',
@@ -147,6 +186,8 @@ const AssistedInscription = () => {
       // Reset forms
       setSelectedTeacher(null);
       setSearchDNI('');
+      setSubjectSelections([]);
+      setPositionSelections([]);
       setInscriptionForm({
         teaching_level: '',
         inscription_period_id: '',
@@ -337,7 +378,14 @@ const AssistedInscription = () => {
                 <Label>Nivel Educativo *</Label>
                 <RadioGroup
                   value={inscriptionForm.teaching_level}
-                  onValueChange={(value) => setInscriptionForm(prev => ({ ...prev, teaching_level: value, target_position_type_id: '' }))}
+                  onValueChange={(value) => {
+                    setInscriptionForm(prev => ({ ...prev, teaching_level: value, target_position_type_id: '' }));
+                    // Reset selections when level changes
+                    if (value !== 'secundario') {
+                      setSubjectSelections([]);
+                      setPositionSelections([]);
+                    }
+                  }}
                   className="flex gap-6 mt-2"
                 >
                   <div className="flex items-center space-x-2">
@@ -375,28 +423,42 @@ const AssistedInscription = () => {
                 </Select>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="subject_area">Área/Materia *</Label>
-                  <Input
-                    id="subject_area"
-                    required
-                    placeholder="Ej: Matemática, Lengua, etc."
-                    value={inscriptionForm.subject_area}
-                    onChange={(e) => setInscriptionForm(prev => ({ ...prev, subject_area: e.target.value }))}
+              {/* Secondary Level Selections */}
+              {inscriptionForm.teaching_level === 'secundario' ? (
+                <div className="space-y-6">
+                  <SecondaryInscriptionWizard
+                    onComplete={() => {}} // No action needed as we handle submission differently
+                    initialSubjectSelections={subjectSelections}
+                    initialPositionSelections={positionSelections}
+                    onSubjectSelectionsChange={setSubjectSelections}
+                    onPositionSelectionsChange={setPositionSelections}
+                    isLoading={false}
                   />
                 </div>
-                <div>
-                  <Label htmlFor="experience_years">Años de Experiencia</Label>
-                  <Input
-                    id="experience_years"
-                    type="number"
-                    min="0"
-                    value={inscriptionForm.experience_years}
-                    onChange={(e) => setInscriptionForm(prev => ({ ...prev, experience_years: e.target.value }))}
-                  />
+              ) : (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="subject_area">Área/Materia *</Label>
+                    <Input
+                      id="subject_area"
+                      required
+                      placeholder="Ej: Matemática, Lengua, etc."
+                      value={inscriptionForm.subject_area}
+                      onChange={(e) => setInscriptionForm(prev => ({ ...prev, subject_area: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="experience_years">Años de Experiencia</Label>
+                    <Input
+                      id="experience_years"
+                      type="number"
+                      min="0"
+                      value={inscriptionForm.experience_years}
+                      onChange={(e) => setInscriptionForm(prev => ({ ...prev, experience_years: e.target.value }))}
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Position Type (only for inicial and primario) */}
               {inscriptionForm.teaching_level && inscriptionForm.teaching_level !== 'secundario' && (

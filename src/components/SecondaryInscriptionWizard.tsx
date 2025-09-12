@@ -16,6 +16,8 @@ interface SecondaryInscriptionWizardProps {
   initialSubjectSelections?: SubjectSelection[];
   initialPositionSelections?: PositionSelection[];
   isLoading?: boolean;
+  onSubjectSelectionsChange?: (selections: SubjectSelection[]) => void;
+  onPositionSelectionsChange?: (selections: PositionSelection[]) => void;
 }
 
 export const SecondaryInscriptionWizard: React.FC<SecondaryInscriptionWizardProps> = ({
@@ -23,12 +25,24 @@ export const SecondaryInscriptionWizard: React.FC<SecondaryInscriptionWizardProp
   initialSubjectSelections = [],
   initialPositionSelections = [],
   isLoading = false,
+  onSubjectSelectionsChange,
+  onPositionSelectionsChange,
 }) => {
   const [activeTab, setActiveTab] = useState<'subjects' | 'positions' | 'summary'>('subjects');
   const [subjectSelections, setSubjectSelections] = useState<SubjectSelection[]>(initialSubjectSelections);
   const [positionSelections, setPositionSelections] = useState<PositionSelection[]>(initialPositionSelections);
   
   const { schools, subjects, administrativePositions } = useSecondaryInscriptionData();
+
+  const handleSubjectSelectionsChange = (selections: SubjectSelection[]) => {
+    setSubjectSelections(selections);
+    onSubjectSelectionsChange?.(selections);
+  };
+
+  const handlePositionSelectionsChange = (selections: PositionSelection[]) => {
+    setPositionSelections(selections);
+    onPositionSelectionsChange?.(selections);
+  };
 
   const hasSubjectSelections = subjectSelections.length > 0;
   const hasPositionSelections = positionSelections.length > 0;
@@ -103,7 +117,7 @@ export const SecondaryInscriptionWizard: React.FC<SecondaryInscriptionWizardProp
           <div className="space-y-6">
             <SubjectSelectionGrid
               selectedSubjects={subjectSelections}
-              onSelectionChange={setSubjectSelections}
+              onSelectionChange={handleSubjectSelectionsChange}
             />
             <div className="flex justify-end">
               <Button onClick={handleNext}>
@@ -117,7 +131,7 @@ export const SecondaryInscriptionWizard: React.FC<SecondaryInscriptionWizardProp
           <div className="space-y-6">
             <PositionSelectionGrid
               selectedPositions={positionSelections}
-              onSelectionChange={setPositionSelections}
+              onSelectionChange={handlePositionSelectionsChange}
             />
             <div className="flex justify-between">
               <Button variant="outline" onClick={handleBack}>
