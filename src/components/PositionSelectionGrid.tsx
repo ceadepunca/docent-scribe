@@ -3,18 +3,23 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { UserCheck, Building } from 'lucide-react';
-import { PositionSelection, useSecondaryInscriptionData } from '@/hooks/useSecondaryInscriptionData';
+import { PositionSelection, School, AdministrativePosition } from '@/hooks/useSecondaryInscriptionDataOptimized';
 
 interface PositionSelectionGridProps {
   selectedPositions: PositionSelection[];
   onSelectionChange: (selections: PositionSelection[]) => void;
+  schools: School[];
+  administrativePositions: AdministrativePosition[];
+  loading: boolean;
 }
 
 export const PositionSelectionGrid: React.FC<PositionSelectionGridProps> = ({
   selectedPositions,
   onSelectionChange,
+  schools,
+  administrativePositions,
+  loading,
 }) => {
-  const { schools, administrativePositions, loading } = useSecondaryInscriptionData();
 
   const isSelected = (positionId: string) => {
     return selectedPositions.some(selection => selection.administrative_position_id === positionId);

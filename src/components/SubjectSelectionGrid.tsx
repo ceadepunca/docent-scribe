@@ -3,18 +3,23 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { BookOpen, GraduationCap } from 'lucide-react';
-import { SubjectSelection, useSecondaryInscriptionData } from '@/hooks/useSecondaryInscriptionData';
+import { SubjectSelection, School, Subject } from '@/hooks/useSecondaryInscriptionDataOptimized';
 
 interface SubjectSelectionGridProps {
   selectedSubjects: SubjectSelection[];
   onSelectionChange: (selections: SubjectSelection[]) => void;
+  schools: School[];
+  subjects: Subject[];
+  loading: boolean;
 }
 
 export const SubjectSelectionGrid: React.FC<SubjectSelectionGridProps> = ({
   selectedSubjects,
   onSelectionChange,
+  schools,
+  subjects,
+  loading,
 }) => {
-  const { schools, subjects, loading, getSubjectsBySchool } = useSecondaryInscriptionData();
 
   const isSelected = (subjectId: string) => {
     return selectedSubjects.some(

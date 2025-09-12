@@ -115,10 +115,13 @@ export const SecondaryInscriptionWizard: React.FC<SecondaryInscriptionWizardProp
 
         <TabsContent value="subjects" className="mt-6">
           <div className="space-y-6">
-            <SubjectSelectionGrid
-              selectedSubjects={subjectSelections}
-              onSelectionChange={handleSubjectSelectionsChange}
-            />
+                  <SubjectSelectionGrid
+                    selectedSubjects={subjectSelections}
+                    onSelectionChange={handleSubjectSelectionsChange}
+                    schools={schools}
+                    subjects={subjects}
+                    loading={loading}
+                  />
             <div className="flex justify-end">
               <Button onClick={handleNext}>
                 Continuar a Cargos Administrativos
@@ -129,10 +132,13 @@ export const SecondaryInscriptionWizard: React.FC<SecondaryInscriptionWizardProp
 
         <TabsContent value="positions" className="mt-6">
           <div className="space-y-6">
-            <PositionSelectionGrid
-              selectedPositions={positionSelections}
-              onSelectionChange={handlePositionSelectionsChange}
-            />
+                  <PositionSelectionGrid
+                    selectedPositions={positionSelections}
+                    onSelectionChange={handlePositionSelectionsChange}
+                    schools={schools}
+                    administrativePositions={administrativePositions}
+                    loading={loading}
+                  />
             <div className="flex justify-between">
               <Button variant="outline" onClick={handleBack}>
                 Volver a Materias
