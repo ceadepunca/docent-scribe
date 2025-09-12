@@ -36,7 +36,7 @@ export const usePeriodInscriptions = () => {
       setError(null);
       setCurrentPeriodId(periodId);
 
-      // Fetch inscriptions for the period with explicit join
+      // Fetch inscriptions for the period with explicit join using correct foreign key
       const { data: inscriptionsData, error: inscriptionsError } = await supabase
         .from('inscriptions')
         .select(`
@@ -46,7 +46,7 @@ export const usePeriodInscriptions = () => {
           teaching_level,
           status,
           created_at,
-          profiles!inscriptions_user_id_fkey(
+          profiles!fk_inscriptions_user_profile(
             first_name,
             last_name,
             email,

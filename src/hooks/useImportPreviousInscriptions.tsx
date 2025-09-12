@@ -119,10 +119,13 @@ export const useImportPreviousInscriptions = () => {
   };
 
   const createInscription = async (teacherProfile: any, periodId: string) => {
+    // Use user_id if available, otherwise use profile.id for migrated profiles
+    const userId = teacherProfile.user_id || teacherProfile.id;
+    
     const { data, error } = await supabase
       .from('inscriptions')
       .insert({
-        user_id: teacherProfile.user_id,
+        user_id: userId,
         inscription_period_id: periodId,
         teaching_level: 'secundario', // Default for import
         subject_area: 'General', // Default for import
@@ -141,6 +144,18 @@ export const useImportPreviousInscriptions = () => {
     evaluatorId: string, 
     excelData: ExcelInscriptionData
   ) => {
+    // Check if evaluation already exists to prevent duplicates
+    const { data: existingEval } = await supabase
+      .from('evaluations')
+      .select('id')
+      .eq('inscription_id', inscriptionId)
+      .eq('evaluator_id', evaluatorId)
+      .maybeSingle();
+
+    if (existingEval) {
+      return existingEval; // Return existing evaluation
+    }
+
     const titleType = getTitleTypeFromScore(excelData['TÍTULO']);
     const totalScore = excelData['TÍTULO'] + 
                       excelData['ANTIGÜEDAD TÍTULO'] + 
@@ -212,14 +227,16 @@ export const useImportPreviousInscriptions = () => {
             continue;
           }
 
-          if (!teacher.user_id) {
+          // Use profile.id for migrated profiles without user_id
+          const userId = teacher.user_id || teacher.id;
+          if (!userId) {
             result.skipped++;
-            result.errorDetails.push(`Legajo ${row.LEGAJO}: Perfil sin usuario asociado`);
+            result.errorDetails.push(`Legajo ${row.LEGAJO}: Perfil sin identificador válido`);
             continue;
           }
 
           // Check if inscription already exists
-          const existingInscription = await checkExistingInscription(teacher.user_id, periodId);
+          const existingInscription = await checkExistingInscription(userId, periodId);
           
           if (existingInscription) {
             result.skipped++;
