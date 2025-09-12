@@ -186,9 +186,10 @@ const AssistedInscription = () => {
         }
       }
 
+      const selectedPeriod = periods.find(p => p.id === inscriptionForm.inscription_period_id);
       toast({
         title: 'Inscripción creada',
-        description: `Inscripción creada exitosamente para ${selectedTeacher.first_name} ${selectedTeacher.last_name}`,
+        description: `Inscripción creada exitosamente para ${selectedTeacher.first_name} ${selectedTeacher.last_name} en el período "${selectedPeriod?.name || 'No especificado'}"`,
       });
 
       // Reset forms

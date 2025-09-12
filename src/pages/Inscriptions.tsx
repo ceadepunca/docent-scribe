@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Eye, Edit2, Clock, CheckCircle2, XCircle, AlertCircle, Search, User } from 'lucide-react';
+import { ArrowLeft, Plus, Eye, Edit2, Clock, CheckCircle2, XCircle, AlertCircle, Search, User, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { useInscriptionPeriods } from '@/hooks/useInscriptionPeriods';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -22,6 +23,7 @@ interface Inscription {
   created_at: string;
   updated_at: string;
   user_id: string;
+  inscription_period_id: string;
   has_evaluation?: boolean;
   profiles?: {
     first_name: string;
@@ -29,17 +31,24 @@ interface Inscription {
     email: string;
     dni?: string;
   } | null;
+  inscription_periods?: {
+    id: string;
+    name: string;
+    is_active: boolean;
+  } | null;
 }
 
 const Inscriptions = () => {
   const navigate = useNavigate();
   const { user, isSuperAdmin, isEvaluator, isDocente } = useAuth();
   const { toast } = useToast();
+  const { periods, fetchAllPeriods, getCurrentPeriods } = useInscriptionPeriods();
   const [inscriptions, setInscriptions] = useState<Inscription[]>([]);
   const [filteredInscriptions, setFilteredInscriptions] = useState<Inscription[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [periodFilter, setPeriodFilter] = useState<string>('all');
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -90,16 +99,32 @@ const Inscriptions = () => {
 
   useEffect(() => {
     fetchInscriptions();
-  }, [user]);
+    if (isSuperAdmin || isEvaluator) {
+      fetchAllPeriods();
+    } else {
+      // For regular teachers, get current periods to set default filter
+      const currentPeriods = getCurrentPeriods();
+      if (currentPeriods.length > 0) {
+        setPeriodFilter(currentPeriods[0].id);
+      }
+    }
+  }, [user, isSuperAdmin, isEvaluator]);
 
   const fetchInscriptions = async () => {
     if (!user) return;
 
     try {
-      // Build inscriptions query
+      // Build inscriptions query with period information
       let inscriptionsQuery = supabase
         .from('inscriptions')
-        .select('*')
+        .select(`
+          *,
+          inscription_periods (
+            id,
+            name,
+            is_active
+          )
+        `)
         .order('created_at', { ascending: false });
 
       // If not super admin or evaluator, only show own inscriptions
@@ -161,7 +186,7 @@ const Inscriptions = () => {
     }
   };
 
-  // Filter inscriptions based on search term and status
+  // Filter inscriptions based on search term, status, and period
   useEffect(() => {
     let filtered = inscriptions;
 
@@ -187,8 +212,13 @@ const Inscriptions = () => {
       filtered = filtered.filter(inscription => !inscription.has_evaluation);
     }
 
+    // Filter by period
+    if (periodFilter !== 'all') {
+      filtered = filtered.filter(inscription => inscription.inscription_period_id === periodFilter);
+    }
+
     setFilteredInscriptions(filtered);
-  }, [inscriptions, searchTerm, statusFilter]);
+  }, [inscriptions, searchTerm, statusFilter, periodFilter]);
 
   if (loading) {
     return (
@@ -238,32 +268,74 @@ const Inscriptions = () => {
               )}
             </div>
 
-            {/* Search and Filters - Only for admins/evaluators */}
-            {(isSuperAdmin || isEvaluator) && inscriptions.length > 0 && (
+            {/* Search and Filters */}
+            {inscriptions.length > 0 && (
               <div className="bg-card p-4 rounded-lg border space-y-4">
                 <div className="flex flex-col sm:flex-row gap-4">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                    <Input
-                      placeholder="Buscar por nombre, email o DNI del docente..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
-                  <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-full sm:w-48">
-                      <SelectValue placeholder="Filtrar por estado" />
+                  {(isSuperAdmin || isEvaluator) && (
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                      <Input
+                        placeholder="Buscar por nombre, email o DNI del docente..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
+                  )}
+                  
+                  {/* Period Filter */}
+                  <Select value={periodFilter} onValueChange={setPeriodFilter}>
+                    <SelectTrigger className="w-full sm:w-56">
+                      <SelectValue>
+                        <div className="flex items-center gap-2">
+                          <Calendar className="h-4 w-4" />
+                          <span>
+                            {periodFilter === 'all' 
+                              ? 'Todos los períodos' 
+                              : periods.find(p => p.id === periodFilter)?.name || 'Período seleccionado'
+                            }
+                          </span>
+                        </div>
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Todos los estados</SelectItem>
-                      <SelectItem value="evaluated">Evaluada</SelectItem>
-                      <SelectItem value="not_evaluated">No evaluada</SelectItem>
+                      {(isSuperAdmin || isEvaluator) && (
+                        <SelectItem value="all">Todos los períodos</SelectItem>
+                      )}
+                      {periods.map(period => (
+                        <SelectItem key={period.id} value={period.id}>
+                          <div className="flex items-center justify-between w-full">
+                            <span>{period.name}</span>
+                            <Badge variant={period.is_active ? 'default' : 'secondary'} className="ml-2">
+                              {period.is_active ? 'Activo' : 'Inactivo'}
+                            </Badge>
+                          </div>
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
+
+                  {(isSuperAdmin || isEvaluator) && (
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                      <SelectTrigger className="w-full sm:w-48">
+                        <SelectValue placeholder="Filtrar por estado" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos los estados</SelectItem>
+                        <SelectItem value="evaluated">Evaluada</SelectItem>
+                        <SelectItem value="not_evaluated">No evaluada</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
                 <div className="text-sm text-muted-foreground">
                   Mostrando {filteredInscriptions.length} de {inscriptions.length} inscripciones
+                  {periodFilter !== 'all' && (
+                    <span className="ml-2">
+                      del período "{periods.find(p => p.id === periodFilter)?.name}"
+                    </span>
+                  )}
                 </div>
               </div>
             )}
@@ -318,6 +390,7 @@ const Inscriptions = () => {
                       )}
                       <TableHead>Área/Materia</TableHead>
                       <TableHead>Nivel Educativo</TableHead>
+                      {(isSuperAdmin || isEvaluator) && <TableHead>Período</TableHead>}
                       <TableHead>Experiencia</TableHead>
                       <TableHead>Estado de Evaluación</TableHead>
                       <TableHead>Fecha de Creación</TableHead>
@@ -355,6 +428,20 @@ const Inscriptions = () => {
                         <TableCell>
                           {getLevelLabel(inscription.teaching_level)}
                         </TableCell>
+                        {(isSuperAdmin || isEvaluator) && (
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-medium">
+                                {inscription.inscription_periods?.name || 'Sin período'}
+                              </span>
+                              {inscription.inscription_periods?.is_active && (
+                                <Badge variant="secondary" className="text-xs">
+                                  Activo
+                                </Badge>
+                              )}
+                            </div>
+                          </TableCell>
+                        )}
                         <TableCell>
                           {inscription.experience_years} {inscription.experience_years === 1 ? 'año' : 'años'}
                         </TableCell>
