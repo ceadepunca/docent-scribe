@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { useInscriptionPeriods } from '@/hooks/useInscriptionPeriods';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -22,7 +23,12 @@ interface InscriptionWithProfile {
   created_at: string;
   updated_at: string;
   user_id: string;
+  inscription_period_id: string;
   evaluation_state: 'evaluada' | 'no_evaluada';
+  inscription_period?: {
+    id: string;
+    name: string;
+  };
   profiles: {
     first_name: string;
     last_name: string;
@@ -35,6 +41,7 @@ const Evaluations = () => {
   const navigate = useNavigate();
   const { user, isEvaluator, isSuperAdmin } = useAuth();
   const { toast } = useToast();
+  const { periods, loading: periodsLoading, getCurrentPeriods } = useInscriptionPeriods();
   const [inscriptions, setInscriptions] = useState<InscriptionWithProfile[]>([]);
   const [groupedInscriptions, setGroupedInscriptions] = useState<Record<string, InscriptionWithProfile[]>>({});
   const [duplicatesFound, setDuplicatesFound] = useState(0);
@@ -42,6 +49,7 @@ const Evaluations = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [levelFilter, setLevelFilter] = useState('all');
+  const [periodFilter, setPeriodFilter] = useState('all');
 
   useEffect(() => {
     if (!isEvaluator && !isSuperAdmin) {
@@ -53,7 +61,7 @@ const Evaluations = () => {
 
   useEffect(() => {
     processInscriptions();
-  }, [inscriptions, searchTerm, statusFilter, levelFilter]);
+  }, [inscriptions, searchTerm, statusFilter, levelFilter, periodFilter]);
 
   const fetchInscriptions = async () => {
     if (!user) return;
@@ -61,7 +69,7 @@ const Evaluations = () => {
     try {
       setLoading(true);
       
-      // Get all inscriptions with evaluation status
+      // Get all inscriptions with evaluation status and period info
       const { data: allInscriptions, error: allError } = await supabase
         .from('inscriptions')
         .select(`
@@ -72,7 +80,12 @@ const Evaluations = () => {
           experience_years,
           created_at,
           updated_at,
-          user_id
+          user_id,
+          inscription_period_id,
+          inscription_periods!inner(
+            id,
+            name
+          )
         `)
         .in('status', ['submitted', 'under_review', 'approved', 'rejected', 'requires_changes'])
         .order('created_at', { ascending: false });
@@ -107,6 +120,7 @@ const Evaluations = () => {
       const inscriptionsData: InscriptionWithProfile[] = allInscriptions?.map(inscription => ({
         ...inscription,
         evaluation_state: evaluationMap.has(inscription.id) ? 'evaluada' as const : 'no_evaluada' as const,
+        inscription_period: inscription.inscription_periods,
         profiles: profilesMap.get(inscription.user_id) || null
       })) || [];
 
@@ -176,6 +190,10 @@ const Evaluations = () => {
       filtered = filtered.filter(inscription => inscription.evaluation_state === statusFilter);
     }
 
+    if (periodFilter !== 'all') {
+      filtered = filtered.filter(inscription => inscription.inscription_period_id === periodFilter);
+    }
+
     // Group by teaching level
     const grouped: Record<string, InscriptionWithProfile[]> = {};
     
@@ -222,6 +240,7 @@ const Evaluations = () => {
               <TableHead>Email</TableHead>
               <TableHead>DNI</TableHead>
               {level !== 'secundario' && <TableHead>Área/Materia</TableHead>}
+              <TableHead>Período</TableHead>
               <TableHead>Experiencia</TableHead>
               <TableHead>Estado</TableHead>
               <TableHead>Fecha</TableHead>
@@ -250,6 +269,11 @@ const Evaluations = () => {
                     </div>
                   </TableCell>
                 )}
+                <TableCell>
+                  <Badge variant="outline" className="text-xs">
+                    {inscription.inscription_period?.name || 'Sin período'}
+                  </Badge>
+                </TableCell>
                 <TableCell>
                   {inscription.experience_years} {inscription.experience_years === 1 ? 'año' : 'años'}
                 </TableCell>
@@ -365,7 +389,7 @@ const Evaluations = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
               <div className="md:col-span-2">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
@@ -377,6 +401,20 @@ const Evaluations = () => {
                   />
                 </div>
               </div>
+              
+              <Select value={periodFilter} onValueChange={setPeriodFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Período de inscripción" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos los períodos</SelectItem>
+                  {periods.map((period) => (
+                    <SelectItem key={period.id} value={period.id}>
+                      {period.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger>
