@@ -17,6 +17,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { SecondaryInscriptionWizard } from '@/components/SecondaryInscriptionWizard';
 import { SubjectSelection, PositionSelection, useSecondaryInscriptionData } from '@/hooks/useSecondaryInscriptionData';
+import { TeacherSearchGrid } from '@/components/admin/TeacherSearchGrid';
 
 const AssistedInscription = () => {
   const { user, isSuperAdmin } = useAuth();
@@ -27,7 +28,6 @@ const AssistedInscription = () => {
   const { positionTypes } = usePositionTypes();
   const { saveSubjectSelections, savePositionSelections } = useSecondaryInscriptionData();
 
-  const [searchDNI, setSearchDNI] = useState('');
   const [selectedTeacher, setSelectedTeacher] = useState<any>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -77,20 +77,28 @@ const AssistedInscription = () => {
     );
   }
 
-  const handleSearchTeacher = async () => {
-    if (!searchDNI) return;
+  const handleSelectTeacher = (teacher: any) => {
+    setSelectedTeacher(teacher);
+    setShowCreateForm(false);
+  };
 
-    const teacher = await searchTeacherByDNI(searchDNI);
-    if (teacher) {
-      setSelectedTeacher(teacher);
-      setShowCreateForm(false);
-      // Pre-fill inscription form with teacher data
-      setInscriptionForm(prev => ({ ...prev }));
+  const handleCreateNew = (searchQuery: string) => {
+    setSelectedTeacher(null);
+    setShowCreateForm(true);
+    // Try to extract DNI if the search query looks like a DNI (only numbers)
+    const isDNI = /^\d+$/.test(searchQuery.replace(/\./g, ''));
+    if (isDNI) {
+      setTeacherForm(prev => ({ ...prev, dni: searchQuery.replace(/\./g, '') }));
     } else {
-      setSelectedTeacher(null);
-      setShowCreateForm(true);
-      // Pre-fill teacher form with DNI
-      setTeacherForm(prev => ({ ...prev, dni: searchDNI }));
+      // Try to parse if it looks like "LastName FirstName" format
+      const nameParts = searchQuery.trim().split(/\s+/);
+      if (nameParts.length >= 2) {
+        setTeacherForm(prev => ({ 
+          ...prev, 
+          last_name: nameParts[0],
+          first_name: nameParts.slice(1).join(' ')
+        }));
+      }
     }
   };
 
@@ -185,7 +193,6 @@ const AssistedInscription = () => {
 
       // Reset forms
       setSelectedTeacher(null);
-      setSearchDNI('');
       setSubjectSelections([]);
       setPositionSelections([]);
       setInscriptionForm({
@@ -237,30 +244,14 @@ const AssistedInscription = () => {
         </div>
 
         {/* Search Teacher */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Search className="h-5 w-5" />
-              Buscar Docente
-            </CardTitle>
-            <CardDescription>
-              Ingrese el DNI del docente para buscar o crear su perfil
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex gap-2">
-              <Input
-                placeholder="Ingrese DNI (sin puntos)"
-                value={searchDNI}
-                onChange={(e) => setSearchDNI(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleSearchTeacher()}
-              />
-              <Button onClick={handleSearchTeacher}>
-                Buscar
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        {!selectedTeacher && (
+          <div className="mb-6">
+            <TeacherSearchGrid
+              onSelectTeacher={handleSelectTeacher}
+              onCreateNew={handleCreateNew}
+            />
+          </div>
+        )}
 
         {/* Teacher Found */}
         {selectedTeacher && (
@@ -268,7 +259,7 @@ const AssistedInscription = () => {
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  ✅ Docente Encontrado
+                  ✅ Docente Seleccionado
                 </div>
                 <Badge variant={selectedTeacher.migrated ? "secondary" : "default"}>
                   {selectedTeacher.migrated ? "Migrado" : "Registrado"}
@@ -505,7 +496,6 @@ const AssistedInscription = () => {
               <div className="flex justify-end gap-2 pt-4">
                 <Button variant="outline" onClick={() => {
                   setSelectedTeacher(null);
-                  setSearchDNI('');
                   setShowCreateForm(false);
                 }}>
                   Cancelar

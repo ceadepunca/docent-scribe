@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -47,6 +47,8 @@ interface ImportResult {
 export const useTeacherManagement = () => {
   const [teachers, setTeachers] = useState<TeacherProfile[]>([]);
   const [loading, setLoading] = useState(false);
+  const [searchResults, setSearchResults] = useState<TeacherProfile[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
   const { toast } = useToast();
 
   const fetchTeachers = useCallback(async () => {
@@ -307,6 +309,37 @@ export const useTeacherManagement = () => {
     }
   }, [searchTeacherByDNI, createTeacher, updateTeacher, normalizeHeaders, toast]);
 
+  const searchTeachers = useCallback(async (query: string): Promise<TeacherProfile[]> => {
+    if (!query.trim()) {
+      setSearchResults([]);
+      return [];
+    }
+
+    try {
+      setSearchLoading(true);
+      const cleanQuery = query.trim();
+      
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .or(`first_name.ilike.%${cleanQuery}%,last_name.ilike.%${cleanQuery}%,dni.eq.${cleanQuery.replace(/\./g, '')}`)
+        .order('last_name', { ascending: true })
+        .limit(50);
+
+      if (error) throw error;
+      
+      const results = data || [];
+      setSearchResults(results);
+      return results;
+    } catch (error) {
+      console.error('Error searching teachers:', error);
+      setSearchResults([]);
+      return [];
+    } finally {
+      setSearchLoading(false);
+    }
+  }, []);
+
   const getTeacherStats = useCallback(() => {
     const registered = teachers.filter(t => t.user_id && t.data_complete).length;
     const migrated = teachers.filter(t => !t.user_id && t.migrated && t.data_complete).length;
@@ -318,8 +351,11 @@ export const useTeacherManagement = () => {
   return {
     teachers,
     loading,
+    searchResults,
+    searchLoading,
     fetchTeachers,
     searchTeacherByDNI,
+    searchTeachers,
     createTeacher,
     updateTeacher,
     importTeachersFromExcel,
