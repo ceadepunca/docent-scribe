@@ -418,12 +418,12 @@ const AssistedInscription = () => {
               {inscriptionForm.teaching_level === 'secundario' ? (
                 <div className="space-y-6">
                   <SecondaryInscriptionWizard
-                    onComplete={() => {}} // No action needed as we handle submission differently
+                    onComplete={() => handleSubmitInscription()}
                     initialSubjectSelections={subjectSelections}
                     initialPositionSelections={positionSelections}
                     onSubjectSelectionsChange={setSubjectSelections}
                     onPositionSelectionsChange={setPositionSelections}
-                    isLoading={false}
+                    isLoading={submitting}
                   />
                 </div>
               ) : (
@@ -493,17 +493,19 @@ const AssistedInscription = () => {
                 />
               </div>
 
-              <div className="flex justify-end gap-2 pt-4">
-                <Button variant="outline" onClick={() => {
-                  setSelectedTeacher(null);
-                  setShowCreateForm(false);
-                }}>
-                  Cancelar
-                </Button>
-                <Button onClick={handleSubmitInscription} disabled={submitting}>
-                  {submitting ? 'Creando Inscripción...' : 'Crear Inscripción'}
-                </Button>
-              </div>
+              {inscriptionForm.teaching_level !== 'secundario' && (
+                <div className="flex justify-end gap-2 pt-4">
+                  <Button variant="outline" onClick={() => {
+                    setSelectedTeacher(null);
+                    setShowCreateForm(false);
+                  }}>
+                    Cancelar
+                  </Button>
+                  <Button onClick={handleSubmitInscription} disabled={submitting}>
+                    {submitting ? 'Creando Inscripción...' : 'Crear Inscripción'}
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}

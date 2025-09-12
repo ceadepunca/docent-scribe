@@ -81,6 +81,82 @@ const InscriptionForm: React.FC<InscriptionFormProps> = ({ initialData, isEdit =
     }
   };
 
+  const handleSaveDraft = async () => {
+    if (!user) return;
+    
+    setIsSubmitting(true);
+    
+    try {
+      const formValues = form.getValues();
+      
+      // Determine inscription_period_id
+      let inscriptionPeriodId = initialData?.inscription_period_id;
+      
+      if (!inscriptionPeriodId) {
+        const period = getPeriodForLevel(formValues.teaching_level);
+        if (!period) {
+          throw new Error('No hay un período de inscripción activo para este nivel');
+        }
+        inscriptionPeriodId = period.id;
+      }
+
+      const inscriptionData = {
+        subject_area: formValues.subject_area || 'No especificada',
+        teaching_level: formValues.teaching_level,
+        experience_years: formValues.experience_years || 0,
+        availability: formValues.availability,
+        motivational_letter: formValues.motivational_letter,
+        inscription_period_id: inscriptionPeriodId,
+        user_id: user.id,
+        status: 'draft' as const
+      };
+
+      let result;
+      if (isEdit && initialData?.id) {
+        result = await supabase
+          .from('inscriptions')
+          .update(inscriptionData)
+          .eq('id', initialData.id)
+          .select()
+          .single();
+      } else {
+        result = await supabase
+          .from('inscriptions')
+          .insert(inscriptionData)
+          .select()
+          .single();
+      }
+
+      if (result.error) throw result.error;
+
+      toast({
+        title: isEdit ? 'Inscripción actualizada' : 'Borrador guardado',
+        description: 'La inscripción se guardó como borrador',
+      });
+
+      navigate('/inscriptions');
+    } catch (error: any) {
+      console.error('Error:', error);
+      
+      let errorMessage = 'Ocurrió un error al guardar el borrador';
+      
+      // Handle unique constraint violation
+      if (error.code === '23505' && error.message?.includes('unique_user_inscription_per_period')) {
+        errorMessage = 'Ya tiene una inscripción para este período. Si desea crear una nueva inscripción, debe solicitar la eliminación de la existente desde el panel principal.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const onSubmit = async (data: InscriptionFormData, isDraft: boolean = false) => {
     if (!user) return;
     
@@ -376,7 +452,7 @@ const InscriptionForm: React.FC<InscriptionFormProps> = ({ initialData, isEdit =
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={form.handleSubmit((data) => onSubmit(data, true))}
+                  onClick={handleSaveDraft}
                   disabled={isSubmitting}
                   className="flex items-center gap-2"
                 >
