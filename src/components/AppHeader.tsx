@@ -2,7 +2,7 @@ import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { LogOut, FileText, ClipboardList } from 'lucide-react';
+import { LogOut, FileText, ClipboardList, UserPlus } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 const AppHeader = () => {
@@ -61,6 +61,17 @@ const AppHeader = () => {
                 <FileText className="h-4 w-4" />
                 Listados
               </Button>
+              {userRoles.includes('super_admin') && (
+                <Button
+                  variant={location.pathname === '/admin/assisted-inscription' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => navigate('/admin/assisted-inscription')}
+                  className="flex items-center gap-2"
+                >
+                  <UserPlus className="h-4 w-4" />
+                  Inscripción Asistida
+                </Button>
+              )}
             </nav>
           )}
         </div>
