@@ -319,6 +319,16 @@ const InscriptionDetail = () => {
                         Siguiente sin evaluar
                       </Button>
                     )}
+                    
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={evaluationNav.backToEvaluations}
+                      className="ml-2"
+                    >
+                      <List className="h-4 w-4 mr-1" />
+                      Seleccionar otro docente
+                    </Button>
                   </div>
                 </div>
               </CardContent>
