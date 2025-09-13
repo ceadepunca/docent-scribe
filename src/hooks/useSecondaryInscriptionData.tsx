@@ -11,6 +11,7 @@ export interface Subject {
   id: string;
   name: string;
   school_id: string;
+  specialty: 'ciclo_basico' | 'electromecanica' | 'construccion';
   school?: School;
 }
 
@@ -51,7 +52,7 @@ export const useSecondaryInscriptionData = () => {
         
         supabase
           .from('subjects')
-          .select('id, name, school_id')
+          .select('id, name, school_id, specialty')
           .eq('is_active', true),
         
         supabase
@@ -65,7 +66,7 @@ export const useSecondaryInscriptionData = () => {
       if (positionsResult.error) throw positionsResult.error;
 
       const schoolsData = schoolsResult.data || [];
-      const subjectsData = subjectsResult.data || [];
+      const subjectsData = (subjectsResult.data || []) as Subject[];
       const positionsData = positionsResult.data || [];
 
       // Filter subjects and positions by secondary schools only
@@ -94,6 +95,34 @@ export const useSecondaryInscriptionData = () => {
 
   const getPositionsBySchool = (schoolId: string): AdministrativePosition[] => {
     return administrativePositions.filter(position => position.school_id === schoolId);
+  };
+
+  const getSubjectsBySchoolAndSpecialty = (schoolId: string, specialty: 'ciclo_basico' | 'electromecanica' | 'construccion'): Subject[] => {
+    return subjects.filter(subject => subject.school_id === schoolId && subject.specialty === specialty);
+  };
+
+  const getPositionsBySchoolSorted = (schoolId: string): AdministrativePosition[] => {
+    const schoolPositions = administrativePositions.filter(position => position.school_id === schoolId);
+    
+    // Define hierarchical order
+    const hierarchyOrder = ['Director', 'Vice Director', 'Secretario', 'Pro Secretario'];
+    
+    return schoolPositions.sort((a, b) => {
+      const aIndex = hierarchyOrder.findIndex(title => a.name.toLowerCase().includes(title.toLowerCase()));
+      const bIndex = hierarchyOrder.findIndex(title => b.name.toLowerCase().includes(title.toLowerCase()));
+      
+      // If both are in hierarchy, sort by hierarchy
+      if (aIndex !== -1 && bIndex !== -1) {
+        return aIndex - bIndex;
+      }
+      
+      // If only one is in hierarchy, prioritize it
+      if (aIndex !== -1) return -1;
+      if (bIndex !== -1) return 1;
+      
+      // If neither is in hierarchy, sort alphabetically
+      return a.name.localeCompare(b.name);
+    });
   };
 
   const saveSubjectSelections = async (inscriptionId: string, selections: SubjectSelection[]) => {
@@ -160,6 +189,8 @@ export const useSecondaryInscriptionData = () => {
     refetch: fetchData,
     getSubjectsBySchool,
     getPositionsBySchool,
+    getSubjectsBySchoolAndSpecialty,
+    getPositionsBySchoolSorted,
     saveSubjectSelections,
     savePositionSelections,
   };

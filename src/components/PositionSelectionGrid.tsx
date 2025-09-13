@@ -72,6 +72,26 @@ export const PositionSelectionGrid: React.FC<PositionSelectionGridProps> = ({
     return acc;
   }, [] as { name: string; positions: typeof administrativePositions }[]);
 
+  // Sort positions hierarchically
+  const hierarchyOrder = ['Director', 'Vice Director', 'Secretario', 'Pro Secretario'];
+  
+  const sortedPositions = allPositions.sort((a, b) => {
+    const aIndex = hierarchyOrder.findIndex(title => a.name.toLowerCase().includes(title.toLowerCase()));
+    const bIndex = hierarchyOrder.findIndex(title => b.name.toLowerCase().includes(title.toLowerCase()));
+    
+    // If both are in hierarchy, sort by hierarchy
+    if (aIndex !== -1 && bIndex !== -1) {
+      return aIndex - bIndex;
+    }
+    
+    // If only one is in hierarchy, prioritize it
+    if (aIndex !== -1) return -1;
+    if (bIndex !== -1) return 1;
+    
+    // If neither is in hierarchy, sort alphabetically
+    return a.name.localeCompare(b.name);
+  });
+
   return (
     <Card>
       <CardHeader>
@@ -96,7 +116,7 @@ export const PositionSelectionGrid: React.FC<PositionSelectionGridProps> = ({
           </div>
 
           {/* Positions Grid */}
-          {allPositions.map(positionGroup => (
+          {sortedPositions.map(positionGroup => (
             <div key={positionGroup.name} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center py-3 border-b border-muted">
               <div className="font-medium flex items-center gap-2">
                 <Building className="h-4 w-4 text-muted-foreground" />

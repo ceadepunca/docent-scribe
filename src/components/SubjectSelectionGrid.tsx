@@ -97,39 +97,72 @@ export const SubjectSelectionGrid: React.FC<SubjectSelectionGridProps> = ({
             ))}
           </div>
 
-          {/* Subjects Grid */}
-          {allSubjects.map(subjectGroup => (
-            <div key={subjectGroup.name} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center py-3 border-b border-muted">
-              <div className="font-medium flex items-center gap-2">
-                <GraduationCap className="h-4 w-4 text-muted-foreground" />
-                {subjectGroup.name}
-              </div>
-              
-              {schools.map(school => {
-                const schoolSubject = subjectGroup.subjects.find(s => s.school_id === school.id);
+          {/* Group subjects by specialty */}
+          {['ciclo_basico', 'electromecanica', 'construccion'].map(specialty => {
+            const specialtySubjects = subjects.filter(s => s.specialty === specialty);
+            if (specialtySubjects.length === 0) return null;
+
+            const specialtyLabels = {
+              ciclo_basico: 'CICLO BÁSICO',
+              electromecanica: 'ELECTROMECÁNICA', 
+              construccion: 'CONSTRUCCIÓN'
+            };
+
+            // Group by subject name within specialty
+            const subjectGroups = specialtySubjects.reduce((acc, subject) => {
+              const existingSubject = acc.find(s => s.name === subject.name);
+              if (!existingSubject) {
+                acc.push({
+                  name: subject.name,
+                  subjects: [subject]
+                });
+              } else {
+                existingSubject.subjects.push(subject);
+              }
+              return acc;
+            }, [] as { name: string; subjects: typeof subjects }[]);
+
+            return (
+              <div key={specialty} className="space-y-4">
+                <h3 className="font-semibold text-lg text-primary border-b border-primary/20 pb-2">
+                  {specialtyLabels[specialty as keyof typeof specialtyLabels]}
+                </h3>
                 
-                return (
-                  <div key={school.id} className="flex justify-center">
-                    {schoolSubject ? (
-                      <label className="flex items-center space-x-2">
-                        <Checkbox
-                          checked={isSelected(schoolSubject.id)}
-                          onCheckedChange={(checked) => 
-                            handleSelectionChange(schoolSubject.id, checked as boolean)
-                          }
-                        />
-                        <span className="text-sm">Profesor</span>
-                      </label>
-                    ) : (
-                      <div className="text-muted-foreground text-sm">
-                        No disponible
-                      </div>
-                    )}
+                {subjectGroups.sort((a, b) => a.name.localeCompare(b.name)).map(subjectGroup => (
+                  <div key={subjectGroup.name} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center py-3 border-b border-muted">
+                    <div className="font-medium flex items-center gap-2">
+                      <GraduationCap className="h-4 w-4 text-muted-foreground" />
+                      {subjectGroup.name}
+                    </div>
+                    
+                    {schools.map(school => {
+                      const schoolSubject = subjectGroup.subjects.find(s => s.school_id === school.id);
+                      
+                      return (
+                        <div key={school.id} className="flex justify-center">
+                          {schoolSubject ? (
+                            <label className="flex items-center space-x-2">
+                              <Checkbox
+                                checked={isSelected(schoolSubject.id)}
+                                onCheckedChange={(checked) => 
+                                  handleSelectionChange(schoolSubject.id, checked as boolean)
+                                }
+                              />
+                              <span className="text-sm">Profesor</span>
+                            </label>
+                          ) : (
+                            <div className="text-muted-foreground text-sm">
+                              No disponible
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
-                );
-              })}
-            </div>
-          ))}
+                ))}
+              </div>
+            );
+          })}
         </div>
 
         {/* Selection Summary */}

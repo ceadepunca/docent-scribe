@@ -8,6 +8,7 @@ export interface ListingItem {
   school_name: string;
   item_name: string; // subject or position name
   item_type: 'subject' | 'position';
+  specialty?: 'ciclo_basico' | 'electromecanica' | 'construccion'; // only for subjects
   total_score: number | null;
   evaluation_status: 'completed' | 'draft';
   evaluation_id: string | null;
@@ -103,6 +104,7 @@ export const useListingData = () => {
           ),
           subjects!inner(
             name,
+            specialty,
             school_id,
             schools!inner(name)
           ),
@@ -217,6 +219,7 @@ export const useListingData = () => {
             school_name: selection.subjects.schools.name,
             item_name: selection.subjects.name,
             item_type: 'subject',
+            specialty: selection.subjects.specialty as 'ciclo_basico' | 'electromecanica' | 'construccion',
             total_score: evaluation?.total_score || null,
             evaluation_status: evaluation?.status || 'draft',
             evaluation_id: evaluation?.id || null,
@@ -297,23 +300,70 @@ export const useListingData = () => {
         return item.evaluation_status === filters.evaluationStatus;
       });
 
-      // Sort: completed evaluations first (by score), then draft (alphabetically)
-      filteredResults.sort((a, b) => {
-        // First by status (completed first)
-        if (a.evaluation_status === 'completed' && b.evaluation_status !== 'completed') return -1;
-        if (a.evaluation_status !== 'completed' && b.evaluation_status === 'completed') return 1;
+      // Sort with new hierarchical structure
+      const sortListingItems = (items: ListingItem[]) => {
+        // First separate by item type
+        const subjects = items.filter(item => item.item_type === 'subject');
+        const positions = items.filter(item => item.item_type === 'position');
         
-        // Then by score (for completed) or name (for drafts)
-        if (a.evaluation_status === 'completed' && b.evaluation_status === 'completed') {
-          const scoreA = a.total_score || 0;
-          const scoreB = b.total_score || 0;
-          if (scoreA !== scoreB) return scoreB - scoreA;
-        }
+        // Sort subjects by specialty and name
+        subjects.sort((a, b) => {
+          // First by specialty
+          const specialtyOrder = { 'ciclo_basico': 0, 'electromecanica': 1, 'construccion': 2 };
+          const aSpecialty = specialtyOrder[a.specialty || 'ciclo_basico'];
+          const bSpecialty = specialtyOrder[b.specialty || 'ciclo_basico'];
+          
+          if (aSpecialty !== bSpecialty) return aSpecialty - bSpecialty;
+          
+          // Then by name
+          if (a.item_name !== b.item_name) return a.item_name.localeCompare(b.item_name);
+          
+          // Finally by evaluation status and score
+          if (a.evaluation_status === 'completed' && b.evaluation_status !== 'completed') return -1;
+          if (a.evaluation_status !== 'completed' && b.evaluation_status === 'completed') return 1;
+          
+          if (a.evaluation_status === 'completed' && b.evaluation_status === 'completed') {
+            const scoreA = a.total_score || 0;
+            const scoreB = b.total_score || 0;
+            if (scoreA !== scoreB) return scoreB - scoreA;
+          }
+          
+          return a.teacher_name.localeCompare(b.teacher_name);
+        });
         
-        return a.teacher_name.localeCompare(b.teacher_name);
-      });
+        // Sort positions hierarchically
+        positions.sort((a, b) => {
+          const hierarchyOrder = ['Director', 'Vice Director', 'Secretario', 'Pro Secretario'];
+          
+          const aIndex = hierarchyOrder.findIndex(title => a.item_name.toLowerCase().includes(title.toLowerCase()));
+          const bIndex = hierarchyOrder.findIndex(title => b.item_name.toLowerCase().includes(title.toLowerCase()));
+          
+          // First by hierarchy
+          if (aIndex !== -1 && bIndex !== -1) {
+            if (aIndex !== bIndex) return aIndex - bIndex;
+          } else if (aIndex !== -1) return -1;
+          else if (bIndex !== -1) return 1;
+          
+          // Then by name
+          if (a.item_name !== b.item_name) return a.item_name.localeCompare(b.item_name);
+          
+          // Finally by evaluation status and score
+          if (a.evaluation_status === 'completed' && b.evaluation_status !== 'completed') return -1;
+          if (a.evaluation_status !== 'completed' && b.evaluation_status === 'completed') return 1;
+          
+          if (a.evaluation_status === 'completed' && b.evaluation_status === 'completed') {
+            const scoreA = a.total_score || 0;
+            const scoreB = b.total_score || 0;
+            if (scoreA !== scoreB) return scoreB - scoreA;
+          }
+          
+          return a.teacher_name.localeCompare(b.teacher_name);
+        });
+        
+        return [...subjects, ...positions];
+      };
 
-      setListings(filteredResults);
+      setListings(sortListingItems(filteredResults));
     } catch (err) {
       console.error('Error fetching listings:', err);
       setError('Error al cargar listados');
