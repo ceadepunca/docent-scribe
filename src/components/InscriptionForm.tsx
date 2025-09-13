@@ -305,6 +305,48 @@ const InscriptionForm: React.FC<InscriptionFormProps> = ({ initialData, isEdit =
 
   return (
     <div className="w-full max-w-4xl mx-auto space-y-6">
+      {/* Period Information Display */}
+      {initialData?.inscription_period_id && (
+        (() => {
+          const currentPeriods = getCurrentPeriods();
+          const period = currentPeriods.find(p => p.id === initialData.inscription_period_id);
+          
+          if (!period) return null;
+
+          const endDate = new Date(period.end_date);
+          const now = new Date();
+          const daysRemaining = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+          const isNearDeadline = daysRemaining <= 7 && daysRemaining > 0;
+          
+          return (
+            <Card className="bg-muted/30 border-primary/20">
+              <CardContent className="pt-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-medium text-foreground mb-1">
+                      Período de Inscripción: {period.name}
+                    </h4>
+                    <p className="text-sm text-muted-foreground">
+                      Válido hasta: {endDate.toLocaleDateString('es-AR')}
+                      {daysRemaining > 0 && (
+                        <span className={daysRemaining <= 3 ? "text-red-600 font-medium ml-1" : "ml-1"}>
+                          ({daysRemaining} días restantes)
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                  {isNearDeadline && (
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                      ⚠️ Próximo a vencer
+                    </span>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })()
+      )}
+
       <Card className="w-full max-w-4xl mx-auto">
         <CardHeader>
           <div className="flex items-center justify-between">

@@ -60,6 +60,73 @@ const NewInscription = () => {
               {selectedLevel && ` en el nivel ${selectedLevel}`}
             </p>
           </div>
+
+          {/* Period Information Card */}
+          {selectedLevel && periodId && !loading && (
+            (() => {
+              const period = getPeriodForLevel(selectedLevel);
+              if (!period || period.id !== periodId) return null;
+
+              const startDate = new Date(period.start_date);
+              const endDate = new Date(period.end_date);
+              const now = new Date();
+              const daysRemaining = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+              const isNearDeadline = daysRemaining <= 7 && daysRemaining > 0;
+              
+              return (
+                <div className="bg-card border border-border rounded-lg p-6 mb-6">
+                  <div className="flex items-start justify-between mb-4">
+                    <div>
+                      <h3 className="text-lg font-semibold text-foreground mb-1">
+                        {period.name}
+                      </h3>
+                      {period.description && (
+                        <p className="text-sm text-muted-foreground mb-2">
+                          {period.description}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {isNearDeadline && (
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                          ⚠️ Quedan {daysRemaining} días
+                        </span>
+                      )}
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        ✓ Activo
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                    <div>
+                      <span className="font-medium text-foreground">Período:</span>
+                      <p className="text-muted-foreground">
+                        {startDate.toLocaleDateString('es-AR')} - {endDate.toLocaleDateString('es-AR')}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="font-medium text-foreground">Nivel seleccionado:</span>
+                      <p className="text-muted-foreground capitalize">
+                        {selectedLevel}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="font-medium text-foreground">Fecha límite:</span>
+                      <p className={daysRemaining <= 3 ? "text-red-600 font-medium" : "text-muted-foreground"}>
+                        {endDate.toLocaleDateString('es-AR')}
+                        {daysRemaining > 0 && (
+                          <span className="ml-1">
+                            ({daysRemaining} días restantes)
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()
+          )}
         </div>
 
         <InscriptionForm 
