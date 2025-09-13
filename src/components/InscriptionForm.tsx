@@ -234,28 +234,63 @@ const InscriptionForm: React.FC<InscriptionFormProps> = ({ initialData, isEdit =
     }
   };
 
+  const handleAutoSave = async (inscriptionPeriodId: string): Promise<string | null> => {
+    if (!user) return null;
+    
+    try {
+      const inscriptionData = {
+        subject_area: 'Secundario',
+        teaching_level: 'secundario' as const,
+        experience_years: 0,
+        availability: null,
+        motivational_letter: null,
+        inscription_period_id: inscriptionPeriodId,
+        user_id: user.id,
+        status: 'draft' as const
+      };
+
+      const { data: inscription, error } = await supabase
+        .from('inscriptions')
+        .insert(inscriptionData)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      toast({
+        title: 'Borrador guardado',
+        description: 'Se guardó un borrador de su inscripción para habilitar la carga de documentos',
+      });
+
+      return inscription.id;
+    } catch (error) {
+      console.error('Error al auto-guardar:', error);
+      toast({
+        title: 'Error',
+        description: 'No se pudo guardar el borrador automáticamente',
+        variant: 'destructive',
+      });
+      return null;
+    }
+  };
+
   const handleSecondaryInscriptionComplete = async (selections: {
     subjectSelections: SubjectSelection[];
     positionSelections: PositionSelection[];
+    inscriptionPeriodId: string;
   }) => {
     if (!user) return;
     
     setIsSubmitting(true);
     
     try {
-      const inscriptionPeriodId = initialData?.inscription_period_id;
-      
-      if (!inscriptionPeriodId) {
-        throw new Error('No hay un período de inscripción válido');
-      }
-
       const inscriptionData = {
-        subject_area: 'Secundario', // Default value for secondary
+        subject_area: 'Secundario',
         teaching_level: 'secundario' as const,
-        experience_years: 0, // Default value
+        experience_years: 0,
         availability: null,
         motivational_letter: null,
-        inscription_period_id: inscriptionPeriodId,
+        inscription_period_id: selections.inscriptionPeriodId,
         user_id: user.id,
         status: 'submitted' as const
       };
@@ -298,6 +333,7 @@ const InscriptionForm: React.FC<InscriptionFormProps> = ({ initialData, isEdit =
     return (
       <SecondaryInscriptionWizard
         onComplete={handleSecondaryInscriptionComplete}
+        onAutoSave={handleAutoSave}
         isLoading={isSubmitting}
       />
     );

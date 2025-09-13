@@ -3,19 +3,24 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle2, Circle, BookOpen, UserCheck, FileText } from 'lucide-react';
+import { CheckCircle2, Circle, BookOpen, UserCheck, FileText, Calendar } from 'lucide-react';
 import { SubjectSelectionGrid } from './SubjectSelectionGrid';
 import { PositionSelectionGrid } from './PositionSelectionGrid';
 import { InscriptionDocumentUploader } from './InscriptionDocumentUploader';
+import { PeriodSelectionGrid } from './PeriodSelectionGrid';
 import { SubjectSelection, PositionSelection, useSecondaryInscriptionData } from '@/hooks/useSecondaryInscriptionData';
+import { useInscriptionPeriods } from '@/hooks/useInscriptionPeriods';
 
 interface SecondaryInscriptionWizardProps {
   onComplete: (data: {
     subjectSelections: SubjectSelection[];
     positionSelections: PositionSelection[];
+    inscriptionPeriodId: string;
   }) => void;
+  onAutoSave?: (inscriptionPeriodId: string) => Promise<string | null>;
   initialSubjectSelections?: SubjectSelection[];
   initialPositionSelections?: PositionSelection[];
+  initialInscriptionPeriodId?: string;
   isLoading?: boolean;
   onSubjectSelectionsChange?: (selections: SubjectSelection[]) => void;
   onPositionSelectionsChange?: (selections: PositionSelection[]) => void;
@@ -24,18 +29,24 @@ interface SecondaryInscriptionWizardProps {
 
 export const SecondaryInscriptionWizard: React.FC<SecondaryInscriptionWizardProps> = ({
   onComplete,
+  onAutoSave,
   initialSubjectSelections = [],
   initialPositionSelections = [],
+  initialInscriptionPeriodId,
   isLoading = false,
   onSubjectSelectionsChange,
   onPositionSelectionsChange,
   inscriptionId = null,
 }) => {
-  const [activeTab, setActiveTab] = useState<'subjects' | 'positions' | 'documents' | 'summary'>('subjects');
+  const [activeTab, setActiveTab] = useState<'period' | 'subjects' | 'positions' | 'documents' | 'summary'>('period');
   const [subjectSelections, setSubjectSelections] = useState<SubjectSelection[]>(initialSubjectSelections);
   const [positionSelections, setPositionSelections] = useState<PositionSelection[]>(initialPositionSelections);
+  const [selectedPeriodId, setSelectedPeriodId] = useState<string | null>(initialInscriptionPeriodId || null);
+  const [autoSaving, setAutoSaving] = useState(false);
+  const [savedInscriptionId, setSavedInscriptionId] = useState<string | null>(inscriptionId);
   
   const { schools, subjects, administrativePositions, loading } = useSecondaryInscriptionData();
+  const { periods, loading: periodsLoading } = useInscriptionPeriods();
 
   const handleSubjectSelectionsChange = (selections: SubjectSelection[]) => {
     setSubjectSelections(selections);
@@ -51,10 +62,24 @@ export const SecondaryInscriptionWizard: React.FC<SecondaryInscriptionWizardProp
   const hasPositionSelections = positionSelections.length > 0;
   const hasAnySelections = hasSubjectSelections || hasPositionSelections;
 
-  const handleNext = () => {
-    if (activeTab === 'subjects') {
+  const handleNext = async () => {
+    if (activeTab === 'period') {
+      setActiveTab('subjects');
+    } else if (activeTab === 'subjects') {
       setActiveTab('positions');
     } else if (activeTab === 'positions') {
+      // Auto-save when accessing documents for the first time
+      if (!savedInscriptionId && selectedPeriodId && onAutoSave) {
+        setAutoSaving(true);
+        try {
+          const newInscriptionId = await onAutoSave(selectedPeriodId);
+          if (newInscriptionId) {
+            setSavedInscriptionId(newInscriptionId);
+          }
+        } finally {
+          setAutoSaving(false);
+        }
+      }
       setActiveTab('documents');
     } else if (activeTab === 'documents') {
       setActiveTab('summary');
@@ -62,7 +87,9 @@ export const SecondaryInscriptionWizard: React.FC<SecondaryInscriptionWizardProp
   };
 
   const handleBack = () => {
-    if (activeTab === 'positions') {
+    if (activeTab === 'subjects') {
+      setActiveTab('period');
+    } else if (activeTab === 'positions') {
       setActiveTab('subjects');
     } else if (activeTab === 'documents') {
       setActiveTab('positions');
@@ -72,9 +99,12 @@ export const SecondaryInscriptionWizard: React.FC<SecondaryInscriptionWizardProp
   };
 
   const handleComplete = () => {
+    if (!selectedPeriodId) return;
+    
     onComplete({
       subjectSelections,
       positionSelections,
+      inscriptionPeriodId: selectedPeriodId,
     });
   };
 
@@ -90,7 +120,16 @@ export const SecondaryInscriptionWizard: React.FC<SecondaryInscriptionWizardProp
       </Card>
 
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as typeof activeTab)}>
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
+          <TabsTrigger value="period" className="flex items-center gap-2">
+            {selectedPeriodId ? (
+              <CheckCircle2 className="h-4 w-4 text-green-500" />
+            ) : (
+              <Circle className="h-4 w-4" />
+            )}
+            <Calendar className="h-4 w-4" />
+            Período
+          </TabsTrigger>
           <TabsTrigger value="subjects" className="flex items-center gap-2">
             {hasSubjectSelections ? (
               <CheckCircle2 className="h-4 w-4 text-green-500" />
@@ -124,6 +163,24 @@ export const SecondaryInscriptionWizard: React.FC<SecondaryInscriptionWizardProp
           </TabsTrigger>
         </TabsList>
 
+        <TabsContent value="period" className="mt-6">
+          <PeriodSelectionGrid
+            periods={periods}
+            selectedPeriodId={selectedPeriodId}
+            onPeriodSelect={setSelectedPeriodId}
+            loading={periodsLoading}
+            teachingLevel="secundario"
+          />
+          <div className="flex justify-end mt-6">
+            <Button 
+              onClick={handleNext}
+              disabled={!selectedPeriodId || autoSaving}
+            >
+              {autoSaving ? 'Guardando...' : 'Continuar a Materias'}
+            </Button>
+          </div>
+        </TabsContent>
+
         <TabsContent value="subjects" className="mt-6">
           <div className="space-y-6">
                   <SubjectSelectionGrid
@@ -133,7 +190,10 @@ export const SecondaryInscriptionWizard: React.FC<SecondaryInscriptionWizardProp
                     subjects={subjects}
                     loading={loading}
                   />
-            <div className="flex justify-end">
+            <div className="flex justify-between">
+              <Button variant="outline" onClick={handleBack}>
+                Volver a Período
+              </Button>
               <Button onClick={handleNext}>
                 Continuar a Cargos Administrativos
               </Button>
@@ -164,14 +224,17 @@ export const SecondaryInscriptionWizard: React.FC<SecondaryInscriptionWizardProp
         <TabsContent value="documents" className="mt-6">
           <div className="space-y-6">
             <InscriptionDocumentUploader 
-              inscriptionId={inscriptionId}
+              inscriptionId={savedInscriptionId}
             />
             <div className="flex justify-between">
               <Button variant="outline" onClick={handleBack}>
                 Volver a Cargos
               </Button>
-              <Button onClick={handleNext}>
-                Ver Resumen
+              <Button 
+                onClick={handleNext}
+                disabled={autoSaving}
+              >
+                {autoSaving ? 'Guardando borrador...' : 'Ver Resumen'}
               </Button>
             </div>
           </div>
@@ -249,9 +312,9 @@ export const SecondaryInscriptionWizard: React.FC<SecondaryInscriptionWizardProp
                 </Button>
                 <Button 
                   onClick={handleComplete}
-                  disabled={!hasAnySelections || isLoading}
+                  disabled={!hasAnySelections || !selectedPeriodId || isLoading || autoSaving}
                 >
-                  {isLoading ? 'Guardando...' : 'Confirmar Inscripción'}
+                  {isLoading ? 'Guardando...' : autoSaving ? 'Preparando...' : 'Confirmar Inscripción'}
                 </Button>
               </div>
             </CardContent>
