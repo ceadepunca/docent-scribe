@@ -13,7 +13,9 @@ import { es } from 'date-fns/locale';
 import { EvaluationGrid } from '@/components/EvaluationGrid';
 import { ConsolidatedEvaluationGrid } from '@/components/ConsolidatedEvaluationGrid';
 import { useEvaluationNavigation } from '@/hooks/useEvaluationNavigation';
-import { ChevronLeft, ChevronRight, SkipForward, List, ArrowLeft as ArrowLeftIcon } from 'lucide-react';
+import { useInscriptionDocuments } from '@/hooks/useInscriptionDocuments';
+import { DocumentViewer } from '@/components/DocumentViewer';
+import { ChevronLeft, ChevronRight, SkipForward, List, ArrowLeft as ArrowLeftIcon, FileText } from 'lucide-react';
 
 interface InscriptionDetail {
   id: string;
@@ -64,6 +66,7 @@ const InscriptionDetail = () => {
   const { user, isEvaluator, isSuperAdmin } = useAuth();
   const { toast } = useToast();
   const evaluationNav = useEvaluationNavigation(id);
+  const { documents, loading: documentsLoading } = useInscriptionDocuments(id);
   const [inscription, setInscription] = useState<InscriptionDetail | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [subjectSelections, setSubjectSelections] = useState<SubjectSelection[]>([]);
@@ -466,6 +469,37 @@ const InscriptionDetail = () => {
                       {inscription.motivational_letter}
                     </p>
                   </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Documents Section - Only for evaluators and super admins */}
+            {(isEvaluator || isSuperAdmin) && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="h-5 w-5" />
+                    Documentos del Docente
+                    {documents.length > 0 && (
+                      <span className="text-sm font-normal text-muted-foreground">
+                        ({documents.length} documento{documents.length !== 1 ? 's' : ''})
+                      </span>
+                    )}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {documentsLoading ? (
+                    <div className="text-center py-4">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto"></div>
+                      <p className="mt-2 text-sm text-muted-foreground">Cargando documentos...</p>
+                    </div>
+                  ) : documents.length > 0 ? (
+                    <DocumentViewer documents={documents} />
+                  ) : (
+                    <div className="text-center py-4">
+                      <p className="text-muted-foreground">No hay documentos subidos para esta inscripción.</p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             )}
