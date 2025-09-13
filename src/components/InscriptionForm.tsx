@@ -16,6 +16,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Save, Send, ArrowLeft } from 'lucide-react';
 import { SecondaryInscriptionWizard } from './SecondaryInscriptionWizard';
+import { InscriptionDocumentUploader } from './InscriptionDocumentUploader';
 import { SubjectSelection, PositionSelection, useSecondaryInscriptionData } from '@/hooks/useSecondaryInscriptionData';
 
 const inscriptionSchema = z.object({
@@ -303,22 +304,23 @@ const InscriptionForm: React.FC<InscriptionFormProps> = ({ initialData, isEdit =
   }
 
   return (
-    <Card className="w-full max-w-4xl mx-auto">
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle>{isEdit ? 'Editar Inscripción' : 'Nueva Inscripción'}</CardTitle>
-            <CardDescription>
-              Complete los datos requeridos para su inscripción como docente
-            </CardDescription>
+    <div className="w-full max-w-4xl mx-auto space-y-6">
+      <Card className="w-full max-w-4xl mx-auto">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>{isEdit ? 'Editar Inscripción' : 'Nueva Inscripción'}</CardTitle>
+              <CardDescription>
+                Complete los datos requeridos para su inscripción como docente
+              </CardDescription>
+            </div>
+            {initialData?.status && (
+              <Badge className={getStatusColor(initialData.status)}>
+                {getStatusLabel(initialData.status)}
+              </Badge>
+            )}
           </div>
-          {initialData?.status && (
-            <Badge className={getStatusColor(initialData.status)}>
-              {getStatusLabel(initialData.status)}
-            </Badge>
-          )}
-        </div>
-      </CardHeader>
+        </CardHeader>
       <CardContent>
         <Form {...form}>
           <form className="space-y-6">
@@ -474,6 +476,18 @@ const InscriptionForm: React.FC<InscriptionFormProps> = ({ initialData, isEdit =
         </Form>
       </CardContent>
     </Card>
+
+      {initialData?.id && canEdit && (
+        <Card>
+          <CardContent className="pt-6">
+            <InscriptionDocumentUploader 
+              inscriptionId={initialData.id}
+              disabled={!canEdit}
+            />
+          </CardContent>
+        </Card>
+      )}
+    </div>
   );
 };
 

@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { CheckCircle2, Circle, BookOpen, UserCheck, FileText } from 'lucide-react';
 import { SubjectSelectionGrid } from './SubjectSelectionGrid';
 import { PositionSelectionGrid } from './PositionSelectionGrid';
+import { InscriptionDocumentUploader } from './InscriptionDocumentUploader';
 import { SubjectSelection, PositionSelection, useSecondaryInscriptionData } from '@/hooks/useSecondaryInscriptionData';
 
 interface SecondaryInscriptionWizardProps {
@@ -18,6 +19,7 @@ interface SecondaryInscriptionWizardProps {
   isLoading?: boolean;
   onSubjectSelectionsChange?: (selections: SubjectSelection[]) => void;
   onPositionSelectionsChange?: (selections: PositionSelection[]) => void;
+  inscriptionId?: string | null;
 }
 
 export const SecondaryInscriptionWizard: React.FC<SecondaryInscriptionWizardProps> = ({
@@ -27,8 +29,9 @@ export const SecondaryInscriptionWizard: React.FC<SecondaryInscriptionWizardProp
   isLoading = false,
   onSubjectSelectionsChange,
   onPositionSelectionsChange,
+  inscriptionId = null,
 }) => {
-  const [activeTab, setActiveTab] = useState<'subjects' | 'positions' | 'summary'>('subjects');
+  const [activeTab, setActiveTab] = useState<'subjects' | 'positions' | 'documents' | 'summary'>('subjects');
   const [subjectSelections, setSubjectSelections] = useState<SubjectSelection[]>(initialSubjectSelections);
   const [positionSelections, setPositionSelections] = useState<PositionSelection[]>(initialPositionSelections);
   
@@ -52,6 +55,8 @@ export const SecondaryInscriptionWizard: React.FC<SecondaryInscriptionWizardProp
     if (activeTab === 'subjects') {
       setActiveTab('positions');
     } else if (activeTab === 'positions') {
+      setActiveTab('documents');
+    } else if (activeTab === 'documents') {
       setActiveTab('summary');
     }
   };
@@ -59,8 +64,10 @@ export const SecondaryInscriptionWizard: React.FC<SecondaryInscriptionWizardProp
   const handleBack = () => {
     if (activeTab === 'positions') {
       setActiveTab('subjects');
-    } else if (activeTab === 'summary') {
+    } else if (activeTab === 'documents') {
       setActiveTab('positions');
+    } else if (activeTab === 'summary') {
+      setActiveTab('documents');
     }
   };
 
@@ -83,7 +90,7 @@ export const SecondaryInscriptionWizard: React.FC<SecondaryInscriptionWizardProp
       </Card>
 
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as typeof activeTab)}>
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="subjects" className="flex items-center gap-2">
             {hasSubjectSelections ? (
               <CheckCircle2 className="h-4 w-4 text-green-500" />
@@ -101,6 +108,10 @@ export const SecondaryInscriptionWizard: React.FC<SecondaryInscriptionWizardProp
             )}
             <UserCheck className="h-4 w-4" />
             Cargos
+          </TabsTrigger>
+          <TabsTrigger value="documents" className="flex items-center gap-2">
+            <FileText className="h-4 w-4" />
+            Documentos
           </TabsTrigger>
           <TabsTrigger value="summary" className="flex items-center gap-2">
             {hasAnySelections ? (
@@ -142,6 +153,22 @@ export const SecondaryInscriptionWizard: React.FC<SecondaryInscriptionWizardProp
             <div className="flex justify-between">
               <Button variant="outline" onClick={handleBack}>
                 Volver a Materias
+              </Button>
+              <Button onClick={handleNext}>
+                Continuar a Documentos
+              </Button>
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="documents" className="mt-6">
+          <div className="space-y-6">
+            <InscriptionDocumentUploader 
+              inscriptionId={inscriptionId}
+            />
+            <div className="flex justify-between">
+              <Button variant="outline" onClick={handleBack}>
+                Volver a Cargos
               </Button>
               <Button onClick={handleNext}>
                 Ver Resumen
@@ -218,7 +245,7 @@ export const SecondaryInscriptionWizard: React.FC<SecondaryInscriptionWizardProp
 
               <div className="flex justify-between pt-4">
                 <Button variant="outline" onClick={handleBack}>
-                  Volver a Cargos
+                  Volver a Documentos
                 </Button>
                 <Button 
                   onClick={handleComplete}
