@@ -12,6 +12,8 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { EvaluationGrid } from '@/components/EvaluationGrid';
 import { ConsolidatedEvaluationGrid } from '@/components/ConsolidatedEvaluationGrid';
+import { useEvaluationNavigation } from '@/hooks/useEvaluationNavigation';
+import { ChevronLeft, ChevronRight, SkipForward, List, ArrowLeft as ArrowLeftIcon } from 'lucide-react';
 
 interface InscriptionDetail {
   id: string;
@@ -61,6 +63,7 @@ const InscriptionDetail = () => {
   const navigate = useNavigate();
   const { user, isEvaluator, isSuperAdmin } = useAuth();
   const { toast } = useToast();
+  const evaluationNav = useEvaluationNavigation(id);
   const [inscription, setInscription] = useState<InscriptionDetail | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [subjectSelections, setSubjectSelections] = useState<SubjectSelection[]>([]);
@@ -259,12 +262,68 @@ const InscriptionDetail = () => {
         <div className="mb-6">
           <Button
             variant="ghost"
-            onClick={() => navigate('/inscriptions')}
+            onClick={() => evaluationNav.hasEvaluationContext ? evaluationNav.backToEvaluations() : navigate('/inscriptions')}
             className="mb-4"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Volver a Inscripciones
+            {evaluationNav.hasEvaluationContext ? 'Volver a Evaluaciones' : 'Volver a Inscripciones'}
           </Button>
+          
+          {/* Evaluation Navigation Header */}
+          {evaluationNav.hasEvaluationContext && (
+            <Card className="mb-6 bg-primary/5 border-primary/20">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
+                      <List className="h-5 w-5 text-primary" />
+                      <div>
+                        <h3 className="font-semibold text-sm">
+                          Evaluando: {evaluationNav.currentPeriodName}
+                        </h3>
+                        <p className="text-xs text-muted-foreground">
+                          Docente {evaluationNav.currentPosition} de {evaluationNav.totalInscriptions} • 
+                          {evaluationNav.evaluatedCount} evaluadas • {evaluationNav.unevaluatedCount} pendientes
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={evaluationNav.goToPrevious}
+                      disabled={!evaluationNav.canGoToPrevious}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={evaluationNav.goToNext}
+                      disabled={!evaluationNav.canGoToNext}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                    
+                    {evaluationNav.unevaluatedCount > 0 && (
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={evaluationNav.goToNextUnevaluated}
+                        className="ml-2"
+                      >
+                        <SkipForward className="h-4 w-4 mr-1" />
+                        Siguiente sin evaluar
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
           
           <div className="flex items-center justify-between mb-8">
             <div>
@@ -407,6 +466,7 @@ const InscriptionDetail = () => {
               <EvaluationGrid 
                 inscriptionId={inscription.id}
                 teachingLevel={inscription.teaching_level}
+                evaluationNavigation={evaluationNav}
               />
             )}
           </div>
@@ -491,11 +551,12 @@ const InscriptionDetail = () => {
       {/* Full-width Consolidated Evaluation Grid for Secondary Level */}
       {(isEvaluator || isSuperAdmin) && inscription.teaching_level === 'secundario' && (
         <div className="w-full px-4 pb-4">
-          <ConsolidatedEvaluationGrid 
+          <ConsolidatedEvaluationGrid
             inscriptionId={inscription.id}
             subjectSelections={subjectSelections}
             positionSelections={positionSelections}
             userId={inscription.user_id}
+            evaluationNavigation={evaluationNav}
           />
         </div>
       )}

@@ -292,7 +292,15 @@ const Evaluations = () => {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => navigate(`/inscriptions/${inscription.id}`)}
+                    onClick={() => {
+                      const params = new URLSearchParams({
+                        from: 'evaluations',
+                        period: inscription.inscription_period_id,
+                        ...(levelFilter !== 'all' && { level: levelFilter }),
+                        ...(statusFilter !== 'all' && { status: statusFilter })
+                      });
+                      navigate(`/inscriptions/${inscription.id}?${params.toString()}`);
+                    }}
                     className="flex items-center gap-2"
                   >
                     <Eye className="h-4 w-4" />

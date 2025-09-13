@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Save, Calculator, User, GraduationCap } from 'lucide-react';
+import { Save, Calculator, User, GraduationCap, SkipForward } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -78,6 +78,13 @@ interface ConsolidatedEvaluationGridProps {
   subjectSelections: SubjectSelection[];
   positionSelections: PositionSelection[];
   userId: string;
+  evaluationNavigation?: {
+    hasEvaluationContext: boolean;
+    canGoToNext: boolean;
+    goToNext: () => void;
+    goToNextUnevaluated: () => void;
+    unevaluatedCount: number;
+  };
 }
 
 const getTitleTypeMaxValue = (titleType: string): number => {
@@ -106,7 +113,8 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
   inscriptionId,
   subjectSelections,
   positionSelections,
-  userId
+  userId,
+  evaluationNavigation
 }) => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -462,6 +470,13 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
         title: 'Evaluaciones finalizadas',
         description: 'Todas las evaluaciones han sido finalizadas correctamente',
       });
+
+      // Auto-navigate to next unevaluated if in evaluation context
+      if (evaluationNavigation?.hasEvaluationContext && evaluationNavigation.unevaluatedCount > 0) {
+        setTimeout(() => {
+          evaluationNavigation.goToNextUnevaluated();
+        }, 1500);
+      }
     } catch (error: any) {
       console.error('Error completing evaluations:', error);
       toast({
@@ -667,42 +682,70 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
           </div>
 
           {!allCompleted && (
-            <div className="flex gap-3 justify-end">
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
+            <div className="flex justify-between items-center">
+              <div className="flex gap-3">
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        onClick={handleSaveAll}
+                        disabled={saving || !hasEvaluations}
+                        className="flex items-center gap-2"
+                      >
+                        <Save className="h-4 w-4" />
+                        Guardar Todo
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Guarda como borrador - se puede seguir editando</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        onClick={handleCompleteAll}
+                        disabled={saving || !hasEvaluations}
+                        className="flex items-center gap-2"
+                      >
+                        <Calculator className="h-4 w-4" />
+                        Finalizar Todas las Evaluaciones
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Marca como completadas y bloquea la edición</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+
+              {/* Quick navigation for evaluation context */}
+              {evaluationNavigation?.hasEvaluationContext && (
+                <div className="flex gap-2">
+                  {evaluationNavigation.canGoToNext && (
                     <Button
                       variant="outline"
-                      onClick={handleSaveAll}
-                      disabled={saving || !hasEvaluations}
-                      className="flex items-center gap-2"
+                      size="sm"
+                      onClick={evaluationNavigation.goToNext}
                     >
-                      <Save className="h-4 w-4" />
-                      Guardar Todo
+                      Siguiente Docente
                     </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Guarda como borrador - se puede seguir editando</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
+                  )}
+                  
+                  {evaluationNavigation.unevaluatedCount > 0 && (
                     <Button
-                      onClick={handleCompleteAll}
-                      disabled={saving || !hasEvaluations}
-                      className="flex items-center gap-2"
+                      variant="secondary"
+                      size="sm"
+                      onClick={evaluationNavigation.goToNextUnevaluated}
                     >
-                      <Calculator className="h-4 w-4" />
-                      Finalizar Todas las Evaluaciones
+                      <SkipForward className="h-4 w-4 mr-1" />
+                      Siguiente sin evaluar
                     </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Marca como completadas y bloquea la edición</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+                  )}
+                </div>
+              )}
             </div>
           )}
 

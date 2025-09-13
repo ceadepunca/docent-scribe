@@ -61,6 +61,13 @@ interface EvaluationGridProps {
   teachingLevel: string;
   subjectSelection?: SubjectSelection;
   positionSelection?: PositionSelection;
+  evaluationNavigation?: {
+    hasEvaluationContext: boolean;
+    canGoToNext: boolean;
+    goToNext: () => void;
+    goToNextUnevaluated: () => void;
+    unevaluatedCount: number;
+  };
 }
 
 const getTitleTypeMaxValue = (titleType?: string): number => {
@@ -76,7 +83,8 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
   inscriptionId, 
   teachingLevel, 
   subjectSelection, 
-  positionSelection 
+  positionSelection,
+  evaluationNavigation
 }) => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -259,6 +267,13 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
           ? 'La evaluación ha sido finalizada correctamente' 
           : 'Los cambios han sido guardados como borrador',
       });
+
+      // Auto-navigate to next unevaluated if in evaluation context and completed
+      if (status === 'completed' && evaluationNavigation?.hasEvaluationContext && evaluationNavigation.unevaluatedCount > 0) {
+        setTimeout(() => {
+          evaluationNavigation.goToNextUnevaluated();
+        }, 1500);
+      }
     } catch (error) {
       console.error('Error saving evaluation:', error);
       toast({
@@ -402,24 +417,52 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
           </div>
 
           {evaluation.status !== 'completed' && (
-            <div className="flex gap-3 justify-end">
-              <Button
-                variant="outline"
-                onClick={() => handleSave('draft')}
-                disabled={saving}
-                className="flex items-center gap-2"
-              >
-                <Save className="h-4 w-4" />
-                Guardar Borrador
-              </Button>
-              <Button
-                onClick={() => handleSave('completed')}
-                disabled={saving}
-                className="flex items-center gap-2"
-              >
-                <Calculator className="h-4 w-4" />
-                Finalizar Evaluación
-              </Button>
+            <div className="flex justify-between items-center">
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => handleSave('draft')}
+                  disabled={saving}
+                  className="flex items-center gap-2"
+                >
+                  <Save className="h-4 w-4" />
+                  Guardar Borrador
+                </Button>
+                <Button
+                  onClick={() => handleSave('completed')}
+                  disabled={saving}
+                  className="flex items-center gap-2"
+                >
+                  <Calculator className="h-4 w-4" />
+                  Finalizar Evaluación
+                </Button>
+              </div>
+
+              {/* Quick navigation for evaluation context */}
+              {evaluationNavigation?.hasEvaluationContext && (
+                <div className="flex gap-2">
+                  {evaluationNavigation.canGoToNext && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={evaluationNavigation.goToNext}
+                    >
+                      Siguiente Docente
+                    </Button>
+                  )}
+                  
+                  {evaluationNavigation.unevaluatedCount > 0 && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={evaluationNavigation.goToNextUnevaluated}
+                    >
+                      <SkipForward className="h-4 w-4 mr-1" />
+                      Siguiente sin evaluar
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
