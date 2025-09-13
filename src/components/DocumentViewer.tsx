@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Eye, Download, FileText, Image } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Eye, Download, FileText, Image, X } from 'lucide-react';
 
 interface DocumentViewerProps {
   documents: Array<{
@@ -14,6 +15,8 @@ interface DocumentViewerProps {
 }
 
 export const DocumentViewer: React.FC<DocumentViewerProps> = ({ documents }) => {
+  const [selectedDocument, setSelectedDocument] = useState<{url: string, name: string, type: string} | null>(null);
+
   const getDocumentTypeLabel = (type: string) => {
     switch (type) {
       case 'dni_frente':
@@ -31,7 +34,11 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({ documents }) => 
     return type === 'titulo_pdf' ? <FileText className="h-4 w-4" /> : <Image className="h-4 w-4" />;
   };
 
-  const handleView = (fileUrl: string) => {
+  const handleView = (fileUrl: string, fileName: string, fileType: string) => {
+    setSelectedDocument({ url: fileUrl, name: fileName, type: fileType });
+  };
+
+  const handleViewExternal = (fileUrl: string) => {
     window.open(fileUrl, '_blank');
   };
 
@@ -85,7 +92,8 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({ documents }) => 
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => handleView(doc.file_url)}
+                  onClick={() => handleView(doc.file_url, doc.file_name, doc.document_type)}
+                  title="Ver documento"
                 >
                   <Eye className="h-4 w-4" />
                 </Button>
@@ -101,6 +109,57 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({ documents }) => 
           ))}
         </div>
       </CardContent>
+
+      {/* Internal Document Viewer Modal */}
+      <Dialog open={!!selectedDocument} onOpenChange={() => setSelectedDocument(null)}>
+        <DialogContent className="max-w-4xl max-h-[90vh] p-0">
+          <DialogHeader className="p-4 pb-2">
+            <DialogTitle className="flex items-center justify-between">
+              <span className="truncate">{selectedDocument?.name}</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSelectedDocument(null)}
+                className="h-8 w-8 p-0"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 p-4 pt-0">
+            {selectedDocument && (
+              <div className="w-full h-[70vh]">
+                {selectedDocument.type === 'titulo_pdf' || selectedDocument.name.toLowerCase().endsWith('.pdf') ? (
+                  <iframe
+                    src={selectedDocument.url}
+                    className="w-full h-full border rounded"
+                    title={selectedDocument.name}
+                  />
+                ) : (
+                  <img
+                    src={selectedDocument.url}
+                    alt={selectedDocument.name}
+                    className="w-full h-full object-contain"
+                  />
+                )}
+              </div>
+            )}
+            <div className="flex justify-center gap-2 mt-4">
+              <Button
+                variant="outline"
+                onClick={() => selectedDocument && handleViewExternal(selectedDocument.url)}
+              >
+                Abrir en nueva pestaña
+              </Button>
+              <Button
+                onClick={() => selectedDocument && handleDownload(selectedDocument.url, selectedDocument.name)}
+              >
+                Descargar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };
