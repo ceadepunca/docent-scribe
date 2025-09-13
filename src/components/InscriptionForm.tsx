@@ -44,8 +44,8 @@ const InscriptionForm: React.FC<InscriptionFormProps> = ({ initialData, isEdit =
   const { availableLevels, getCurrentPeriods, getPeriodForLevel } = useInscriptionPeriods();
   const { saveSubjectSelections, savePositionSelections } = useSecondaryInscriptionData();
   
-  // For secondary level new inscriptions, show wizard directly
-  const isSecondaryNewInscription = initialData?.teaching_level === 'secundario' && !isEdit;
+  // For all secondary level inscriptions, show wizard
+  const isSecondaryInscription = initialData?.teaching_level === 'secundario';
 
   const form = useForm<InscriptionFormData>({
     resolver: zodResolver(inscriptionSchema),
@@ -328,12 +328,14 @@ const InscriptionForm: React.FC<InscriptionFormProps> = ({ initialData, isEdit =
 
   const canEdit = !initialData?.status || ['draft', 'requires_changes'].includes(initialData.status);
 
-  // If it's a new secondary inscription, show wizard directly
-  if (isSecondaryNewInscription) {
+  // If it's a secondary inscription, show wizard
+  if (isSecondaryInscription) {
     return (
       <SecondaryInscriptionWizard
         onComplete={handleSecondaryInscriptionComplete}
-        onAutoSave={handleAutoSave}
+        onAutoSave={isEdit ? undefined : handleAutoSave}
+        initialInscriptionPeriodId={initialData?.inscription_period_id}
+        inscriptionId={initialData?.id}
         isLoading={isSubmitting}
       />
     );

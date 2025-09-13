@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -10,6 +10,7 @@ import { InscriptionDocumentUploader } from './InscriptionDocumentUploader';
 import { PeriodSelectionGrid } from './PeriodSelectionGrid';
 import { SubjectSelection, PositionSelection, useSecondaryInscriptionData } from '@/hooks/useSecondaryInscriptionData';
 import { useInscriptionPeriods } from '@/hooks/useInscriptionPeriods';
+import { useSecondaryInscriptionSelections } from '@/hooks/useSecondaryInscriptionSelections';
 
 interface SecondaryInscriptionWizardProps {
   onComplete: (data: {
@@ -38,15 +39,41 @@ export const SecondaryInscriptionWizard: React.FC<SecondaryInscriptionWizardProp
   onPositionSelectionsChange,
   inscriptionId = null,
 }) => {
-  const [activeTab, setActiveTab] = useState<'period' | 'subjects' | 'positions' | 'documents' | 'summary'>('period');
-  const [subjectSelections, setSubjectSelections] = useState<SubjectSelection[]>(initialSubjectSelections);
-  const [positionSelections, setPositionSelections] = useState<PositionSelection[]>(initialPositionSelections);
+  const [activeTab, setActiveTab] = useState<'period' | 'subjects' | 'positions' | 'documents' | 'summary'>(
+    inscriptionId ? 'subjects' : 'period'
+  );
+  const [subjectSelections, setSubjectSelections] = useState<SubjectSelection[]>([]);
+  const [positionSelections, setPositionSelections] = useState<PositionSelection[]>([]);
   const [selectedPeriodId, setSelectedPeriodId] = useState<string | null>(initialInscriptionPeriodId || null);
   const [autoSaving, setAutoSaving] = useState(false);
   const [savedInscriptionId, setSavedInscriptionId] = useState<string | null>(inscriptionId);
   
   const { schools, subjects, administrativePositions, loading } = useSecondaryInscriptionData();
   const { periods, loading: periodsLoading } = useInscriptionPeriods();
+  const { 
+    subjectSelections: loadedSubjectSelections, 
+    positionSelections: loadedPositionSelections, 
+    loading: selectionsLoading 
+  } = useSecondaryInscriptionSelections(inscriptionId);
+
+  // Load existing selections when editing
+  useEffect(() => {
+    if (inscriptionId && loadedSubjectSelections.length > 0) {
+      const mappedSubjects = loadedSubjectSelections.map(sel => ({
+        subject_id: sel.subject_id
+      }));
+      setSubjectSelections(mappedSubjects);
+    }
+  }, [loadedSubjectSelections, inscriptionId]);
+
+  useEffect(() => {
+    if (inscriptionId && loadedPositionSelections.length > 0) {
+      const mappedPositions = loadedPositionSelections.map(sel => ({
+        administrative_position_id: sel.administrative_position_id
+      }));
+      setPositionSelections(mappedPositions);
+    }
+  }, [loadedPositionSelections, inscriptionId]);
 
   const handleSubjectSelectionsChange = (selections: SubjectSelection[]) => {
     setSubjectSelections(selections);
