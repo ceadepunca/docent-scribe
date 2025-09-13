@@ -284,6 +284,16 @@ const InscriptionForm: React.FC<InscriptionFormProps> = ({ initialData, isEdit =
     setIsSubmitting(true);
     
     try {
+      // First, check if there's already a draft inscription for this user and period
+      const { data: existingInscription, error: fetchError } = await supabase
+        .from('inscriptions')
+        .select('id, status')
+        .eq('user_id', user.id)
+        .eq('inscription_period_id', selections.inscriptionPeriodId)
+        .maybeSingle();
+
+      if (fetchError) throw fetchError;
+
       const inscriptionData = {
         subject_area: 'Secundario',
         teaching_level: 'secundario' as const,
@@ -295,14 +305,30 @@ const InscriptionForm: React.FC<InscriptionFormProps> = ({ initialData, isEdit =
         status: 'submitted' as const
       };
 
-      // Create the basic inscription
-      const { data: inscription, error: inscriptionError } = await supabase
-        .from('inscriptions')
-        .insert(inscriptionData)
-        .select()
-        .single();
+      let inscription;
 
-      if (inscriptionError) throw inscriptionError;
+      if (existingInscription) {
+        // Update existing inscription
+        const { data: updatedInscription, error: updateError } = await supabase
+          .from('inscriptions')
+          .update(inscriptionData)
+          .eq('id', existingInscription.id)
+          .select()
+          .single();
+
+        if (updateError) throw updateError;
+        inscription = updatedInscription;
+      } else {
+        // Create new inscription
+        const { data: newInscription, error: insertError } = await supabase
+          .from('inscriptions')
+          .insert(inscriptionData)
+          .select()
+          .single();
+
+        if (insertError) throw insertError;
+        inscription = newInscription;
+      }
 
       // Save the granular selections
       await saveSubjectSelections(inscription.id, selections.subjectSelections);
