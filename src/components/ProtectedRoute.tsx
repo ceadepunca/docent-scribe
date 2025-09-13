@@ -15,8 +15,8 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 }) => {
   const { user, loading, hasRole } = useAuth();
 
-  // Only show loading on initial load, not during token refresh
-  if (loading && !user) {
+  // Wait for auth and roles to load before enforcing access
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">

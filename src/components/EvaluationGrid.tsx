@@ -445,6 +445,7 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
                     <Button
                       variant="outline"
                       size="sm"
+                      disabled={saving}
                       onClick={evaluationNavigation.goToNext}
                     >
                       Siguiente Docente
@@ -455,6 +456,7 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
                     <Button
                       variant="secondary"
                       size="sm"
+                      disabled={saving}
                       onClick={evaluationNavigation.goToNextUnevaluated}
                     >
                       <SkipForward className="h-4 w-4 mr-1" />

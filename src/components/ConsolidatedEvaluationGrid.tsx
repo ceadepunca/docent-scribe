@@ -728,6 +728,7 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
                     <Button
                       variant="outline"
                       size="sm"
+                      disabled={saving}
                       onClick={evaluationNavigation.goToNext}
                     >
                       Siguiente Docente
@@ -738,6 +739,7 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
                     <Button
                       variant="secondary"
                       size="sm"
+                      disabled={saving}
                       onClick={evaluationNavigation.goToNextUnevaluated}
                     >
                       <SkipForward className="h-4 w-4 mr-1" />

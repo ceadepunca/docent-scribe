@@ -39,7 +39,7 @@ interface InscriptionWithProfile {
 
 const Evaluations = () => {
   const navigate = useNavigate();
-  const { user, isEvaluator, isSuperAdmin } = useAuth();
+  const { user, isEvaluator, isSuperAdmin, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const { periods, loading: periodsLoading, getCurrentPeriods } = useInscriptionPeriods();
   const [inscriptions, setInscriptions] = useState<InscriptionWithProfile[]>([]);
@@ -52,12 +52,17 @@ const Evaluations = () => {
   const [periodFilter, setPeriodFilter] = useState('all');
 
   useEffect(() => {
+    if (authLoading) return;
+    if (!user) {
+      navigate('/login');
+      return;
+    }
     if (!isEvaluator && !isSuperAdmin) {
       navigate('/unauthorized');
       return;
     }
     fetchInscriptions();
-  }, [user, isEvaluator, isSuperAdmin]);
+  }, [authLoading, user, isEvaluator, isSuperAdmin]);
 
   useEffect(() => {
     processInscriptions();

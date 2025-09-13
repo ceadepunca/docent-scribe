@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -25,6 +25,7 @@ export const useEvaluationNavigation = (currentInscriptionId: string | undefined
   const { user } = useAuth();
   const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [inscriptions, setInscriptions] = useState<InscriptionItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(-1);
@@ -147,9 +148,9 @@ export const useEvaluationNavigation = (currentInscriptionId: string | undefined
 
   const navigateToInscription = useCallback((targetId: string) => {
     const params = new URLSearchParams(searchParams);
-    // Keep current context while navigating
-    window.location.href = `/inscriptions/${targetId}?${params.toString()}`;
-  }, [searchParams]);
+    // Keep current context while navigating (client-side)
+    navigate(`/inscriptions/${targetId}?${params.toString()}`);
+  }, [searchParams, navigate]);
 
   const goToPrevious = useCallback(() => {
     if (currentIndex > 0) {
@@ -195,8 +196,8 @@ export const useEvaluationNavigation = (currentInscriptionId: string | undefined
     if (statusFilter) params.set('status', statusFilter);
     
     const queryString = params.toString();
-    window.location.href = `/evaluations${queryString ? `?${queryString}` : ''}`;
-  }, [periodId, levelFilter, statusFilter]);
+    navigate(`/evaluations${queryString ? `?${queryString}` : ''}`);
+  }, [periodId, levelFilter, statusFilter, navigate]);
 
   return {
     // State
