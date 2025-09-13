@@ -40,7 +40,28 @@ interface ListingTableProps {
   listings: ListingItem[];
 }
 
-const getTitleTypeDisplay = (titleType: string | null): string => {
+const deriveTitleType = (item: ListingItem): string => {
+  // Derive title type from actual titulo_score with tolerance
+  if (item.titulo_score !== null && item.titulo_score !== undefined) {
+    if (item.titulo_score >= 8.5) return 'docente';     // 9 with tolerance
+    if (item.titulo_score >= 5.5) return 'habilitante'; // 6 with tolerance
+    if (item.titulo_score >= 2.5) return 'supletorio';  // 3 with tolerance
+  }
+  
+  // Fallback to title_type field or default
+  return item.title_type || 'sin_tipo';
+};
+
+const getTitleTypeDisplay = (item: ListingItem): string => {
+  const score = item.titulo_score;
+  if (score !== null && score !== undefined) {
+    if (score >= 8.5) return `Doc (${score.toFixed(1)})`;
+    if (score >= 5.5) return `Hab (${score.toFixed(1)})`;
+    if (score >= 2.5) return `Sup (${score.toFixed(1)})`;
+  }
+  
+  // Fallback to title_type based display
+  const titleType = item.title_type;
   switch (titleType) {
     case 'docente': return 'Doc (9)';
     case 'habilitante': return 'Hab (6)';
@@ -61,7 +82,7 @@ export const ListingTable: React.FC<ListingTableProps> = ({ listings }) => {
         };
       }
 
-      const titleType = item.title_type || 'sin_tipo';
+      const titleType = deriveTitleType(item);
 
       if (item.item_type === 'subject') {
         const specialty = item.specialty || 'ciclo_basico';
@@ -211,7 +232,7 @@ export const ListingTable: React.FC<ListingTableProps> = ({ listings }) => {
                 </TableCell>
                 <TableCell className="p-1 text-center border-r">
                   <span className="text-2xs">
-                    {getTitleTypeDisplay(item.title_type)}
+                    {getTitleTypeDisplay(item)}
                   </span>
                 </TableCell>
                 {evaluationCriteria.map((criterion) => (
