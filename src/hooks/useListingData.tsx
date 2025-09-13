@@ -82,6 +82,7 @@ export const useListingData = () => {
       let subjectQuery = supabase
         .from('inscription_subject_selections')
         .select(`
+          id,
           inscription_id,
           subject_id,
           inscriptions!inner(
@@ -107,25 +108,31 @@ export const useListingData = () => {
             specialty,
             school_id,
             schools!inner(name)
-          ),
-          evaluations(
-            id,
-            total_score,
-            status,
-            titulo_score,
-            antiguedad_titulo_score,
-            antiguedad_docente_score,
-            concepto_score,
-            promedio_titulo_score,
-            trabajo_publico_score,
-            becas_otros_score,
-            concurso_score,
-            otros_antecedentes_score,
-            red_federal_score,
-            title_type
           )
         `)
         .eq('inscriptions.teaching_level', 'secundario');
+
+      // Separate query for evaluations with subject_selection_id
+      const evaluationsQuery = supabase
+        .from('evaluations')
+        .select(`
+          subject_selection_id,
+          position_selection_id,
+          id,
+          total_score,
+          status,
+          titulo_score,
+          antiguedad_titulo_score,
+          antiguedad_docente_score,
+          concepto_score,
+          promedio_titulo_score,
+          trabajo_publico_score,
+          becas_otros_score,
+          concurso_score,
+          otros_antecedentes_score,
+          red_federal_score,
+          title_type
+        `);
 
       // Apply period filter if specified
       if (filters.periodId) {
@@ -136,6 +143,7 @@ export const useListingData = () => {
       let positionQuery = supabase
         .from('inscription_position_selections')
         .select(`
+          id,
           inscription_id,
           administrative_position_id,
           inscriptions!inner(
@@ -160,22 +168,6 @@ export const useListingData = () => {
             name,
             school_id,
             schools!inner(name)
-          ),
-          evaluations(
-            id,
-            total_score,
-            status,
-            titulo_score,
-            antiguedad_titulo_score,
-            antiguedad_docente_score,
-            concepto_score,
-            promedio_titulo_score,
-            trabajo_publico_score,
-            becas_otros_score,
-            concurso_score,
-            otros_antecedentes_score,
-            red_federal_score,
-            title_type
           )
         `)
         .eq('inscriptions.teaching_level', 'secundario');
@@ -193,6 +185,23 @@ export const useListingData = () => {
 
       const results: ListingItem[] = [];
 
+      // Fetch evaluations data once
+      const { data: evaluations, error: evaluationsError } = await evaluationsQuery;
+      if (evaluationsError) throw evaluationsError;
+
+      // Create lookup maps for evaluations
+      const subjectEvaluationsMap = new Map();
+      const positionEvaluationsMap = new Map();
+      
+      evaluations?.forEach((evaluation: any) => {
+        if (evaluation.subject_selection_id) {
+          subjectEvaluationsMap.set(evaluation.subject_selection_id, evaluation);
+        }
+        if (evaluation.position_selection_id) {
+          positionEvaluationsMap.set(evaluation.position_selection_id, evaluation);
+        }
+      });
+
       // Fetch subjects data if needed
       if (filters.listingType === 'all' || filters.listingType === 'subjects' || filters.listingType === 'specific-subject') {
         if (filters.listingType === 'specific-subject' && filters.specificItemId) {
@@ -203,7 +212,7 @@ export const useListingData = () => {
         if (subjectError) throw subjectError;
 
         subjectSelections?.forEach((selection: any) => {
-          const evaluation = selection.evaluations?.[0];
+          const evaluation = subjectEvaluationsMap.get(selection.id);
           const profile = selection.inscriptions.profiles;
           const titles = [
             profile.titulo_1_nombre && `${profile.titulo_1_nombre} (${profile.titulo_1_promedio || 'N/A'})`,
@@ -254,7 +263,7 @@ export const useListingData = () => {
         if (positionError) throw positionError;
 
         positionSelections?.forEach((selection: any) => {
-          const evaluation = selection.evaluations?.[0];
+          const evaluation = positionEvaluationsMap.get(selection.id);
           const profile = selection.inscriptions.profiles;
           const titles = [
             profile.titulo_1_nombre && `${profile.titulo_1_nombre} (${profile.titulo_1_promedio || 'N/A'})`,
