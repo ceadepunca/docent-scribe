@@ -126,6 +126,20 @@ const AssistedInscription = () => {
     }
   };
 
+  const verifyInscriptionAccess = async (inscriptionId: string): Promise<boolean> => {
+    try {
+      const { data, error } = await supabase
+        .from('inscriptions')
+        .select('id')
+        .eq('id', inscriptionId)
+        .single();
+      
+      return !error && !!data;
+    } catch {
+      return false;
+    }
+  };
+
   const handleSubmitInscription = async () => {
     if (!selectedTeacher || !inscriptionForm.teaching_level || !inscriptionForm.inscription_period_id) {
       toast({
@@ -185,6 +199,17 @@ const AssistedInscription = () => {
         }
         if (positionSelections.length > 0) {
           await savePositionSelections(inscription.id, positionSelections);
+        }
+      }
+
+      // Verify inscription is accessible before proceeding
+      const isAccessible = await verifyInscriptionAccess(inscription.id);
+      if (!isAccessible) {
+        // Wait a moment and retry once
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        const retryAccessible = await verifyInscriptionAccess(inscription.id);
+        if (!retryAccessible) {
+          throw new Error('La inscripción se creó pero no está disponible inmediatamente. Intente recargar la página.');
         }
       }
 
