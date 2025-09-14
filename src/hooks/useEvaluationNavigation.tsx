@@ -29,12 +29,32 @@ export const useEvaluationNavigation = (currentInscriptionId: string | undefined
   const [inscriptions, setInscriptions] = useState<InscriptionItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(-1);
+  const [currentPeriodId, setCurrentPeriodId] = useState<string | null>(null);
   
   // Get context from URL params
   const periodId = searchParams.get('period');
   const fromEvaluations = searchParams.get('from') === 'evaluations';
   const levelFilter = searchParams.get('level');
   const statusFilter = searchParams.get('status');
+
+  // Function to get period from current inscription
+  const fetchCurrentInscriptionPeriod = useCallback(async (inscriptionId: string) => {
+    if (!user) return null;
+
+    try {
+      const { data, error } = await supabase
+        .from('inscriptions')
+        .select('inscription_period_id, teaching_level')
+        .eq('id', inscriptionId)
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error fetching current inscription period:', error);
+      return null;
+    }
+  }, [user]);
 
   const fetchPeriodInscriptions = useCallback(async (
     periodId: string, 
@@ -139,12 +159,32 @@ export const useEvaluationNavigation = (currentInscriptionId: string | undefined
     }
   }, [user, currentInscriptionId, toast]);
 
-  // Load inscriptions when we have period context
+  // Load inscriptions based on period context
   useEffect(() => {
-    if (periodId && fromEvaluations) {
-      fetchPeriodInscriptions(periodId, levelFilter || undefined, statusFilter || undefined);
-    }
-  }, [periodId, fromEvaluations, levelFilter, statusFilter, fetchPeriodInscriptions]);
+    const loadInscriptionsForPeriod = async () => {
+      if (periodId && fromEvaluations) {
+        // Case 1: Explicit period from evaluations page
+        setCurrentPeriodId(periodId);
+        await fetchPeriodInscriptions(periodId, levelFilter || undefined, statusFilter || undefined);
+      } else if (currentInscriptionId && !periodId) {
+        // Case 2: Auto-detect period from current inscription
+        const inscriptionData = await fetchCurrentInscriptionPeriod(currentInscriptionId);
+        if (inscriptionData?.inscription_period_id) {
+          setCurrentPeriodId(inscriptionData.inscription_period_id);
+          await fetchPeriodInscriptions(
+            inscriptionData.inscription_period_id, 
+            inscriptionData.teaching_level || undefined
+          );
+        }
+      } else if (periodId && !fromEvaluations) {
+        // Case 3: Explicit period but not from evaluations
+        setCurrentPeriodId(periodId);
+        await fetchPeriodInscriptions(periodId, levelFilter || undefined, statusFilter || undefined);
+      }
+    };
+
+    loadInscriptionsForPeriod();
+  }, [periodId, fromEvaluations, levelFilter, statusFilter, currentInscriptionId, fetchPeriodInscriptions, fetchCurrentInscriptionPeriod]);
 
   const navigateToInscription = useCallback((targetId: string) => {
     const params = new URLSearchParams(searchParams);
@@ -191,13 +231,14 @@ export const useEvaluationNavigation = (currentInscriptionId: string | undefined
 
   const backToEvaluations = useCallback(() => {
     const params = new URLSearchParams();
-    if (periodId) params.set('period', periodId);
+    const activePeriodId = currentPeriodId || periodId;
+    if (activePeriodId) params.set('period', activePeriodId);
     if (levelFilter) params.set('level', levelFilter);
     if (statusFilter) params.set('status', statusFilter);
     
     const queryString = params.toString();
     navigate(`/evaluations${queryString ? `?${queryString}` : ''}`);
-  }, [periodId, levelFilter, statusFilter, navigate]);
+  }, [currentPeriodId, periodId, levelFilter, statusFilter, navigate]);
 
   return {
     // State
@@ -206,8 +247,8 @@ export const useEvaluationNavigation = (currentInscriptionId: string | undefined
     loading,
     
     // Context info
-    hasEvaluationContext: fromEvaluations && !!periodId,
-    periodId,
+    hasEvaluationContext: !!(currentPeriodId || periodId),
+    periodId: currentPeriodId || periodId,
     currentPeriodName: inscriptions[currentIndex]?.inscription_periods?.name,
     
     // Navigation
