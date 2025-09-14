@@ -140,7 +140,8 @@ export const useEvaluationNavigation = (currentInscriptionId: string | undefined
         }
       });
 
-      const finalInscriptions = Array.from(userLevelMap.values());
+      const finalInscriptions = Array.from(userLevelMap.values()).filter(i => i.inscription_period_id === periodId);
+      console.debug('useEvaluationNavigation: finalInscriptions', { periodId, count: finalInscriptions.length });
       setInscriptions(finalInscriptions);
 
       // Find current inscription index
@@ -188,9 +189,15 @@ export const useEvaluationNavigation = (currentInscriptionId: string | undefined
 
   const navigateToInscription = useCallback((targetId: string) => {
     const params = new URLSearchParams(searchParams);
-    // Keep current context while navigating (client-side)
+    const activePeriod = currentPeriodId || periodId || '';
+    if (activePeriod) {
+      params.set('period', activePeriod);
+    }
+    if (!params.get('from')) {
+      params.set('from', 'evaluations');
+    }
     navigate(`/inscriptions/${targetId}?${params.toString()}`);
-  }, [searchParams, navigate]);
+  }, [searchParams, navigate, currentPeriodId, periodId]);
 
   const goToPrevious = useCallback(() => {
     if (currentIndex > 0) {
@@ -207,16 +214,19 @@ export const useEvaluationNavigation = (currentInscriptionId: string | undefined
   }, [currentIndex, inscriptions, navigateToInscription]);
 
   const goToNextUnevaluated = useCallback(() => {
+    const activePeriod = currentPeriodId || periodId;
+    const isSamePeriod = (i: InscriptionItem) => !activePeriod || i.inscription_period_id === activePeriod;
+
     const unevaluatedFromCurrent = inscriptions
       .slice(currentIndex + 1)
-      .find(i => i.evaluation_state === 'no_evaluada');
+      .find(i => i.evaluation_state === 'no_evaluada' && isSamePeriod(i));
     
     if (unevaluatedFromCurrent) {
       navigateToInscription(unevaluatedFromCurrent.id);
     } else {
       // Look from beginning
       const unevaluatedFromStart = inscriptions
-        .find(i => i.evaluation_state === 'no_evaluada');
+        .find(i => i.evaluation_state === 'no_evaluada' && isSamePeriod(i));
       
       if (unevaluatedFromStart) {
         navigateToInscription(unevaluatedFromStart.id);
@@ -227,7 +237,7 @@ export const useEvaluationNavigation = (currentInscriptionId: string | undefined
         });
       }
     }
-  }, [currentIndex, inscriptions, navigateToInscription, toast]);
+  }, [currentIndex, inscriptions, navigateToInscription, toast, currentPeriodId, periodId]);
 
   const backToEvaluations = useCallback(() => {
     const params = new URLSearchParams();
