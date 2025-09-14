@@ -6,10 +6,12 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Save, Calculator, SkipForward } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Save, Calculator, SkipForward, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { useUnsavedChanges } from '@/hooks/useUnsavedChanges';
 
 interface EvaluationData {
   titulo_score: number;
@@ -88,7 +90,8 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
 }) => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [evaluation, setEvaluation] = useState<EvaluationData>({
+  
+  const initialEvaluation: EvaluationData = {
     titulo_score: 0,
     antiguedad_titulo_score: 0,
     antiguedad_docente_score: 0,
@@ -102,9 +105,17 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
     notes: '',
     status: 'draft',
     title_type: teachingLevel === 'secundario' ? 'docente' : undefined
-  });
+  };
+
+  const [evaluation, setEvaluation] = useState<EvaluationData>(initialEvaluation);
+  const [originalEvaluation, setOriginalEvaluation] = useState<EvaluationData>(initialEvaluation);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [showNavigationDialog, setShowNavigationDialog] = useState(false);
+  const [pendingNavigation, setPendingNavigation] = useState<() => void | null>(null);
+
+  // Use unsaved changes hook
+  const { hasUnsavedChanges } = useUnsavedChanges(evaluation, originalEvaluation);
 
   const isSecondaryLevel = teachingLevel === 'secundario';
   const titleMaxValue = getTitleTypeMaxValue(evaluation.title_type);
@@ -161,7 +172,7 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
       }
 
       if (data) {
-        setEvaluation({
+        const loadedEvaluation: EvaluationData = {
           titulo_score: data.titulo_score || 0,
           antiguedad_titulo_score: data.antiguedad_titulo_score || 0,
           antiguedad_docente_score: data.antiguedad_docente_score || 0,
@@ -175,7 +186,9 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
           notes: data.notes || '',
           status: (data.status as 'draft' | 'completed') || 'draft',
           title_type: (data.title_type as 'docente' | 'habilitante' | 'supletorio') || (isSecondaryLevel ? 'docente' : undefined)
-        });
+        };
+        setEvaluation(loadedEvaluation);
+        setOriginalEvaluation(loadedEvaluation);
       }
     } catch (error) {
       console.error('Error fetching evaluation:', error);
@@ -260,6 +273,8 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
       if (error) throw error;
 
       setEvaluation(prev => ({ ...prev, status }));
+      // Update original evaluation to reflect saved state
+      setOriginalEvaluation(prev => ({ ...prev, ...evaluationData, status }));
 
       toast({
         title: 'Evaluación guardada',
@@ -284,6 +299,38 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
     } finally {
       setSaving(false);
     }
+  };
+
+  // Navigation wrapper functions that check for unsaved changes
+  const handleNavigationWithConfirmation = (navigationFn: () => void) => {
+    if (hasUnsavedChanges && evaluation.status !== 'completed') {
+      setPendingNavigation(() => navigationFn);
+      setShowNavigationDialog(true);
+    } else {
+      navigationFn();
+    }
+  };
+
+  const handleSaveAndContinue = async () => {
+    await handleSave('draft');
+    setShowNavigationDialog(false);
+    if (pendingNavigation) {
+      pendingNavigation();
+      setPendingNavigation(null);
+    }
+  };
+
+  const handleContinueWithoutSaving = () => {
+    setShowNavigationDialog(false);
+    if (pendingNavigation) {
+      pendingNavigation();
+      setPendingNavigation(null);
+    }
+  };
+
+  const handleCancelNavigation = () => {
+    setShowNavigationDialog(false);
+    setPendingNavigation(null);
   };
 
   if (loading) {
@@ -323,9 +370,17 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
               }
             </CardDescription>
           </div>
-          <Badge variant={evaluation.status === 'completed' ? 'default' : 'secondary'}>
-            {evaluation.status === 'completed' ? 'Finalizada' : 'Borrador'}
-          </Badge>
+          <div className="flex items-center gap-2">
+            {hasUnsavedChanges && evaluation.status !== 'completed' && (
+              <Badge variant="outline" className="text-orange-600 border-orange-600">
+                <AlertTriangle className="h-3 w-3 mr-1" />
+                Cambios sin guardar
+              </Badge>
+            )}
+            <Badge variant={evaluation.status === 'completed' ? 'default' : 'secondary'}>
+              {evaluation.status === 'completed' ? 'Finalizada' : 'Borrador'}
+            </Badge>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -446,7 +501,7 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
                       variant="outline"
                       size="sm"
                       disabled={saving}
-                      onClick={evaluationNavigation.goToNext}
+                      onClick={() => handleNavigationWithConfirmation(evaluationNavigation.goToNext)}
                     >
                       Siguiente Docente
                     </Button>
@@ -457,7 +512,7 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
                       variant="secondary"
                       size="sm"
                       disabled={saving}
-                      onClick={evaluationNavigation.goToNextUnevaluated}
+                      onClick={() => handleNavigationWithConfirmation(evaluationNavigation.goToNextUnevaluated)}
                     >
                       <SkipForward className="h-4 w-4 mr-1" />
                       Siguiente sin evaluar
@@ -476,6 +531,36 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
             </div>
           )}
         </div>
+
+        {/* Navigation Confirmation Dialog */}
+        <AlertDialog open={showNavigationDialog} onOpenChange={setShowNavigationDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-orange-600" />
+                Cambios sin guardar
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                Tienes cambios sin guardar en esta evaluación. ¿Qué deseas hacer?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="flex flex-col sm:flex-row gap-2">
+              <AlertDialogCancel onClick={handleCancelNavigation}>
+                Cancelar
+              </AlertDialogCancel>
+              <Button
+                variant="outline"
+                onClick={handleContinueWithoutSaving}
+                className="text-red-600 border-red-600 hover:bg-red-50"
+              >
+                Continuar sin guardar
+              </Button>
+              <AlertDialogAction onClick={handleSaveAndContinue}>
+                Guardar y continuar
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </CardContent>
     </Card>
   );
