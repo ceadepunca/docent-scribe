@@ -284,8 +284,8 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
           : 'Los cambios han sido guardados como borrador',
       });
 
-      // Auto-navigate logic if in evaluation context and completed
-      if (status === 'completed' && evaluationNavigation?.hasEvaluationContext) {
+      // Auto-navigate logic if in evaluation context and completed (only for new evaluations, not edited ones)
+      if (status === 'completed' && evaluationNavigation?.hasEvaluationContext && originalEvaluation.status !== 'completed') {
         // Check if this is the last unevaluated teacher (count will be 1 before saving)
         if (evaluationNavigation.unevaluatedCount === 1) {
           // This is the last one, return to evaluations after showing success message
@@ -387,10 +387,15 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
-            {hasUnsavedChanges && evaluation.status !== 'completed' && (
+            {hasUnsavedChanges && (
               <Badge variant="outline" className="text-orange-600 border-orange-600">
                 <AlertTriangle className="h-3 w-3 mr-1" />
                 Cambios sin guardar
+              </Badge>
+            )}
+            {evaluation.status === 'completed' && hasUnsavedChanges && (
+              <Badge variant="outline" className="text-blue-600 border-blue-600">
+                Editando evaluación completada
               </Badge>
             )}
             <Badge variant={evaluation.status === 'completed' ? 'default' : 'secondary'}>
@@ -409,7 +414,6 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
             <Select
               value={evaluation.title_type}
               onValueChange={handleTitleTypeChange}
-              disabled={evaluation.status === 'completed'}
             >
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Seleccionar tipo de título" />
@@ -454,7 +458,6 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
                       value={evaluation[criterion.id] || ''}
                       onChange={(e) => handleScoreChange(criterion.id, e.target.value)}
                       className="text-center"
-                      disabled={evaluation.status === 'completed'}
                     />
                   </TableCell>
                 </TableRow>
@@ -482,7 +485,6 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
               value={evaluation.notes || ''}
               onChange={(e) => setEvaluation(prev => ({ ...prev, notes: e.target.value }))}
               placeholder="Agregar comentarios o observaciones sobre la evaluación..."
-              disabled={evaluation.status === 'completed'}
               rows={3}
             />
           </div>

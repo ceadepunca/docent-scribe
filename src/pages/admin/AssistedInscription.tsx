@@ -18,6 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import { SecondaryInscriptionWizard } from '@/components/SecondaryInscriptionWizard';
 import { SubjectSelection, PositionSelection, useSecondaryInscriptionData } from '@/hooks/useSecondaryInscriptionData';
 import { TeacherSearchGrid } from '@/components/admin/TeacherSearchGrid';
+import { InscriptionDocumentUploader } from '@/components/InscriptionDocumentUploader';
 
 const AssistedInscription = () => {
   const { user, isSuperAdmin } = useAuth();
@@ -33,6 +34,7 @@ const AssistedInscription = () => {
   const [submitting, setSubmitting] = useState(false);
   const [subjectSelections, setSubjectSelections] = useState<SubjectSelection[]>([]);
   const [positionSelections, setPositionSelections] = useState<PositionSelection[]>([]);
+  const [createdInscription, setCreatedInscription] = useState<any>(null);
 
   const [teacherForm, setTeacherForm] = useState({
     first_name: '',
@@ -187,23 +189,17 @@ const AssistedInscription = () => {
       }
 
       const selectedPeriod = periods.find(p => p.id === inscriptionForm.inscription_period_id);
+      
+      // Set created inscription to show document uploader
+      setCreatedInscription({
+        ...inscription, 
+        teacher: selectedTeacher,
+        period: selectedPeriod
+      });
+
       toast({
         title: 'Inscripción creada',
         description: `Inscripción creada exitosamente para ${selectedTeacher.first_name} ${selectedTeacher.last_name} en el período "${selectedPeriod?.name || 'No especificado'}"`,
-      });
-
-      // Reset forms
-      setSelectedTeacher(null);
-      setSubjectSelections([]);
-      setPositionSelections([]);
-      setInscriptionForm({
-        teaching_level: '',
-        inscription_period_id: '',
-        subject_area: '',
-        experience_years: '0',
-        availability: '',
-        motivational_letter: '',
-        target_position_type_id: '',
       });
 
     } catch (error: any) {
@@ -216,6 +212,23 @@ const AssistedInscription = () => {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleCreateNewInscription = () => {
+    // Reset all forms and state
+    setCreatedInscription(null);
+    setSelectedTeacher(null);
+    setSubjectSelections([]);
+    setPositionSelections([]);
+    setInscriptionForm({
+      teaching_level: '',
+      inscription_period_id: '',
+      subject_area: '',
+      experience_years: '0',
+      availability: '',
+      motivational_letter: '',
+      target_position_type_id: '',
+    });
   };
 
   const availablePositionTypes = positionTypes.filter(pt => 
@@ -511,6 +524,44 @@ const AssistedInscription = () => {
                   </Button>
                 </div>
               )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Success Message and Document Upload */}
+        {createdInscription && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="text-green-600">
+                ✅ Inscripción Creada Exitosamente
+              </CardTitle>
+              <CardDescription>
+                Inscripción ID: {createdInscription.id} para {createdInscription.teacher.first_name} {createdInscription.teacher.last_name} 
+                {createdInscription.period && ` - Período: ${createdInscription.period.name}`}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                <p className="text-sm text-green-800">
+                  La inscripción ha sido creada con estado "Enviada". 
+                  Ahora puede adjuntar documentos de antecedentes si es necesario.
+                </p>
+              </div>
+              
+              <InscriptionDocumentUploader 
+                inscriptionId={createdInscription.id}
+                disabled={false}
+              />
+              
+              <div className="flex justify-center gap-2 pt-4">
+                <Button 
+                  onClick={handleCreateNewInscription}
+                  className="flex items-center gap-2"
+                >
+                  <UserPlus className="h-4 w-4" />
+                  Crear Nueva Inscripción
+                </Button>
+              </div>
             </CardContent>
           </Card>
         )}
