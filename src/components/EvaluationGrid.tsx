@@ -68,6 +68,7 @@ interface EvaluationGridProps {
     canGoToNext: boolean;
     goToNext: () => void;
     goToNextUnevaluated: () => void;
+    backToEvaluations: () => void;
     unevaluatedCount: number;
   };
 }
@@ -283,11 +284,26 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
           : 'Los cambios han sido guardados como borrador',
       });
 
-      // Auto-navigate to next unevaluated if in evaluation context and completed
-      if (status === 'completed' && evaluationNavigation?.hasEvaluationContext && evaluationNavigation.unevaluatedCount > 0) {
-        setTimeout(() => {
-          evaluationNavigation.goToNextUnevaluated();
-        }, 1500);
+      // Auto-navigate logic if in evaluation context and completed
+      if (status === 'completed' && evaluationNavigation?.hasEvaluationContext) {
+        // Check if this is the last unevaluated teacher (count will be 1 before saving)
+        if (evaluationNavigation.unevaluatedCount === 1) {
+          // This is the last one, return to evaluations after showing success message
+          setTimeout(() => {
+            toast({
+              title: 'Período completado',
+              description: 'Todas las evaluaciones del período han sido finalizadas',
+            });
+            setTimeout(() => {
+              evaluationNavigation.backToEvaluations();
+            }, 1500);
+          }, 1500);
+        } else if (evaluationNavigation.unevaluatedCount > 1) {
+          // There are more to evaluate, go to next
+          setTimeout(() => {
+            evaluationNavigation.goToNextUnevaluated();
+          }, 1500);
+        }
       }
     } catch (error) {
       console.error('Error saving evaluation:', error);
