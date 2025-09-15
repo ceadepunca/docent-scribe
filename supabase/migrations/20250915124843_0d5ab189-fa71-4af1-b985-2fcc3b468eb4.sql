@@ -1,0 +1,12 @@
+-- Insert administrative positions for Fray M Esquiú
+INSERT INTO public.administrative_positions (name, school_id, is_active) VALUES
+('DIRECTOR/A', '267a4470-c843-4899-bbfb-224a71069543', true),
+('VICEDIRECTOR/A', '267a4470-c843-4899-bbfb-224a71069543', true),
+('SECRETARIO/A', '267a4470-c843-4899-bbfb-224a71069543', true),
+('PRO SECRETARIO/A', '267a4470-c843-4899-bbfb-224a71069543', true),
+('ASESOR/A PEDAGÓGICO/A', '267a4470-c843-4899-bbfb-224a71069543', true),
+('AYUDANTE DE T. P. BIOLOGÍA', '267a4470-c843-4899-bbfb-224a71069543', true),
+('AYUDANTE DE T. P. COMPUTACIÓN', '267a4470-c843-4899-bbfb-224a71069543', true),
+('AYUDANTE DE T. P. FÍSICA/QUÍMICA', '267a4470-c843-4899-bbfb-224a71069543', true),
+('JEFE/A DE PRECEPTORES/AS', '267a4470-c843-4899-bbfb-224a71069543', true),
+('PRECEPTOR/A', '267a4470-c843-4899-bbfb-224a71069543', true);
