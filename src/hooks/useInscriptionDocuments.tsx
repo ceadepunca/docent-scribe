@@ -63,14 +63,14 @@ export const useInscriptionDocuments = (inscriptionId: string | null) => {
       const fileName = `${inscriptionId}/${documentType}_${Date.now()}.${fileExt}`;
       
       const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('profile-documents')
+        .from('inscription-documents')  
         .upload(fileName, file);
 
       if (uploadError) throw uploadError;
 
       // Get public URL
       const { data: { publicUrl } } = supabase.storage
-        .from('profile-documents')
+        .from('inscription-documents')  
         .getPublicUrl(fileName);
 
       // Save document record to database
@@ -110,7 +110,7 @@ export const useInscriptionDocuments = (inscriptionId: string | null) => {
       // Delete from storage
       if (filePath) {
         await supabase.storage
-          .from('profile-documents')
+          .from('inscription-documents')  
           .remove([filePath]);
       }
 

@@ -217,7 +217,6 @@ const AssistedInscription = () => {
       const selectedPeriod = periods.find(p => p.id === inscriptionForm.inscription_period_id);
       
       // Set created inscription to show document uploader
-      console.log('Setting createdInscription with ID:', inscription.id);
       setCreatedInscription({
         ...inscription, 
         teacher: selectedTeacher,

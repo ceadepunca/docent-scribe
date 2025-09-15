@@ -127,8 +127,6 @@ export const InscriptionDocumentUploader: React.FC<InscriptionDocumentUploaderPr
     document.body.removeChild(link);
   };
 
-  console.log('InscriptionDocumentUploader received inscriptionId:', inscriptionId);
-  
   if (!inscriptionId) {
     return (
       <Alert>
