@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -216,6 +217,7 @@ const AssistedInscription = () => {
       const selectedPeriod = periods.find(p => p.id === inscriptionForm.inscription_period_id);
       
       // Set created inscription to show document uploader
+      console.log('Setting createdInscription with ID:', inscription.id);
       setCreatedInscription({
         ...inscription, 
         teacher: selectedTeacher,
@@ -573,10 +575,18 @@ const AssistedInscription = () => {
                 </p>
               </div>
               
-              <InscriptionDocumentUploader 
-                inscriptionId={createdInscription.id}
-                disabled={false}
-              />
+              {createdInscription?.id ? (
+                <InscriptionDocumentUploader 
+                  inscriptionId={createdInscription.id}
+                  disabled={false}
+                />
+              ) : (
+                <Alert variant="destructive">
+                  <AlertDescription>
+                    Error: No se pudo obtener el ID de la inscripción. Intente recargar la página.
+                  </AlertDescription>
+                </Alert>
+              )}
               
               <div className="flex justify-center gap-2 pt-4">
                 <Button 
