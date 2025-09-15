@@ -4,6 +4,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { BookOpen, GraduationCap } from 'lucide-react';
 import { SubjectSelection, School, Subject } from '@/hooks/useSecondaryInscriptionData';
+import { getSubjectGroupName, areSubjectsEquivalent } from '@/utils/subjectEquivalences';
 
 interface SubjectSelectionGridProps {
   selectedSubjects: SubjectSelection[];
@@ -108,19 +109,21 @@ export const SubjectSelectionGrid: React.FC<SubjectSelectionGridProps> = ({
               construccion: 'CONSTRUCCIÓN'
             };
 
-            // Group by subject name within specialty
+            // Group by subject equivalence within specialty
             const subjectGroups = specialtySubjects.reduce((acc, subject) => {
-              const existingSubject = acc.find(s => s.name === subject.name);
-              if (!existingSubject) {
+              const groupName = getSubjectGroupName(subject.name);
+              const existingGroup = acc.find(g => g.groupName === groupName);
+              
+              if (!existingGroup) {
                 acc.push({
-                  name: subject.name,
+                  groupName,
                   subjects: [subject]
                 });
               } else {
-                existingSubject.subjects.push(subject);
+                existingGroup.subjects.push(subject);
               }
               return acc;
-            }, [] as { name: string; subjects: typeof subjects }[]);
+            }, [] as { groupName: string; subjects: typeof subjects }[]);
 
             return (
               <div key={specialty} className="space-y-4">
@@ -128,11 +131,18 @@ export const SubjectSelectionGrid: React.FC<SubjectSelectionGridProps> = ({
                   {specialtyLabels[specialty as keyof typeof specialtyLabels]}
                 </h3>
                 
-                {subjectGroups.sort((a, b) => a.name.localeCompare(b.name)).map(subjectGroup => (
-                  <div key={subjectGroup.name} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center py-3 border-b border-muted">
+                {subjectGroups.sort((a, b) => a.groupName.localeCompare(b.groupName)).map(subjectGroup => (
+                  <div key={subjectGroup.groupName} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center py-3 border-b border-muted">
                     <div className="font-medium flex items-center gap-2">
                       <GraduationCap className="h-4 w-4 text-muted-foreground" />
-                      {subjectGroup.name}
+                      <div>
+                        <div>{subjectGroup.groupName}</div>
+                        {subjectGroup.subjects.length > 1 && (
+                          <div className="text-xs text-muted-foreground">
+                            {subjectGroup.subjects.map(s => s.name).join(' / ')}
+                          </div>
+                        )}
+                      </div>
                     </div>
                     
                     {schools.map(school => {
