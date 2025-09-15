@@ -7,7 +7,7 @@ interface GoogleFormsCSVRow {
   email: string;
   nombre: string;
   apellido: string;
-  materias?: string;
+  materias?: string[];
   [key: string]: any;
 }
 
@@ -189,15 +189,6 @@ export const useGoogleFormsImport = () => {
     if (error) throw error;
   };
 
-  const parseSubjectNames = (materiasText: string): string[] => {
-    if (!materiasText) return [];
-    
-    // Split by common separators and clean up
-    return materiasText
-      .split(/[,;|\n]/)
-      .map(materia => materia.trim())
-      .filter(materia => materia.length > 0);
-  };
 
   const importFromGoogleForms = async (
     csvFile: File, 
@@ -260,29 +251,39 @@ export const useGoogleFormsImport = () => {
           result.inscriptionsCreated++;
 
           // Process subjects if provided
-          if (row.materias) {
-            const subjectNames = parseSubjectNames(row.materias);
-            if (subjectNames.length > 0) {
-              const subjects = await findSubjectsByNames(subjectNames);
-              const foundSubjectIds = subjects.map(s => s.id);
-              
-              if (foundSubjectIds.length > 0) {
-                await createSubjectSelections(inscription.id, foundSubjectIds);
-              }
+          if (row.materias && Array.isArray(row.materias) && row.materias.length > 0) {
+            try {
+              // Filter out empty values and trim
+              const subjectNames = row.materias
+                .filter(materia => materia && materia.trim())
+                .map(materia => materia.trim());
 
-              // Log subjects not found
-              const foundSubjectNames = subjects.map(s => s.name);
-              const notFoundSubjects = subjectNames.filter(name => 
-                !foundSubjectNames.some(foundName => 
-                  normalizeValue(foundName) === normalizeValue(name)
-                )
-              );
-              
-              if (notFoundSubjects.length > 0) {
-                result.errors.push(
-                  `Docente ${row.nombre} ${row.apellido}: materias no encontradas: ${notFoundSubjects.join(', ')}`
+              if (subjectNames.length > 0) {
+                const subjects = await findSubjectsByNames(subjectNames);
+                const foundSubjectIds = subjects.map(s => s.id);
+                
+                if (foundSubjectIds.length > 0) {
+                  await createSubjectSelections(inscription.id, foundSubjectIds);
+                }
+
+                // Log subjects not found
+                const foundSubjectNames = subjects.map(s => s.name);
+                const notFoundSubjects = subjectNames.filter(name => 
+                  !foundSubjectNames.some(foundName => 
+                    normalizeValue(foundName) === normalizeValue(name)
+                  )
                 );
+                
+                if (notFoundSubjects.length > 0) {
+                  result.errors.push(
+                    `Docente ${row.nombre} ${row.apellido}: materias no encontradas: ${notFoundSubjects.join(', ')}`
+                  );
+                }
               }
+            } catch (subjectError: any) {
+              result.errors.push(
+                `Error procesando materias para ${row.nombre} ${row.apellido}: ${subjectError.message}`
+              );
             }
           }
 
