@@ -17,6 +17,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { TeacherManagementTab } from '@/components/admin/TeacherManagementTab';
 import { AdminImportWrapper } from '@/components/admin/AdminImportWrapper';
+import { GoogleFormsImportModal } from '@/components/admin/GoogleFormsImportModal';
 
 interface RecentInscription {
   id: string;
@@ -51,12 +52,17 @@ const AdminPanel = () => {
     activePeriods: 0,
     registeredFiles: 0
   });
+  
+  const [showGoogleFormsImport, setShowGoogleFormsImport] = useState(false);
+  const [selectedPeriodForImport, setSelectedPeriodForImport] = useState<{id: string, name: string} | null>(null);
+  const [availablePeriods, setAvailablePeriods] = useState<any[]>([]);
 
   useEffect(() => {
     if (isSuperAdmin) {
       fetchStats();
       fetchRecentInscriptions();
       fetchAllRequests();
+      fetchAvailablePeriods();
     }
   }, [isSuperAdmin]);
 
@@ -127,6 +133,21 @@ const AdminPanel = () => {
       setRecentInscriptions((data as any[]) || []);
     } catch (error) {
       console.error('Error fetching recent inscriptions:', error);
+    }
+  };
+
+  const fetchAvailablePeriods = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('inscription_periods')
+        .select('id, name, is_active')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setAvailablePeriods(data || []);
+    } catch (error) {
+      console.error('Error fetching periods:', error);
     }
   };
 
@@ -594,22 +615,70 @@ const AdminPanel = () => {
 
           <TabsContent value="import" className="mt-6">
             <div className="space-y-6">
+              <AdminImportWrapper />
+              
+              {/* Google Forms Import Section */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Importar Inscripciones Anteriores</CardTitle>
+                  <CardTitle className="flex items-center gap-2">
+                    <Upload className="h-5 w-5" />
+                    Importar desde Google Forms
+                  </CardTitle>
                   <CardDescription>
-                    Esta funcionalidad se ha movido a la pestaña "Períodos y Listados" para mejor integración.
+                    Importar docentes e inscripciones desde archivo CSV de Google Forms con materias específicas
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground">
-                    Use la pestaña "Períodos y Listados" para importar inscripciones y ver los resultados inmediatamente.
-                  </p>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {availablePeriods.map((period) => (
+                      <Card key={period.id} className="cursor-pointer hover:shadow-md transition-shadow">
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <h4 className="font-medium">{period.name}</h4>
+                              <Badge variant="outline" className="mt-1">
+                                Activo
+                              </Badge>
+                            </div>
+                            <Button
+                              onClick={() => {
+                                setSelectedPeriodForImport({
+                                  id: period.id,
+                                  name: period.name
+                                });
+                                setShowGoogleFormsImport(true);
+                              }}
+                              variant="outline"
+                              size="sm"
+                            >
+                              Importar CSV
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                  
+                  {availablePeriods.length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      No hay períodos activos disponibles para importar
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
           </TabsContent>
         </Tabs>
+
+        {/* Google Forms Import Modal */}
+        {selectedPeriodForImport && (
+          <GoogleFormsImportModal
+            open={showGoogleFormsImport}
+            onOpenChange={setShowGoogleFormsImport}
+            periodId={selectedPeriodForImport.id}
+            periodName={selectedPeriodForImport.name}
+          />
+        )}
       </div>
     </div>
   );
