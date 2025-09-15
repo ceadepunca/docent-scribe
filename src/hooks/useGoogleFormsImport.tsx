@@ -45,26 +45,47 @@ export const useGoogleFormsImport = () => {
       const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
       const row: any = {};
       
+      // Map specific columns based on the provided format
       headers.forEach((header, index) => {
-        const normalizedHeader = normalizeValue(header);
+        const value = values[index] || '';
         
-        // Map common header variations to standard fields
-        if (normalizedHeader.includes('dni') || normalizedHeader.includes('documento')) {
-          row.dni = normalizeDNI(values[index] || '');
-        } else if (normalizedHeader.includes('email') || normalizedHeader.includes('correo')) {
-          row.email = values[index] || '';
-        } else if (normalizedHeader.includes('nombre') && !normalizedHeader.includes('apellido')) {
-          row.nombre = values[index] || '';
-        } else if (normalizedHeader.includes('apellido')) {
-          row.apellido = values[index] || '';
-        } else if (normalizedHeader.includes('materia') || normalizedHeader.includes('asignatura') || normalizedHeader.includes('subject')) {
-          row.materias = values[index] || '';
+        if (header === 'email') {
+          row.email = value;
+        } else if (header === 'DNI') {
+          row.dni = normalizeDNI(value);
+        } else if (header === 'APELLIDO Y NOMBRES') {
+          // Parse combined last name and first name
+          const parts = value.split(',').map(p => p.trim());
+          if (parts.length >= 2) {
+            row.apellido = parts[0];
+            row.nombre = parts[1];
+          } else {
+            // If no comma, try to split by space and assume last word is first name
+            const words = value.split(' ').filter(w => w);
+            if (words.length >= 2) {
+              row.nombre = words.pop();
+              row.apellido = words.join(' ');
+            } else {
+              row.apellido = value;
+              row.nombre = '';
+            }
+          }
+        } else if (header === 'DOMICILIO') {
+          row.domicilio = value;
+        } else if (header === 'telefono') {
+          row.telefono = value;
+        } else if (header.startsWith('Materia ')) {
+          if (!row.materias) row.materias = [];
+          if (value) row.materias.push(value);
+        } else if (header.startsWith('Cargo ')) {
+          if (!row.cargos) row.cargos = [];
+          if (value) row.cargos.push(value);
         } else {
-          row[header] = values[index] || '';
+          row[header] = value;
         }
       });
 
-      if (row.dni && row.email && row.nombre) {
+      if (row.dni && row.email && (row.nombre || row.apellido)) {
         rows.push(row);
       }
     }
