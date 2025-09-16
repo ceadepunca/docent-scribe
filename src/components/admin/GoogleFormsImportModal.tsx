@@ -5,7 +5,8 @@ import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Upload, FileText, Users, BookOpen, AlertCircle, CheckCircle, XCircle } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Upload, FileText, Users, BookOpen, AlertCircle, CheckCircle, XCircle, ExternalLink } from 'lucide-react';
 import { useGoogleFormsImport } from '@/hooks/useGoogleFormsImport';
 
 interface GoogleFormsImportModalProps {
@@ -24,6 +25,7 @@ export const GoogleFormsImportModal: React.FC<GoogleFormsImportModalProps> = ({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const [importResult, setImportResult] = useState<any>(null);
+  const [createAsSubmitted, setCreateAsSubmitted] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const { importing, progress, importFromGoogleForms } = useGoogleFormsImport();
@@ -60,7 +62,12 @@ export const GoogleFormsImportModal: React.FC<GoogleFormsImportModalProps> = ({
   const handleImport = async () => {
     if (!selectedFile) return;
 
-    const result = await importFromGoogleForms(selectedFile, periodId);
+    const result = await importFromGoogleForms(
+      selectedFile, 
+      periodId, 
+      { createAsSubmitted },
+      (progress) => console.log(`Import progress: ${progress}%`)
+    );
     setImportResult(result);
   };
 
@@ -68,6 +75,7 @@ export const GoogleFormsImportModal: React.FC<GoogleFormsImportModalProps> = ({
     setSelectedFile(null);
     setImportResult(null);
     setDragActive(false);
+    setCreateAsSubmitted(true);
   };
 
   const handleClose = () => {
@@ -289,6 +297,16 @@ export const GoogleFormsImportModal: React.FC<GoogleFormsImportModalProps> = ({
               )}
 
               <div className="flex justify-end gap-2">
+                {importResult.success && createAsSubmitted && (
+                  <Button 
+                    variant="outline" 
+                    onClick={() => window.open('/evaluations', '_blank')}
+                    className="flex items-center gap-2"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    Ver en Evaluaciones
+                  </Button>
+                )}
                 <Button onClick={handleClose}>
                   Cerrar
                 </Button>

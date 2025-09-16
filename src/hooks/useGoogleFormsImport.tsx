@@ -11,6 +11,10 @@ interface GoogleFormsCSVRow {
   [key: string]: any;
 }
 
+interface ImportOptions {
+  createAsSubmitted?: boolean;
+}
+
 interface ImportResult {
   success: boolean;
   totalRows: number;
@@ -142,7 +146,7 @@ export const useGoogleFormsImport = () => {
     return data;
   };
 
-  const createInscription = async (teacherId: string, periodId: string) => {
+  const createInscription = async (teacherId: string, periodId: string, status: 'draft' | 'submitted' = 'draft') => {
     const { data, error } = await supabase
       .from('inscriptions')
       .insert({
@@ -151,7 +155,7 @@ export const useGoogleFormsImport = () => {
         teaching_level: 'secundario',
         subject_area: 'General',
         experience_years: 0,
-        status: 'draft'
+        status: status
       })
       .select()
       .single();
@@ -193,6 +197,7 @@ export const useGoogleFormsImport = () => {
   const importFromGoogleForms = async (
     csvFile: File, 
     periodId: string,
+    options: ImportOptions = { createAsSubmitted: true },
     onProgress?: (progress: number) => void
   ): Promise<ImportResult> => {
     setImporting(true);
@@ -247,7 +252,8 @@ export const useGoogleFormsImport = () => {
           }
 
           // Create inscription
-          const inscription = await createInscription(teacher.id, periodId);
+          const status = options.createAsSubmitted ? 'submitted' : 'draft';
+          const inscription = await createInscription(teacher.id, periodId, status);
           result.inscriptionsCreated++;
 
           // Process subjects if provided
