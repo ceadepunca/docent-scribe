@@ -20,6 +20,7 @@ import { SecondaryInscriptionWizard } from '@/components/SecondaryInscriptionWiz
 import { SubjectSelection, PositionSelection, useSecondaryInscriptionData } from '@/hooks/useSecondaryInscriptionData';
 import { TeacherSearchGrid } from '@/components/admin/TeacherSearchGrid';
 import { InscriptionDocumentUploader } from '@/components/InscriptionDocumentUploader';
+import { useSecondaryInscriptionSelections } from '@/hooks/useSecondaryInscriptionSelections';
 
 const AssistedInscription = () => {
   const { user, isSuperAdmin } = useAuth();
@@ -36,6 +37,9 @@ const AssistedInscription = () => {
   const [subjectSelections, setSubjectSelections] = useState<SubjectSelection[]>([]);
   const [positionSelections, setPositionSelections] = useState<PositionSelection[]>([]);
   const [createdInscription, setCreatedInscription] = useState<any>(null);
+  const [existingInscriptions, setExistingInscriptions] = useState<any[]>([]);
+  const [editingInscription, setEditingInscription] = useState<any>(null);
+  const [loadingExisting, setLoadingExisting] = useState(false);
 
   const [teacherForm, setTeacherForm] = useState({
     first_name: '',
@@ -64,6 +68,9 @@ const AssistedInscription = () => {
     }
   }, [isSuperAdmin, fetchAllPeriods]);
 
+  // Load selections for editing inscription
+  const { subjectSelections: loadedSubjectSelections, positionSelections: loadedPositionSelections } = useSecondaryInscriptionSelections(editingInscription?.id);
+
   if (!isSuperAdmin) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background to-muted/50 p-4">
@@ -80,9 +87,38 @@ const AssistedInscription = () => {
     );
   }
 
-  const handleSelectTeacher = (teacher: any) => {
+  const handleSelectTeacher = async (teacher: any) => {
     setSelectedTeacher(teacher);
     setShowCreateForm(false);
+    setEditingInscription(null);
+    
+    // Check for existing inscriptions
+    await checkExistingInscriptions(teacher.id);
+  };
+
+  const checkExistingInscriptions = async (teacherId: string) => {
+    setLoadingExisting(true);
+    try {
+      const { data: inscriptions, error } = await supabase
+        .from('inscriptions')
+        .select(`
+          *,
+          inscription_periods(name, is_active),
+          inscription_subject_selections(id, subject_id, position_type),
+          inscription_position_selections(id, administrative_position_id)
+        `)
+        .eq('user_id', teacherId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      setExistingInscriptions(inscriptions || []);
+    } catch (error) {
+      console.error('Error checking existing inscriptions:', error);
+      setExistingInscriptions([]);
+    } finally {
+      setLoadingExisting(false);
+    }
   };
 
   const handleCreateNew = (searchQuery: string) => {
@@ -141,6 +177,33 @@ const AssistedInscription = () => {
     }
   };
 
+  const handleEditInscription = async (inscription: any) => {
+    setEditingInscription(inscription);
+    
+    // Load inscription data into form
+    setInscriptionForm({
+      teaching_level: inscription.teaching_level,
+      inscription_period_id: inscription.inscription_period_id,
+      subject_area: inscription.subject_area || '',
+      experience_years: inscription.experience_years?.toString() || '0',
+      availability: inscription.availability || '',
+      motivational_letter: inscription.motivational_letter || '',
+      target_position_type_id: inscription.target_position_type_id || '',
+    });
+
+    // Wait a moment for the useSecondaryInscriptionSelections hook to load data
+    setTimeout(() => {
+      // Load existing selections from the hook data
+      setSubjectSelections(loadedSubjectSelections.map((sel: any) => ({
+        subject_id: sel.subject_id
+      })) || []);
+      
+      setPositionSelections(loadedPositionSelections.map((sel: any) => ({
+        administrative_position_id: sel.administrative_position_id
+      })) || []);
+    }, 100);
+  };
+
   const handleSubmitInscription = async () => {
     if (!selectedTeacher || !inscriptionForm.teaching_level || !inscriptionForm.inscription_period_id) {
       toast({
@@ -175,23 +238,48 @@ const AssistedInscription = () => {
 
     setSubmitting(true);
     try {
-      const { data: inscription, error } = await supabase
-        .from('inscriptions')
-        .insert({
-          user_id: selectedTeacher.id,
-          teaching_level: inscriptionForm.teaching_level as 'inicial' | 'primario' | 'secundario',
-          inscription_period_id: inscriptionForm.inscription_period_id,
-          subject_area: inscriptionForm.subject_area || 'Secundario',
-          experience_years: parseInt(inscriptionForm.experience_years),
-          availability: inscriptionForm.availability,
-          motivational_letter: inscriptionForm.motivational_letter,
-          target_position_type_id: inscriptionForm.target_position_type_id || null,
-          status: 'submitted', // Administrative inscriptions are submitted directly
-        })
-        .select()
-        .single();
+      let inscription;
 
-      if (error) throw error;
+      if (editingInscription) {
+        // Update existing inscription
+        const { data, error } = await supabase
+          .from('inscriptions')
+          .update({
+            teaching_level: inscriptionForm.teaching_level as 'inicial' | 'primario' | 'secundario',
+            inscription_period_id: inscriptionForm.inscription_period_id,
+            subject_area: inscriptionForm.subject_area || 'Secundario',
+            experience_years: parseInt(inscriptionForm.experience_years),
+            availability: inscriptionForm.availability,
+            motivational_letter: inscriptionForm.motivational_letter,
+            target_position_type_id: inscriptionForm.target_position_type_id || null,
+          })
+          .eq('id', editingInscription.id)
+          .select()
+          .single();
+
+        if (error) throw error;
+        inscription = data;
+      } else {
+        // Create new inscription
+        const { data, error } = await supabase
+          .from('inscriptions')
+          .insert({
+            user_id: selectedTeacher.id,
+            teaching_level: inscriptionForm.teaching_level as 'inicial' | 'primario' | 'secundario',
+            inscription_period_id: inscriptionForm.inscription_period_id,
+            subject_area: inscriptionForm.subject_area || 'Secundario',
+            experience_years: parseInt(inscriptionForm.experience_years),
+            availability: inscriptionForm.availability,
+            motivational_letter: inscriptionForm.motivational_letter,
+            target_position_type_id: inscriptionForm.target_position_type_id || null,
+            status: 'submitted', // Administrative inscriptions are submitted directly
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+        inscription = data;
+      }
 
       // Save secondary selections if applicable
       if (inscriptionForm.teaching_level === 'secundario' && inscription) {
@@ -224,15 +312,18 @@ const AssistedInscription = () => {
       });
 
       toast({
-        title: 'Inscripción creada',
-        description: `Inscripción creada exitosamente para ${selectedTeacher.first_name} ${selectedTeacher.last_name} en el período "${selectedPeriod?.name || 'No especificado'}"`,
+        title: editingInscription ? 'Inscripción actualizada' : 'Inscripción creada',
+        description: `Inscripción ${editingInscription ? 'actualizada' : 'creada'} exitosamente para ${selectedTeacher.first_name} ${selectedTeacher.last_name} en el período "${selectedPeriod?.name || 'No especificado'}"`,
       });
 
+      // Refresh existing inscriptions
+      await checkExistingInscriptions(selectedTeacher.id);
+
     } catch (error: any) {
-      console.error('Error creating inscription:', error);
+      console.error('Error saving inscription:', error);
       toast({
         title: 'Error',
-        description: error.message || 'No se pudo crear la inscripción',
+        description: error.message || `No se pudo ${editingInscription ? 'actualizar' : 'crear'} la inscripción`,
         variant: 'destructive',
       });
     } finally {
@@ -244,6 +335,23 @@ const AssistedInscription = () => {
     // Reset all forms and state
     setCreatedInscription(null);
     setSelectedTeacher(null);
+    setSubjectSelections([]);
+    setPositionSelections([]);
+    setEditingInscription(null);
+    setExistingInscriptions([]);
+    setInscriptionForm({
+      teaching_level: '',
+      inscription_period_id: '',
+      subject_area: '',
+      experience_years: '0',
+      availability: '',
+      motivational_letter: '',
+      target_position_type_id: '',
+    });
+  };
+
+  const handleNewInscriptionForTeacher = () => {
+    setEditingInscription(null);
     setSubjectSelections([]);
     setPositionSelections([]);
     setInscriptionForm({
@@ -295,38 +403,104 @@ const AssistedInscription = () => {
 
         {/* Teacher Found */}
         {selectedTeacher && (
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  ✅ Docente Seleccionado
+          <div className="space-y-6">
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    ✅ Docente Seleccionado
+                  </div>
+                  <Badge variant={selectedTeacher.migrated ? "secondary" : "default"}>
+                    {selectedTeacher.migrated ? "Migrado" : "Registrado"}
+                  </Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div>
+                    <Label className="text-sm font-medium">Nombre</Label>
+                    <p>{selectedTeacher.first_name} {selectedTeacher.last_name}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium">DNI</Label>
+                    <p>{selectedTeacher.dni}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium">Email</Label>
+                    <p>{selectedTeacher.email}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium">Teléfono</Label>
+                    <p>{selectedTeacher.phone || 'No especificado'}</p>
+                  </div>
                 </div>
-                <Badge variant={selectedTeacher.migrated ? "secondary" : "default"}>
-                  {selectedTeacher.migrated ? "Migrado" : "Registrado"}
-                </Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div>
-                  <Label className="text-sm font-medium">Nombre</Label>
-                  <p>{selectedTeacher.first_name} {selectedTeacher.last_name}</p>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium">DNI</Label>
-                  <p>{selectedTeacher.dni}</p>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium">Email</Label>
-                  <p>{selectedTeacher.email}</p>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium">Teléfono</Label>
-                  <p>{selectedTeacher.phone || 'No especificado'}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+
+            {/* Existing Inscriptions */}
+            {loadingExisting && (
+              <Card>
+                <CardContent className="py-6">
+                  <p className="text-center text-muted-foreground">Verificando inscripciones existentes...</p>
+                </CardContent>
+              </Card>
+            )}
+
+            {!loadingExisting && existingInscriptions.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between">
+                    <span>Inscripciones Existentes ({existingInscriptions.length})</span>
+                    <Button variant="outline" size="sm" onClick={handleNewInscriptionForTeacher}>
+                      Nueva Inscripción
+                    </Button>
+                  </CardTitle>
+                  <CardDescription>
+                    Este docente ya tiene inscripciones. Puede modificar una existente o crear una nueva.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {existingInscriptions.map((inscription) => (
+                      <div key={inscription.id} className="border rounded-lg p-4 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-medium">
+                              {inscription.inscription_periods?.name || 'Período no especificado'}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              Nivel: {inscription.teaching_level} • Estado: {inscription.status}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              Materias: {inscription.inscription_subject_selections?.length || 0} • 
+                              Cargos: {inscription.inscription_position_selections?.length || 0}
+                            </p>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleEditInscription(inscription)}
+                            >
+                              {editingInscription?.id === inscription.id ? 'Editando...' : 'Modificar'}
+                            </Button>
+                          </div>
+                        </div>
+                        {inscription.inscription_subject_selections?.length === 0 && 
+                         inscription.inscription_position_selections?.length === 0 && (
+                          <Alert>
+                            <AlertDescription>
+                              ⚠️ Esta inscripción no tiene materias ni cargos seleccionados y no se puede evaluar.
+                            </AlertDescription>
+                          </Alert>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
         )}
 
         {/* Create Teacher Form */}
@@ -392,15 +566,18 @@ const AssistedInscription = () => {
         )}
 
         {/* Inscription Form */}
-        {selectedTeacher && (
+        {selectedTeacher && (!existingInscriptions.length || editingInscription || (!loadingExisting && !editingInscription)) && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Send className="h-5 w-5" />
-                Datos de la Inscripción
+                {editingInscription ? 'Modificar Inscripción' : 'Nueva Inscripción'}
               </CardTitle>
               <CardDescription>
-                Las inscripciones administrativas no tienen restricciones de fecha
+                {editingInscription 
+                  ? 'Modificando inscripción existente - puede agregar materias faltantes'
+                  : 'Las inscripciones administrativas no tienen restricciones de fecha'
+                }
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -539,6 +716,15 @@ const AssistedInscription = () => {
 
               {inscriptionForm.teaching_level !== 'secundario' && (
                 <div className="flex justify-end gap-2 pt-4">
+                  {editingInscription && (
+                    <Button 
+                      variant="outline"
+                      onClick={handleNewInscriptionForTeacher}
+                      disabled={submitting}
+                    >
+                      Cancelar Edición
+                    </Button>
+                  )}
                   <Button variant="outline" onClick={() => {
                     setSelectedTeacher(null);
                     setShowCreateForm(false);
@@ -546,7 +732,7 @@ const AssistedInscription = () => {
                     Cancelar
                   </Button>
                   <Button onClick={handleSubmitInscription} disabled={submitting}>
-                    {submitting ? 'Creando Inscripción...' : 'Crear Inscripción'}
+                    {submitting ? 'Guardando...' : (editingInscription ? 'Actualizar Inscripción' : 'Crear Inscripción')}
                   </Button>
                 </div>
               )}
