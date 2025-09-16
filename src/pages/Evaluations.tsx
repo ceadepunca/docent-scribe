@@ -90,6 +90,11 @@ const Evaluations = () => {
           inscription_periods!inner(
             id,
             name
+          ),
+          inscription_subject_selections(
+            id,
+            subject_id,
+            subjects(name)
           )
         `)
         .in('status', ['submitted', 'under_review', 'approved', 'rejected', 'requires_changes'])
@@ -97,39 +102,59 @@ const Evaluations = () => {
 
       if (allError) throw allError;
 
-      // Get evaluations for these inscriptions
-      const inscriptionIds = allInscriptions?.map(i => i.id) || [];
-      const { data: evaluationsData, error: evalError } = await supabase
-        .from('evaluations')
-        .select('inscription_id, id')
-        .in('inscription_id', inscriptionIds);
+      // Filter out inscriptions without subject selections (these are defective)
+      const validInscriptions = allInscriptions?.filter(inscription => {
+        return inscription.inscription_subject_selections && 
+               inscription.inscription_subject_selections.length > 0;
+      }) || [];
+
+      // Get evaluations for valid inscriptions only
+      const inscriptionIds = validInscriptions.map(i => i.id) || [];
+      const { data: evaluationsData, error: evalError } = inscriptionIds.length > 0
+        ? await supabase
+            .from('evaluations')
+            .select('inscription_id, id')
+            .in('inscription_id', inscriptionIds)
+        : { data: [], error: null };
 
       if (evalError) throw evalError;
 
       // Create evaluation map
       const evaluationMap = new Set(evaluationsData?.map(e => e.inscription_id) || []);
 
-      // Get unique user IDs and fetch profiles
-      const userIds = [...new Set(allInscriptions?.map(inscription => inscription.user_id) || [])];
+      // Get unique user IDs and fetch profiles for valid inscriptions only
+      const userIds = [...new Set(validInscriptions.map(inscription => inscription.user_id) || [])];
       
-      const { data: profilesData, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, first_name, last_name, email, dni')
-        .in('id', userIds);
+      const { data: profilesData, error: profilesError } = userIds.length > 0
+        ? await supabase
+            .from('profiles')
+            .select('id, first_name, last_name, email, dni')
+            .in('id', userIds)
+        : { data: [], error: null };
 
       if (profilesError) throw profilesError;
 
-      // Create profiles map and combine data
-      const profilesMap = new Map(profilesData?.map(profile => [profile.id, profile]) || []);
+      // Create profiles map and combine data for valid inscriptions only
+      const profilesMap = new Map<string, any>();
+      profilesData?.forEach(profile => profilesMap.set(profile.id, profile));
       
-      const inscriptionsData: InscriptionWithProfile[] = allInscriptions?.map(inscription => ({
-        ...inscription,
+      const inscriptionsData: InscriptionWithProfile[] = validInscriptions.map(inscription => ({
+        id: inscription.id,
+        status: inscription.status,
+        subject_area: inscription.subject_area,
+        teaching_level: inscription.teaching_level,
+        experience_years: inscription.experience_years,
+        created_at: inscription.created_at,
+        updated_at: inscription.updated_at,
+        user_id: inscription.user_id,
+        inscription_period_id: inscription.inscription_period_id,
         evaluation_state: evaluationMap.has(inscription.id) ? 'evaluada' as const : 'no_evaluada' as const,
         inscription_period: inscription.inscription_periods,
         profiles: profilesMap.get(inscription.user_id) || null
-      })) || [];
+      }));
 
-      console.log('Successfully fetched inscriptions:', inscriptionsData?.length || 0);
+      console.log('Successfully fetched valid inscriptions:', inscriptionsData.length);
+      console.log('Filtered out inscriptions without subjects:', (allInscriptions?.length || 0) - inscriptionsData.length);
       setInscriptions(inscriptionsData);
       
     } catch (error) {

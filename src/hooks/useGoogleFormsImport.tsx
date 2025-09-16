@@ -257,6 +257,7 @@ export const useGoogleFormsImport = () => {
           result.inscriptionsCreated++;
 
           // Process subjects if provided
+          let subjectsCreated = false;
           if (row.materias && Array.isArray(row.materias) && row.materias.length > 0) {
             try {
               // Filter out empty values and trim
@@ -270,6 +271,7 @@ export const useGoogleFormsImport = () => {
                 
                 if (foundSubjectIds.length > 0) {
                   await createSubjectSelections(inscription.id, foundSubjectIds);
+                  subjectsCreated = true;
                 }
 
                 // Log subjects not found
@@ -289,6 +291,26 @@ export const useGoogleFormsImport = () => {
             } catch (subjectError: any) {
               result.errors.push(
                 `Error procesando materias para ${row.nombre} ${row.apellido}: ${subjectError.message}`
+              );
+            }
+          }
+
+          // If no subjects were created but inscription exists, delete the inscription
+          // to prevent invalid inscriptions without subjects
+          if (!subjectsCreated) {
+            try {
+              await supabase
+                .from('inscriptions')
+                .delete()
+                .eq('id', inscription.id);
+              
+              result.inscriptionsCreated--;
+              result.errors.push(
+                `Inscripción de ${row.nombre} ${row.apellido} eliminada: no se encontraron materias válidas`
+              );
+            } catch (deleteError: any) {
+              result.errors.push(
+                `Error eliminando inscripción inválida para ${row.nombre} ${row.apellido}: ${deleteError.message}`
               );
             }
           }
