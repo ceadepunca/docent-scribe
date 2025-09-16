@@ -57,8 +57,6 @@ const AssistedInscription = () => {
     inscription_period_id: '',
     subject_area: '',
     experience_years: '0',
-    availability: '',
-    motivational_letter: '',
     target_position_type_id: '',
   });
 
@@ -186,8 +184,6 @@ const AssistedInscription = () => {
       inscription_period_id: inscription.inscription_period_id,
       subject_area: inscription.subject_area || '',
       experience_years: inscription.experience_years?.toString() || '0',
-      availability: inscription.availability || '',
-      motivational_letter: inscription.motivational_letter || '',
       target_position_type_id: inscription.target_position_type_id || '',
     });
 
@@ -249,8 +245,6 @@ const AssistedInscription = () => {
             inscription_period_id: inscriptionForm.inscription_period_id,
             subject_area: inscriptionForm.subject_area || 'Secundario',
             experience_years: parseInt(inscriptionForm.experience_years),
-            availability: inscriptionForm.availability,
-            motivational_letter: inscriptionForm.motivational_letter,
             target_position_type_id: inscriptionForm.target_position_type_id || null,
           })
           .eq('id', editingInscription.id)
@@ -269,8 +263,6 @@ const AssistedInscription = () => {
             inscription_period_id: inscriptionForm.inscription_period_id,
             subject_area: inscriptionForm.subject_area || 'Secundario',
             experience_years: parseInt(inscriptionForm.experience_years),
-            availability: inscriptionForm.availability,
-            motivational_letter: inscriptionForm.motivational_letter,
             target_position_type_id: inscriptionForm.target_position_type_id || null,
             status: 'submitted', // Administrative inscriptions are submitted directly
           })
@@ -344,8 +336,6 @@ const AssistedInscription = () => {
       inscription_period_id: '',
       subject_area: '',
       experience_years: '0',
-      availability: '',
-      motivational_letter: '',
       target_position_type_id: '',
     });
   };
@@ -359,8 +349,6 @@ const AssistedInscription = () => {
       inscription_period_id: '',
       subject_area: '',
       experience_years: '0',
-      availability: '',
-      motivational_letter: '',
       target_position_type_id: '',
     });
   };
@@ -694,25 +682,7 @@ const AssistedInscription = () => {
                 </div>
               )}
 
-              <div>
-                <Label htmlFor="availability">Disponibilidad</Label>
-                <Input
-                  id="availability"
-                  placeholder="Ej: Mañana, Tarde, Completa"
-                  value={inscriptionForm.availability}
-                  onChange={(e) => setInscriptionForm(prev => ({ ...prev, availability: e.target.value }))}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="motivational_letter">Carta de Motivación</Label>
-                <Textarea
-                  id="motivational_letter"
-                  placeholder="Explique brevemente su motivación para el cargo..."
-                  value={inscriptionForm.motivational_letter}
-                  onChange={(e) => setInscriptionForm(prev => ({ ...prev, motivational_letter: e.target.value }))}
-                />
-              </div>
+              {/* Campos de disponibilidad y carta de motivación eliminados */}
 
               {inscriptionForm.teaching_level !== 'secundario' && (
                 <div className="flex justify-end gap-2 pt-4">

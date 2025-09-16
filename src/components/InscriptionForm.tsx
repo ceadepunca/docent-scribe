@@ -24,9 +24,7 @@ const inscriptionSchema = z.object({
   teaching_level: z.enum(['inicial', 'primario', 'secundario'], {
     required_error: 'Debe seleccionar un nivel educativo'
   }),
-  experience_years: z.number().min(0, 'Los años de experiencia no pueden ser negativos').max(50, 'Años de experiencia no pueden ser más de 50').optional(),
-  availability: z.string().optional(),
-  motivational_letter: z.string().min(50, 'La carta de motivación debe tener al menos 50 caracteres').max(2000, 'La carta de motivación no puede exceder 2000 caracteres').optional()
+  experience_years: z.number().min(0, 'Los años de experiencia no pueden ser negativos').max(50, 'Años de experiencia no pueden ser más de 50').optional()
 });
 
 type InscriptionFormData = z.infer<typeof inscriptionSchema>;
@@ -52,9 +50,7 @@ const InscriptionForm: React.FC<InscriptionFormProps> = ({ initialData, isEdit =
     defaultValues: {
       subject_area: initialData?.subject_area || '',
       teaching_level: (initialData?.teaching_level as 'inicial' | 'primario' | 'secundario') || 'inicial',
-      experience_years: initialData?.experience_years || 0,
-      availability: initialData?.availability || '',
-      motivational_letter: initialData?.motivational_letter || ''
+      experience_years: initialData?.experience_years || 0
     }
   });
 
@@ -105,8 +101,6 @@ const InscriptionForm: React.FC<InscriptionFormProps> = ({ initialData, isEdit =
         subject_area: formValues.subject_area || 'No especificada',
         teaching_level: formValues.teaching_level,
         experience_years: formValues.experience_years || 0,
-        availability: formValues.availability,
-        motivational_letter: formValues.motivational_letter,
         inscription_period_id: inscriptionPeriodId,
         user_id: user.id,
         status: 'draft' as const
@@ -179,8 +173,6 @@ const InscriptionForm: React.FC<InscriptionFormProps> = ({ initialData, isEdit =
         subject_area: data.subject_area || 'No especificada',
         teaching_level: data.teaching_level,
         experience_years: data.experience_years || 0,
-        availability: data.availability,
-        motivational_letter: data.motivational_letter,
         inscription_period_id: inscriptionPeriodId,
         user_id: user.id,
         status: (isDraft ? 'draft' : 'submitted') as 'draft' | 'submitted' | 'under_review' | 'approved' | 'rejected' | 'requires_changes'
@@ -242,8 +234,6 @@ const InscriptionForm: React.FC<InscriptionFormProps> = ({ initialData, isEdit =
         subject_area: 'Secundario',
         teaching_level: 'secundario' as const,
         experience_years: 0,
-        availability: null,
-        motivational_letter: null,
         inscription_period_id: inscriptionPeriodId,
         user_id: user.id,
         status: 'draft' as const
@@ -298,8 +288,6 @@ const InscriptionForm: React.FC<InscriptionFormProps> = ({ initialData, isEdit =
         subject_area: 'Secundario',
         teaching_level: 'secundario' as const,
         experience_years: 0,
-        availability: null,
-        motivational_letter: null,
         inscription_period_id: selections.inscriptionPeriodId,
         user_id: user.id,
         status: 'submitted' as const
@@ -503,57 +491,10 @@ const InscriptionForm: React.FC<InscriptionFormProps> = ({ initialData, isEdit =
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="availability"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Disponibilidad Horaria</FormLabel>
-                    <Select 
-                      onValueChange={field.onChange} 
-                      defaultValue={field.value}
-                      disabled={!canEdit || isSubmitting}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Seleccione disponibilidad" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="mañana">Turno Mañana</SelectItem>
-                        <SelectItem value="tarde">Turno Tarde</SelectItem>
-                        <SelectItem value="noche">Turno Noche</SelectItem>
-                        <SelectItem value="completa">Jornada Completa</SelectItem>
-                        <SelectItem value="flexible">Horario Flexible</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {/* Campo de disponibilidad eliminado */}
             </div>
 
-            <FormField
-              control={form.control}
-              name="motivational_letter"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Carta de Motivación</FormLabel>
-                  <FormControl>
-                    <Textarea 
-                      placeholder="Explique sus motivaciones para formar parte de nuestro equipo docente, su filosofía educativa y qué puede aportar a la institución..."
-                      className="min-h-[120px]"
-                      {...field}
-                      disabled={!canEdit || isSubmitting}
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    Mínimo 50 caracteres, máximo 2000. Caracteres actuales: {field.value?.length || 0}
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {/* Campo de carta de motivación eliminado */}
 
             {canEdit && (
               <div className="flex gap-4 pt-4">

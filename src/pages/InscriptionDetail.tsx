@@ -120,17 +120,7 @@ const InscriptionDetail = () => {
     }
   };
 
-  const getAvailabilityLabel = (availability?: string) => {
-    if (!availability) return 'No especificada';
-    switch (availability) {
-      case 'mañana': return 'Turno Mañana';
-      case 'tarde': return 'Turno Tarde';
-      case 'noche': return 'Turno Noche';
-      case 'completa': return 'Jornada Completa';
-      case 'flexible': return 'Horario Flexible';
-      default: return availability;
-    }
-  };
+  // Se elimina la visualización de disponibilidad
 
   useEffect(() => {
     fetchInscriptionDetail();
@@ -408,13 +398,7 @@ const InscriptionDetail = () => {
                         </p>
                       </div>
                       
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <Clock className="h-4 w-4 text-muted-foreground" />
-                          <span className="font-medium text-sm">Disponibilidad</span>
-                        </div>
-                        <p className="text-foreground">{getAvailabilityLabel(inscription.availability)}</p>
-                      </div>
+                      {/* Se elimina la sección de disponibilidad */}
                     </>
                   )}
                 </div>
@@ -457,21 +441,7 @@ const InscriptionDetail = () => {
               </Card>
             )}
 
-            {/* Motivational Letter */}
-            {inscription.motivational_letter && inscription.teaching_level !== 'secundario' && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Carta de Motivación</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="prose max-w-none">
-                    <p className="text-foreground whitespace-pre-wrap leading-relaxed">
-                      {inscription.motivational_letter}
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+            {/* Se elimina la tarjeta de carta de motivación */}
 
             {/* Documents Section - Only for evaluators and super admins */}
             {(isEvaluator || isSuperAdmin) && (
