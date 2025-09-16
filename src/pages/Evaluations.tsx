@@ -102,11 +102,8 @@ const Evaluations = () => {
 
       if (allError) throw allError;
 
-      // Filter out inscriptions without subject selections (these are defective)
-      const validInscriptions = allInscriptions?.filter(inscription => {
-        return inscription.inscription_subject_selections && 
-               inscription.inscription_subject_selections.length > 0;
-      }) || [];
+      // Include all inscriptions regardless of subject selections (temporarily ignore subjects)
+      const validInscriptions = allInscriptions || [];
 
       // Get evaluations for valid inscriptions only
       const inscriptionIds = validInscriptions.map(i => i.id) || [];
@@ -153,10 +150,9 @@ const Evaluations = () => {
         profiles: profilesMap.get(inscription.user_id) || null
       }));
 
-      console.log('Successfully fetched valid inscriptions:', inscriptionsData.length);
-      console.log('Filtered out inscriptions without subjects:', (allInscriptions?.length || 0) - inscriptionsData.length);
+      console.log('Successfully fetched inscriptions:', inscriptionsData.length);
       setInscriptions(inscriptionsData);
-      
+
     } catch (error) {
       console.error('Error fetching inscriptions:', error);
       toast({
