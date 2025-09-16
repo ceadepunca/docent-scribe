@@ -4,8 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle2, Circle, BookOpen, UserCheck, FileText, Calendar } from 'lucide-react';
-import { SubjectSelectionGrid } from './SubjectSelectionGrid';
-import { PositionSelectionGrid } from './PositionSelectionGrid';
+import { FraySubjectsAndPositions } from './FraySubjectsAndPositions';
+import { EnetSubjectsAndPositions } from './EnetSubjectsAndPositions';
 import { InscriptionDocumentUploader } from './InscriptionDocumentUploader';
 import { PeriodSelectionGrid } from './PeriodSelectionGrid';
 import { SubjectSelection, PositionSelection, useSecondaryInscriptionData } from '@/hooks/useSecondaryInscriptionData';
@@ -39,8 +39,8 @@ export const SecondaryInscriptionWizard: React.FC<SecondaryInscriptionWizardProp
   onPositionSelectionsChange,
   inscriptionId = null,
 }) => {
-  const [activeTab, setActiveTab] = useState<'period' | 'subjects' | 'positions' | 'documents' | 'summary'>(
-    inscriptionId ? 'subjects' : 'period'
+  const [activeTab, setActiveTab] = useState<'period' | 'fray' | 'enet' | 'documents' | 'summary'>(
+    inscriptionId ? 'fray' : 'period'
   );
   const [subjectSelections, setSubjectSelections] = useState<SubjectSelection[]>([]);
   const [positionSelections, setPositionSelections] = useState<PositionSelection[]>([]);
@@ -91,10 +91,10 @@ export const SecondaryInscriptionWizard: React.FC<SecondaryInscriptionWizardProp
 
   const handleNext = async () => {
     if (activeTab === 'period') {
-      setActiveTab('subjects');
-    } else if (activeTab === 'subjects') {
-      setActiveTab('positions');
-    } else if (activeTab === 'positions') {
+      setActiveTab('fray');
+    } else if (activeTab === 'fray') {
+      setActiveTab('enet');
+    } else if (activeTab === 'enet') {
       // Auto-save when accessing documents for the first time
       if (!savedInscriptionId && selectedPeriodId && onAutoSave) {
         setAutoSaving(true);
@@ -114,12 +114,12 @@ export const SecondaryInscriptionWizard: React.FC<SecondaryInscriptionWizardProp
   };
 
   const handleBack = () => {
-    if (activeTab === 'subjects') {
+    if (activeTab === 'fray') {
       setActiveTab('period');
-    } else if (activeTab === 'positions') {
-      setActiveTab('subjects');
+    } else if (activeTab === 'enet') {
+      setActiveTab('fray');
     } else if (activeTab === 'documents') {
-      setActiveTab('positions');
+      setActiveTab('enet');
     } else if (activeTab === 'summary') {
       setActiveTab('documents');
     }
@@ -157,23 +157,23 @@ export const SecondaryInscriptionWizard: React.FC<SecondaryInscriptionWizardProp
             <Calendar className="h-4 w-4" />
             Período
           </TabsTrigger>
-          <TabsTrigger value="subjects" className="flex items-center gap-2">
+          <TabsTrigger value="fray" className="flex items-center gap-2">
             {hasSubjectSelections ? (
               <CheckCircle2 className="h-4 w-4 text-green-500" />
             ) : (
               <Circle className="h-4 w-4" />
             )}
             <BookOpen className="h-4 w-4" />
-            Materias
+            FRAY
           </TabsTrigger>
-          <TabsTrigger value="positions" className="flex items-center gap-2">
+          <TabsTrigger value="enet" className="flex items-center gap-2">
             {hasPositionSelections ? (
               <CheckCircle2 className="h-4 w-4 text-green-500" />
             ) : (
               <Circle className="h-4 w-4" />
             )}
             <UserCheck className="h-4 w-4" />
-            Cargos
+            ENET
           </TabsTrigger>
           <TabsTrigger value="documents" className="flex items-center gap-2">
             <FileText className="h-4 w-4" />
@@ -203,43 +203,61 @@ export const SecondaryInscriptionWizard: React.FC<SecondaryInscriptionWizardProp
               onClick={handleNext}
               disabled={!selectedPeriodId || autoSaving}
             >
-              {autoSaving ? 'Guardando...' : 'Continuar a Materias'}
+              {autoSaving ? 'Guardando...' : 'Continuar a FRAY'}
             </Button>
           </div>
         </TabsContent>
 
-        <TabsContent value="subjects" className="mt-6">
+        <TabsContent value="fray" className="mt-6">
           <div className="space-y-6">
-                  <SubjectSelectionGrid
-                    selectedSubjects={subjectSelections}
-                    onSelectionChange={handleSubjectSelectionsChange}
-                    schools={schools}
-                    subjects={subjects}
-                    loading={loading}
-                  />
+            <FraySubjectsAndPositions
+              subjects={subjects}
+              positions={administrativePositions}
+              schools={schools}
+              selectedSubjects={subjectSelections.map(sel => ({ subjectId: sel.subject_id, positionType: 'titular' }))}
+              selectedPositions={positionSelections.map(sel => ({ positionId: sel.administrative_position_id }))}
+              onSubjectSelectionChange={(selections) => {
+                const mapped = selections.map(sel => ({ subject_id: sel.subjectId }));
+                handleSubjectSelectionsChange(mapped);
+              }}
+              onPositionSelectionChange={(selections) => {
+                const mapped = selections.map(sel => ({ administrative_position_id: sel.positionId }));
+                handlePositionSelectionsChange(mapped);
+              }}
+              loading={loading}
+            />
             <div className="flex justify-between">
               <Button variant="outline" onClick={handleBack}>
                 Volver a Período
               </Button>
               <Button onClick={handleNext}>
-                Continuar a Cargos Administrativos
+                Continuar a ENET
               </Button>
             </div>
           </div>
         </TabsContent>
 
-        <TabsContent value="positions" className="mt-6">
+        <TabsContent value="enet" className="mt-6">
           <div className="space-y-6">
-                  <PositionSelectionGrid
-                    selectedPositions={positionSelections}
-                    onSelectionChange={handlePositionSelectionsChange}
-                    schools={schools}
-                    administrativePositions={administrativePositions}
-                    loading={loading}
-                  />
+            <EnetSubjectsAndPositions
+              subjects={subjects}
+              positions={administrativePositions}
+              schools={schools}
+              selectedSubjects={subjectSelections.map(sel => ({ subjectId: sel.subject_id, positionType: 'titular' }))}
+              selectedPositions={positionSelections.map(sel => ({ positionId: sel.administrative_position_id }))}
+              onSubjectSelectionChange={(selections) => {
+                const mapped = selections.map(sel => ({ subject_id: sel.subjectId }));
+                handleSubjectSelectionsChange(mapped);
+              }}
+              onPositionSelectionChange={(selections) => {
+                const mapped = selections.map(sel => ({ administrative_position_id: sel.positionId }));
+                handlePositionSelectionsChange(mapped);
+              }}
+              loading={loading}
+            />
             <div className="flex justify-between">
               <Button variant="outline" onClick={handleBack}>
-                Volver a Materias
+                Volver a FRAY
               </Button>
               <Button onClick={handleNext}>
                 Continuar a Documentos
@@ -255,7 +273,7 @@ export const SecondaryInscriptionWizard: React.FC<SecondaryInscriptionWizardProp
             />
             <div className="flex justify-between">
               <Button variant="outline" onClick={handleBack}>
-                Volver a Cargos
+                Volver a ENET
               </Button>
               <Button 
                 onClick={handleNext}
