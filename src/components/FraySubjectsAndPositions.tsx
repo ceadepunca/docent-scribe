@@ -54,7 +54,7 @@ export const FraySubjectsAndPositions: React.FC<FraySubjectsAndPositionsProps> =
   loading
 }) => {
   // Filter for FRAY school - get school ID first
-  const fraySchool = schools.find(school => school.name?.includes('FRAY'));
+  const fraySchool = schools.find(school => school.name?.includes('Fray'));
   const fraySubjects = subjects.filter(subject => subject.school_id === fraySchool?.id);
   const frayPositions = positions.filter(position => position.school_id === fraySchool?.id);
 

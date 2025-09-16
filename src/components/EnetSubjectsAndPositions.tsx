@@ -65,23 +65,21 @@ export const EnetSubjectsAndPositions: React.FC<EnetSubjectsAndPositionsProps> =
     return acc;
   }, {} as Record<string, Subject[]>);
 
-  const isSubjectSelected = (subjectId: string, positionType: 'titular' | 'suplente'): boolean => {
-    return selectedSubjects.some(sel => sel.subjectId === subjectId && sel.positionType === positionType);
+  const isSubjectSelected = (subjectId: string): boolean => {
+    return selectedSubjects.some(sel => sel.subjectId === subjectId);
   };
 
   const isPositionSelected = (positionId: string): boolean => {
     return selectedPositions.some(sel => sel.positionId === positionId);
   };
 
-  const handleSubjectChange = (subjectId: string, positionType: 'titular' | 'suplente', checked: boolean) => {
+  const handleSubjectChange = (subjectId: string, checked: boolean) => {
     let newSelections = [...selectedSubjects];
     
     if (checked) {
-      newSelections.push({ subjectId, positionType });
+      newSelections.push({ subjectId, positionType: 'titular' });
     } else {
-      newSelections = newSelections.filter(sel => 
-        !(sel.subjectId === subjectId && sel.positionType === positionType)
-      );
+      newSelections = newSelections.filter(sel => sel.subjectId === subjectId);
     }
     
     onSubjectSelectionChange(newSelections);
@@ -131,25 +129,14 @@ export const EnetSubjectsAndPositions: React.FC<EnetSubjectsAndPositionsProps> =
                     <div className="flex-1">
                       <span className="text-sm font-medium">{subject.name}</span>
                     </div>
-                    <div className="flex items-center space-x-4">
-                      <label className="flex items-center space-x-2">
-                        <Checkbox
-                          checked={isSubjectSelected(subject.id, 'titular')}
-                          onCheckedChange={(checked) => 
-                            handleSubjectChange(subject.id, 'titular', checked as boolean)
-                          }
-                        />
-                        <span className="text-xs">Titular</span>
-                      </label>
-                      <label className="flex items-center space-x-2">
-                        <Checkbox
-                          checked={isSubjectSelected(subject.id, 'suplente')}
-                          onCheckedChange={(checked) => 
-                            handleSubjectChange(subject.id, 'suplente', checked as boolean)
-                          }
-                        />
-                        <span className="text-xs">Suplente</span>
-                      </label>
+                    <div className="flex items-center">
+                      <Checkbox
+                        checked={isSubjectSelected(subject.id)}
+                        onCheckedChange={(checked) => 
+                          handleSubjectChange(subject.id, checked as boolean)
+                        }
+                      />
+                      <span className="ml-2 text-xs">Inscribirse</span>
                     </div>
                   </div>
                 ))}
@@ -198,7 +185,7 @@ export const EnetSubjectsAndPositions: React.FC<EnetSubjectsAndPositionsProps> =
                     const subject = enetSubjects.find(s => s.id === selection.subjectId);
                     return (
                       <Badge key={index} variant="secondary">
-                        {subject?.name} ({selection.positionType})
+                        {subject?.name}
                       </Badge>
                     );
                   })}
