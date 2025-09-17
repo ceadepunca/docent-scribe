@@ -177,13 +177,10 @@ export const InscriptionDocumentUploader: React.FC<InscriptionDocumentUploaderPr
         </p>
       </div>
 
-      {showInscriptionPendingMessage && (
+      {showInscriptionPendingMessage && pendingFiles.length > 0 && (
         <Alert>
           <AlertDescription>
-            {pendingFiles.length > 0 
-              ? `${pendingFiles.length} archivo(s) seleccionado(s). Se subirán automáticamente al guardar la inscripción.`
-              : 'Puede seleccionar archivos ahora. Se subirán automáticamente al guardar la inscripción.'
-            }
+            {`${pendingFiles.length} archivo(s) seleccionado(s). Se subirán automáticamente al guardar la inscripción.`}
           </AlertDescription>
         </Alert>
       )}
