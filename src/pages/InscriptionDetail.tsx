@@ -337,7 +337,7 @@ const InscriptionDetail = () => {
                 Información completa de tu postulación
               </p>
             </div>
-            {['draft', 'requires_changes'].includes(inscription.status) && (
+            {['draft', 'requires_changes', 'submitted'].includes(inscription.status) && (
               <Button
                 onClick={() => navigate(`/inscriptions/${inscription.id}/edit`)}
                 className="flex items-center gap-2"

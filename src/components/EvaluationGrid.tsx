@@ -172,21 +172,50 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
         throw error;
       }
 
-      if (data) {
+      let evaluationData = data;
+
+      // If no evaluation found for current user, try to load any existing evaluation for prefilling
+      if (!evaluationData) {
+        console.log('No evaluation found for current user, looking for any existing evaluation...');
+        let fallbackQuery = supabase
+          .from('evaluations')
+          .select('*')
+          .eq('inscription_id', inscriptionId);
+
+        // Add selection-specific filters for secondary level
+        if (isSecondaryLevel) {
+          if (subjectSelection) {
+            fallbackQuery = fallbackQuery.eq('subject_selection_id', subjectSelection.id);
+          } else if (positionSelection) {
+            fallbackQuery = fallbackQuery.eq('position_selection_id', positionSelection.id);
+          }
+        } else {
+          // For non-secondary levels, ensure we get general evaluations
+          fallbackQuery = fallbackQuery.is('subject_selection_id', null).is('position_selection_id', null);
+        }
+
+        const { data: fallbackData } = await fallbackQuery.maybeSingle();
+        if (fallbackData) {
+          console.log('Found existing evaluation for prefilling:', fallbackData);
+          evaluationData = fallbackData;
+        }
+      }
+
+      if (evaluationData) {
         const loadedEvaluation: EvaluationData = {
-          titulo_score: data.titulo_score || 0,
-          antiguedad_titulo_score: data.antiguedad_titulo_score || 0,
-          antiguedad_docente_score: data.antiguedad_docente_score || 0,
-          concepto_score: data.concepto_score || 0,
-          promedio_titulo_score: data.promedio_titulo_score || 0,
-          trabajo_publico_score: data.trabajo_publico_score || 0,
-          becas_otros_score: data.becas_otros_score || 0,
-          concurso_score: data.concurso_score || 0,
-          otros_antecedentes_score: data.otros_antecedentes_score || 0,
-          red_federal_score: data.red_federal_score || 0,
-          notes: data.notes || '',
-          status: (data.status as 'draft' | 'completed') || 'draft',
-          title_type: (data.title_type as 'docente' | 'habilitante' | 'supletorio') || (isSecondaryLevel ? 'docente' : undefined)
+          titulo_score: evaluationData.titulo_score || 0,
+          antiguedad_titulo_score: evaluationData.antiguedad_titulo_score || 0,
+          antiguedad_docente_score: evaluationData.antiguedad_docente_score || 0,
+          concepto_score: evaluationData.concepto_score || 0,
+          promedio_titulo_score: evaluationData.promedio_titulo_score || 0,
+          trabajo_publico_score: evaluationData.trabajo_publico_score || 0,
+          becas_otros_score: evaluationData.becas_otros_score || 0,
+          concurso_score: evaluationData.concurso_score || 0,
+          otros_antecedentes_score: evaluationData.otros_antecedentes_score || 0,
+          red_federal_score: evaluationData.red_federal_score || 0,
+          notes: evaluationData.notes || '',
+          status: data && data.evaluator_id === user.id ? (evaluationData.status as 'draft' | 'completed') || 'draft' : 'draft',
+          title_type: (evaluationData.title_type as 'docente' | 'habilitante' | 'supletorio') || (isSecondaryLevel ? 'docente' : undefined)
         };
         setEvaluation(loadedEvaluation);
         setOriginalEvaluation(loadedEvaluation);

@@ -130,7 +130,7 @@ export const useImportPreviousInscriptions = () => {
         inscription_period_id: periodId,
         teaching_level: 'secundario', // Default for import
         subject_area: 'General', // Default for import
-        status: 'submitted',
+        status: 'draft',
         experience_years: 0 // Default
       })
       .select()
