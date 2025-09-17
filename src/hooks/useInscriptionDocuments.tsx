@@ -103,15 +103,18 @@ export const useInscriptionDocuments = (inscriptionId: string | null) => {
       const document = documents.find(doc => doc.id === documentId);
       if (!document) return false;
 
-      // Extract file path from URL
+      // Extract file path from URL (relative to bucket)
       const url = new URL(document.file_url);
-      const filePath = url.pathname.split('/').pop();
+      const decodedPath = decodeURIComponent(url.pathname);
+      // Example: /storage/v1/object/public/inscription-documents/<inscriptionId>/<filename>
+      const parts = decodedPath.split('/inscription-documents/');
+      const relativePath = parts.length > 1 ? parts[1] : '';
 
       // Delete from storage
-      if (filePath) {
+      if (relativePath) {
         await supabase.storage
           .from('inscription-documents')  
-          .remove([filePath]);
+          .remove([relativePath]);
       }
 
       // Delete from database
