@@ -66,6 +66,52 @@ const AssistedInscription = () => {
     }
   }, [isSuperAdmin, fetchAllPeriods]);
 
+  // Auto-select default period based on teaching level
+  const findDefaultPeriod = (teachingLevel: string) => {
+    if (!periods.length || !teachingLevel) return null;
+    
+    const now = new Date();
+    
+    // Find current active periods for this level
+    const currentPeriods = periods.filter(period => {
+      const startDate = new Date(period.start_date);
+      const endDate = new Date(period.end_date);
+      return period.is_active && 
+             period.available_levels.includes(teachingLevel as any) &&
+             now >= startDate && now <= endDate;
+    });
+    
+    if (currentPeriods.length > 0) {
+      return currentPeriods[0].id;
+    }
+    
+    // If no current periods, find the most recent active period for this level
+    const availablePeriods = periods.filter(period => 
+      period.is_active && period.available_levels.includes(teachingLevel as any)
+    ).sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime());
+    
+    if (availablePeriods.length > 0) {
+      return availablePeriods[0].id;
+    }
+    
+    // Last resort: any period that includes this level
+    const anyPeriod = periods.find(period => 
+      period.available_levels.includes(teachingLevel as any)
+    );
+    
+    return anyPeriod?.id || null;
+  };
+
+  // Auto-select period when teaching level changes or periods load
+  useEffect(() => {
+    if (inscriptionForm.teaching_level && periods.length > 0 && !inscriptionForm.inscription_period_id) {
+      const defaultPeriodId = findDefaultPeriod(inscriptionForm.teaching_level);
+      if (defaultPeriodId) {
+        setInscriptionForm(prev => ({ ...prev, inscription_period_id: defaultPeriodId }));
+      }
+    }
+  }, [inscriptionForm.teaching_level, periods]);
+
   // Load selections for editing inscription
   const { subjectSelections: loadedSubjectSelections, positionSelections: loadedPositionSelections } = useSecondaryInscriptionSelections(editingInscription?.id);
 
@@ -201,18 +247,10 @@ const AssistedInscription = () => {
   };
 
   const handleSubmitInscription = async () => {
-    // Additional debugging for periods
-    console.log('=== DEBUGGING FORM VALIDATION ===');
-    console.log('selectedTeacher:', selectedTeacher);
-    console.log('inscriptionForm.teaching_level:', inscriptionForm.teaching_level);
-    console.log('inscriptionForm.inscription_period_id:', inscriptionForm.inscription_period_id);
-    console.log('inscriptionForm.subject_area:', inscriptionForm.subject_area);
-    console.log('Available periods:', periods);
-    console.log('Selected period exists:', periods.find(p => p.id === inscriptionForm.inscription_period_id));
-    console.log('subjectSelections:', subjectSelections);
-    console.log('positionSelections:', positionSelections);
-    console.log('editingInscription:', editingInscription);
-    console.log('=== END DEBUGGING ===');
+    // Basic form validation debugging
+    console.log('=== FORM SUBMISSION ===');
+    console.log('Teaching level:', inscriptionForm.teaching_level);
+    console.log('Period ID:', inscriptionForm.inscription_period_id);
 
     // Specific validation with detailed error messages
     const missingFields = [];
@@ -225,7 +263,16 @@ const AssistedInscription = () => {
       missingFields.push('Nivel educativo');
     }
     
-    if (!inscriptionForm.inscription_period_id) {
+    // Auto-fill period if still empty
+    let finalPeriodId = inscriptionForm.inscription_period_id;
+    if (!finalPeriodId && inscriptionForm.teaching_level) {
+      finalPeriodId = findDefaultPeriod(inscriptionForm.teaching_level);
+      if (finalPeriodId) {
+        setInscriptionForm(prev => ({ ...prev, inscription_period_id: finalPeriodId }));
+      }
+    }
+    
+    if (!finalPeriodId) {
       missingFields.push('Período de inscripción');
     }
 
@@ -270,7 +317,7 @@ const AssistedInscription = () => {
           .from('inscriptions')
           .update({
             teaching_level: inscriptionForm.teaching_level as 'inicial' | 'primario' | 'secundario',
-            inscription_period_id: inscriptionForm.inscription_period_id,
+            inscription_period_id: finalPeriodId || inscriptionForm.inscription_period_id,
             subject_area: inscriptionForm.subject_area || 'Secundario',
             experience_years: parseInt(inscriptionForm.experience_years),
             target_position_type_id: inscriptionForm.target_position_type_id || null,
@@ -288,7 +335,7 @@ const AssistedInscription = () => {
           .insert({
             user_id: selectedTeacher.id,
             teaching_level: inscriptionForm.teaching_level as 'inicial' | 'primario' | 'secundario',
-            inscription_period_id: inscriptionForm.inscription_period_id,
+            inscription_period_id: finalPeriodId || inscriptionForm.inscription_period_id,
             subject_area: inscriptionForm.subject_area || 'Secundario',
             experience_years: parseInt(inscriptionForm.experience_years),
             target_position_type_id: inscriptionForm.target_position_type_id || null,
@@ -322,7 +369,7 @@ const AssistedInscription = () => {
         }
       }
 
-      const selectedPeriod = periods.find(p => p.id === inscriptionForm.inscription_period_id);
+      const selectedPeriod = periods.find(p => p.id === (finalPeriodId || inscriptionForm.inscription_period_id));
       
       // Set created inscription to show document uploader
       setCreatedInscription({
@@ -603,7 +650,12 @@ const AssistedInscription = () => {
                 <RadioGroup
                   value={inscriptionForm.teaching_level}
                   onValueChange={(value) => {
-                    setInscriptionForm(prev => ({ ...prev, teaching_level: value, target_position_type_id: '' }));
+                    setInscriptionForm(prev => ({ 
+                      ...prev, 
+                      teaching_level: value, 
+                      target_position_type_id: '',
+                      inscription_period_id: '' // Reset to trigger auto-selection
+                    }));
                     // Reset selections when level changes
                     if (value !== 'secundario') {
                       setSubjectSelections([]);
@@ -629,13 +681,13 @@ const AssistedInscription = () => {
 
               {/* Period Selection */}
               <div>
-                <Label htmlFor="period">Período (Informativo) *</Label>
+                <Label htmlFor="period">Período</Label>
                 <Select
                   value={inscriptionForm.inscription_period_id}
                   onValueChange={(value) => setInscriptionForm(prev => ({ ...prev, inscription_period_id: value }))}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar período" />
+                    <SelectValue placeholder="Se selecciona automáticamente" />
                   </SelectTrigger>
                   <SelectContent>
                     {periods.map((period) => (
@@ -645,6 +697,11 @@ const AssistedInscription = () => {
                     ))}
                   </SelectContent>
                 </Select>
+                {inscriptionForm.inscription_period_id && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Período seleccionado automáticamente. Puede cambiarlo si es necesario.
+                  </p>
+                )}
               </div>
 
               {/* Secondary Level Selections */}
