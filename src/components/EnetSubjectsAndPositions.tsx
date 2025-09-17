@@ -79,7 +79,7 @@ export const EnetSubjectsAndPositions: React.FC<EnetSubjectsAndPositionsProps> =
     if (checked) {
       newSelections.push({ subjectId, positionType: 'titular' });
     } else {
-      newSelections = newSelections.filter(sel => sel.subjectId === subjectId);
+      newSelections = newSelections.filter(sel => sel.subjectId !== subjectId);
     }
     
     onSubjectSelectionChange(newSelections);
@@ -123,7 +123,7 @@ export const EnetSubjectsAndPositions: React.FC<EnetSubjectsAndPositionsProps> =
               <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">
                 {getSpecialtyLabel(specialty)}
               </h4>
-              <div className="space-y-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 {subjects.map((subject) => (
                   <div key={subject.id} className="flex items-center space-x-4 p-2 rounded-lg border">
                     <div className="flex-1">
@@ -153,7 +153,7 @@ export const EnetSubjectsAndPositions: React.FC<EnetSubjectsAndPositionsProps> =
             <CardTitle>Cargos Administrativos - ENET nro 1</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
               {enetPositions.map((position) => (
                 <div key={position.id} className="flex items-center space-x-3 p-2 rounded-lg border">
                   <Checkbox
