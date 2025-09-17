@@ -20,6 +20,7 @@ interface ExcelInscriptionData {
 interface ImportResult {
   total: number;
   imported: number;
+  updated: number;
   skipped: number;
   errors: number;
   errorDetails: string[];
@@ -139,23 +140,11 @@ export const useImportPreviousInscriptions = () => {
     return data;
   };
 
-  const createEvaluation = async (
+  const createOrUpdateEvaluation = async (
     inscriptionId: string, 
     evaluatorId: string, 
     excelData: ExcelInscriptionData
   ) => {
-    // Check if evaluation already exists to prevent duplicates
-    const { data: existingEval } = await supabase
-      .from('evaluations')
-      .select('id')
-      .eq('inscription_id', inscriptionId)
-      .eq('evaluator_id', evaluatorId)
-      .maybeSingle();
-
-    if (existingEval) {
-      return existingEval; // Return existing evaluation
-    }
-
     const titleType = getTitleTypeFromScore(excelData['TÍTULO']);
     const totalScore = excelData['TÍTULO'] + 
                       excelData['ANTIGÜEDAD TÍTULO'] + 
@@ -168,30 +157,55 @@ export const useImportPreviousInscriptions = () => {
                       excelData['OTROS ANTEC. DOC.'] + 
                       excelData['RED FEDERAL MAX. 3'];
 
-    const { data, error } = await supabase
-      .from('evaluations')
-      .insert({
-        inscription_id: inscriptionId,
-        evaluator_id: evaluatorId,
-        title_type: titleType,
-        titulo_score: excelData['TÍTULO'],
-        antiguedad_titulo_score: excelData['ANTIGÜEDAD TÍTULO'],
-        antiguedad_docente_score: excelData['ANTIGÜEDAD DOCEN'],
-        concepto_score: excelData.CONCEPTO,
-        promedio_titulo_score: excelData['PROM.GRAL.TIT.DOCEN.'],
-        trabajo_publico_score: excelData['TRAB.PUBLIC.'],
-        becas_otros_score: excelData['BECAS Y OTROS EST.'],
-        concurso_score: excelData.CONCURSOS,
-        otros_antecedentes_score: excelData['OTROS ANTEC. DOC.'],
-        red_federal_score: excelData['RED FEDERAL MAX. 3'],
-        total_score: totalScore,
-        status: 'completed'
-      })
-      .select()
-      .single();
+    const evaluationData = {
+      inscription_id: inscriptionId,
+      evaluator_id: evaluatorId,
+      title_type: titleType,
+      titulo_score: excelData['TÍTULO'],
+      antiguedad_titulo_score: excelData['ANTIGÜEDAD TÍTULO'],
+      antiguedad_docente_score: excelData['ANTIGÜEDAD DOCEN'],
+      concepto_score: excelData.CONCEPTO,
+      promedio_titulo_score: excelData['PROM.GRAL.TIT.DOCEN.'],
+      trabajo_publico_score: excelData['TRAB.PUBLIC.'],
+      becas_otros_score: excelData['BECAS Y OTROS EST.'],
+      concurso_score: excelData.CONCURSOS,
+      otros_antecedentes_score: excelData['OTROS ANTEC. DOC.'],
+      red_federal_score: excelData['RED FEDERAL MAX. 3'],
+      total_score: totalScore,
+      status: 'draft', // Keep as draft for editability
+      last_modified_by: evaluatorId
+    };
 
-    if (error) throw error;
-    return data;
+    // Check if evaluation already exists
+    const { data: existingEval } = await supabase
+      .from('evaluations')
+      .select('id, status')
+      .eq('inscription_id', inscriptionId)
+      .eq('evaluator_id', evaluatorId)
+      .maybeSingle();
+
+    if (existingEval) {
+      // Update existing evaluation
+      const { data, error } = await supabase
+        .from('evaluations')
+        .update(evaluationData)
+        .eq('id', existingEval.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return { data, isUpdate: true };
+    } else {
+      // Create new evaluation
+      const { data, error } = await supabase
+        .from('evaluations')
+        .insert(evaluationData)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return { data, isUpdate: false };
+    }
   };
 
   const importInscriptions = async (
@@ -207,6 +221,7 @@ export const useImportPreviousInscriptions = () => {
     const result: ImportResult = {
       total: excelData.length,
       imported: 0,
+      updated: 0,
       skipped: 0,
       errors: 0,
       errorDetails: []
@@ -235,15 +250,6 @@ export const useImportPreviousInscriptions = () => {
             continue;
           }
 
-          // Check if inscription already exists
-          const existingInscription = await checkExistingInscription(userId, periodId);
-          
-          if (existingInscription) {
-            result.skipped++;
-            result.errorDetails.push(`Legajo ${row.LEGAJO}: Ya tiene inscripción en este período`);
-            continue;
-          }
-
           // Validate scores are within reasonable ranges
           if (row['TÍTULO'] < 0 || row['TÍTULO'] > 10 || 
               row['ANTIGÜEDAD TÍTULO'] < 0 || row['ANTIGÜEDAD TÍTULO'] > 10 ||
@@ -260,13 +266,26 @@ export const useImportPreviousInscriptions = () => {
             continue;
           }
 
-          // Create inscription
-          const inscription = await createInscription(teacher, periodId);
+          // Check if inscription already exists
+          let inscription = await checkExistingInscription(userId, periodId);
+          let inscriptionCreated = false;
+          
+          if (!inscription) {
+            // Create new inscription if it doesn't exist
+            inscription = await createInscription(teacher, periodId);
+            inscriptionCreated = true;
+          }
 
-          // Create evaluation with imported scores
-          await createEvaluation(inscription.id, user.id, row);
+          // Create or update evaluation with imported scores
+          const evaluationResult = await createOrUpdateEvaluation(inscription.id, user.id, row);
 
-          result.imported++;
+          if (inscriptionCreated) {
+            result.imported++;
+          } else if (evaluationResult.isUpdate) {
+            result.updated++;
+          } else {
+            result.imported++; // New evaluation for existing inscription
+          }
 
         } catch (error) {
           result.errors++;
