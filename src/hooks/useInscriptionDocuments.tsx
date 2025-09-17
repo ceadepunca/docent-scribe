@@ -88,9 +88,10 @@ export const useInscriptionDocuments = (inscriptionId: string | null) => {
       // Refresh documents list
       await fetchDocuments();
       return true;
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error uploading document:', err);
-      setError('Error al subir el documento');
+      const message = typeof err?.message === 'string' ? err.message : 'Error al subir el documento';
+      setError(message);
       return false;
     }
   };
@@ -128,9 +129,10 @@ export const useInscriptionDocuments = (inscriptionId: string | null) => {
       // Refresh documents list
       await fetchDocuments();
       return true;
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error deleting document:', err);
-      setError('Error al eliminar el documento');
+      const message = typeof err?.message === 'string' ? err.message : 'Error al eliminar el documento';
+      setError(message);
       return false;
     }
   };
