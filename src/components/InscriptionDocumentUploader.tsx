@@ -82,9 +82,14 @@ export const InscriptionDocumentUploader: React.FC<InscriptionDocumentUploaderPr
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, documentType: string) => {
     const file = event.target.files?.[0];
-    if (!file || !inscriptionId) return;
+    if (!file) return;
 
     setValidationError('');
+
+    if (!inscriptionId) {
+      setValidationError('Debe guardar la inscripción primero para poder subir documentos');
+      return;
+    }
 
     if (!validateFile(file, documentType)) {
       return;
@@ -127,15 +132,8 @@ export const InscriptionDocumentUploader: React.FC<InscriptionDocumentUploaderPr
     document.body.removeChild(link);
   };
 
-  if (!inscriptionId) {
-    return (
-      <Alert>
-        <AlertDescription>
-          Debe guardar la inscripción antes de poder subir documentos.
-        </AlertDescription>
-      </Alert>
-    );
-  }
+  // Show informational message when inscription is not saved yet
+  const showInscriptionPendingMessage = !inscriptionId;
 
   return (
     <div className="space-y-6">
@@ -147,6 +145,14 @@ export const InscriptionDocumentUploader: React.FC<InscriptionDocumentUploaderPr
           Adjunte documentación que respalde su evaluación (opcional)
         </p>
       </div>
+
+      {showInscriptionPendingMessage && (
+        <Alert>
+          <AlertDescription>
+            Puede seleccionar archivos ahora. Se subirán automáticamente al guardar la inscripción.
+          </AlertDescription>
+        </Alert>
+      )}
 
       {validationError && (
         <Alert variant="destructive">
