@@ -201,10 +201,36 @@ const AssistedInscription = () => {
   };
 
   const handleSubmitInscription = async () => {
-    if (!selectedTeacher || !inscriptionForm.teaching_level || !inscriptionForm.inscription_period_id) {
+    // Detailed logging for debugging
+    console.log('=== DEBUGGING FORM VALIDATION ===');
+    console.log('selectedTeacher:', selectedTeacher);
+    console.log('inscriptionForm.teaching_level:', inscriptionForm.teaching_level);
+    console.log('inscriptionForm.inscription_period_id:', inscriptionForm.inscription_period_id);
+    console.log('inscriptionForm.subject_area:', inscriptionForm.subject_area);
+    console.log('subjectSelections:', subjectSelections);
+    console.log('positionSelections:', positionSelections);
+    console.log('editingInscription:', editingInscription);
+    console.log('=== END DEBUGGING ===');
+
+    // Specific validation with detailed error messages
+    const missingFields = [];
+    
+    if (!selectedTeacher) {
+      missingFields.push('Docente');
+    }
+    
+    if (!inscriptionForm.teaching_level) {
+      missingFields.push('Nivel educativo');
+    }
+    
+    if (!inscriptionForm.inscription_period_id) {
+      missingFields.push('Período de inscripción');
+    }
+
+    if (missingFields.length > 0) {
       toast({
-        title: 'Error',
-        description: 'Complete todos los campos obligatorios',
+        title: 'Campos obligatorios faltantes',
+        description: `Complete los siguientes campos: ${missingFields.join(', ')}`,
         variant: 'destructive',
       });
       return;
@@ -214,18 +240,18 @@ const AssistedInscription = () => {
     if (inscriptionForm.teaching_level === 'secundario') {
       if (subjectSelections.length === 0 && positionSelections.length === 0) {
         toast({
-          title: 'Error',
-          description: 'Debe seleccionar al menos una materia o cargo administrativo para nivel secundario',
+          title: 'Nivel Secundario - Selecciones faltantes',
+          description: 'Debe seleccionar al menos una materia (en el paso de FRAY) o un cargo administrativo (en el paso de ENET)',
           variant: 'destructive',
         });
         return;
       }
     } else {
       // For inicial/primario validate subject_area
-      if (!inscriptionForm.subject_area) {
+      if (!inscriptionForm.subject_area || inscriptionForm.subject_area.trim() === '') {
         toast({
-          title: 'Error',
-          description: 'Complete el área/materia',
+          title: 'Área/Materia requerida',
+          description: 'Complete el campo Área/Materia para nivel inicial o primario',
           variant: 'destructive',
         });
         return;
