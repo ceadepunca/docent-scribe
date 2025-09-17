@@ -23,9 +23,10 @@ export const useUnsavedChanges = (
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   const calculateTotal = useCallback((evaluation: EvaluationData): number => {
-    return Object.keys(evaluation)
+    const total = Object.keys(evaluation)
       .filter(key => key.endsWith('_score'))
       .reduce((total, key) => total + (evaluation[key as keyof EvaluationData] as number), 0);
+    return parseFloat(total.toFixed(2));
   }, []);
 
   const hasDataEntered = useCallback((evaluation: EvaluationData): boolean => {
