@@ -340,7 +340,7 @@ const InscriptionForm: React.FC<InscriptionFormProps> = ({ initialData, isEdit =
     }
   };
 
-  const canEdit = !initialData?.status || ['draft', 'requires_changes'].includes(initialData.status);
+  const canEdit = !initialData?.status || ['draft', 'requires_changes', 'submitted'].includes(initialData.status);
 
   // If it's a secondary inscription, show wizard
   if (isSecondaryInscription) {

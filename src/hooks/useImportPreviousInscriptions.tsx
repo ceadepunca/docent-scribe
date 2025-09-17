@@ -176,6 +176,8 @@ export const useImportPreviousInscriptions = () => {
       last_modified_by: evaluatorId
     };
 
+    console.log('Creating evaluation with data:', evaluationData);
+
     // Check if evaluation already exists
     const { data: existingEval } = await supabase
       .from('evaluations')
@@ -277,7 +279,9 @@ export const useImportPreviousInscriptions = () => {
           }
 
           // Create or update evaluation with imported scores
+          console.log(`Creating evaluation for inscription ${inscription.id}, legajo: ${row.LEGAJO}`);
           const evaluationResult = await createOrUpdateEvaluation(inscription.id, user.id, row);
+          console.log(`Evaluation result:`, evaluationResult);
 
           if (inscriptionCreated) {
             result.imported++;
