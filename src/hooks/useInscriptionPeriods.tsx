@@ -42,8 +42,9 @@ export const useInscriptionPeriods = () => {
 
     if (error) throw error;
     
-    // Update the cache with all periods
+    // Update both caches with all periods
     queryClient.setQueryData(['inscription-periods-all'], data || []);
+    queryClient.setQueryData(['inscription-periods'], data || []);
     return data || [];
   };
 

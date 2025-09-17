@@ -201,12 +201,14 @@ const AssistedInscription = () => {
   };
 
   const handleSubmitInscription = async () => {
-    // Detailed logging for debugging
+    // Additional debugging for periods
     console.log('=== DEBUGGING FORM VALIDATION ===');
     console.log('selectedTeacher:', selectedTeacher);
     console.log('inscriptionForm.teaching_level:', inscriptionForm.teaching_level);
     console.log('inscriptionForm.inscription_period_id:', inscriptionForm.inscription_period_id);
     console.log('inscriptionForm.subject_area:', inscriptionForm.subject_area);
+    console.log('Available periods:', periods);
+    console.log('Selected period exists:', periods.find(p => p.id === inscriptionForm.inscription_period_id));
     console.log('subjectSelections:', subjectSelections);
     console.log('positionSelections:', positionSelections);
     console.log('editingInscription:', editingInscription);
