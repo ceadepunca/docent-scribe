@@ -461,7 +461,7 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
                       type="number"
                       min="0"
                       max={criterion.maxValue}
-                      step="0.1"
+                      step="0.01"
                       value={evaluation[criterion.id] || ''}
                       onChange={(e) => handleScoreChange(criterion.id, e.target.value)}
                       className="text-center"
@@ -475,7 +475,7 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
                 <TableCell className="text-center">—</TableCell>
                 <TableCell className="text-center">
                   <div className="px-3 py-2 bg-primary/10 rounded font-bold text-lg">
-                    {calculateTotal().toFixed(1)}
+                    {calculateTotal().toFixed(2)}
                   </div>
                 </TableCell>
               </TableRow>

@@ -643,7 +643,7 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
                               type="number"
                               min="0"
                               max={maxValue}
-                              step="0.1"
+                              step="0.01"
                               value={group.evaluation[criterion.id as keyof EvaluationData] || ''}
                               onChange={(e) => handleScoreChange(groupIndex, criterion.id as keyof EvaluationData, e.target.value)}
                               className="text-center w-8 h-7 text-2xs px-0"
@@ -654,7 +654,7 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
                       })}
                       <TableCell className="text-center p-1">
                         <div className="px-1 py-1 bg-primary/10 rounded font-bold text-2xs">
-                          {total.toFixed(1)}
+                          {total.toFixed(2)}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -754,7 +754,7 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
           {allCompleted && (
             <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
               <p className="text-green-800 font-medium">
-                ✓ Todas las evaluaciones finalizadas - Total General: {groupedItems.reduce((total, group) => total + calculateTotal(group.evaluation), 0).toFixed(1)} puntos
+                ✓ Todas las evaluaciones finalizadas - Total General: {groupedItems.reduce((total, group) => total + calculateTotal(group.evaluation), 0).toFixed(2)} puntos
               </p>
             </div>
           )}
