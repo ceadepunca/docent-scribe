@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -53,6 +53,11 @@ const DOCUMENT_TYPES = {
   }
 };
 
+interface PendingFile {
+  file: File;
+  documentType: string;
+}
+
 export const InscriptionDocumentUploader: React.FC<InscriptionDocumentUploaderProps> = ({
   inscriptionId,
   disabled = false
@@ -60,6 +65,7 @@ export const InscriptionDocumentUploader: React.FC<InscriptionDocumentUploaderPr
   const { documents, loading, error, uploadDocument, deleteDocument } = useInscriptionDocuments(inscriptionId);
   const [uploadingTypes, setUploadingTypes] = useState<Set<string>>(new Set());
   const [validationError, setValidationError] = useState<string>('');
+  const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
 
   const validateFile = (file: File, documentType: string): boolean => {
     const config = DOCUMENT_TYPES[documentType as keyof typeof DOCUMENT_TYPES];
@@ -80,18 +86,43 @@ export const InscriptionDocumentUploader: React.FC<InscriptionDocumentUploaderPr
     return true;
   };
 
+  // Auto-upload pending files when inscriptionId becomes available
+  useEffect(() => {
+    if (inscriptionId && pendingFiles.length > 0) {
+      const uploadPendingFiles = async () => {
+        for (const pendingFile of pendingFiles) {
+          setUploadingTypes(prev => new Set([...prev, pendingFile.documentType]));
+          try {
+            await uploadDocument(pendingFile.file, pendingFile.documentType);
+          } finally {
+            setUploadingTypes(prev => {
+              const newSet = new Set(prev);
+              newSet.delete(pendingFile.documentType);
+              return newSet;
+            });
+          }
+        }
+        setPendingFiles([]);
+      };
+      uploadPendingFiles();
+    }
+  }, [inscriptionId, pendingFiles, uploadDocument]);
+
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, documentType: string) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
     setValidationError('');
 
-    if (!inscriptionId) {
-      setValidationError('Debe guardar la inscripción primero para poder subir documentos');
+    if (!validateFile(file, documentType)) {
       return;
     }
 
-    if (!validateFile(file, documentType)) {
+    if (!inscriptionId) {
+      // Add to pending files queue
+      setPendingFiles(prev => [...prev, { file, documentType }]);
+      // Reset the file input
+      event.target.value = '';
       return;
     }
 
@@ -149,7 +180,10 @@ export const InscriptionDocumentUploader: React.FC<InscriptionDocumentUploaderPr
       {showInscriptionPendingMessage && (
         <Alert>
           <AlertDescription>
-            Puede seleccionar archivos ahora. Se subirán automáticamente al guardar la inscripción.
+            {pendingFiles.length > 0 
+              ? `${pendingFiles.length} archivo(s) seleccionado(s). Se subirán automáticamente al guardar la inscripción.`
+              : 'Puede seleccionar archivos ahora. Se subirán automáticamente al guardar la inscripción.'
+            }
           </AlertDescription>
         </Alert>
       )}
@@ -170,6 +204,7 @@ export const InscriptionDocumentUploader: React.FC<InscriptionDocumentUploaderPr
         {Object.entries(DOCUMENT_TYPES).map(([type, config]) => {
           const Icon = config.icon;
           const typeDocuments = documents.filter(doc => doc.document_type === type);
+          const typePendingFiles = pendingFiles.filter(pf => pf.documentType === type);
           const isUploading = uploadingTypes.has(type);
 
           return (
@@ -181,6 +216,11 @@ export const InscriptionDocumentUploader: React.FC<InscriptionDocumentUploaderPr
                   {typeDocuments.length > 0 && (
                     <Badge variant="secondary" className="ml-2">
                       {typeDocuments.length}
+                    </Badge>
+                  )}
+                  {typePendingFiles.length > 0 && (
+                    <Badge variant="outline" className="ml-2">
+                      {typePendingFiles.length} pendiente(s)
                     </Badge>
                   )}
                 </CardTitle>
@@ -205,6 +245,36 @@ export const InscriptionDocumentUploader: React.FC<InscriptionDocumentUploaderPr
                         Subiendo...
                       </span>
                     )}
+                  </div>
+                )}
+
+                {/* Pending files list */}
+                {typePendingFiles.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-muted-foreground">Archivos pendientes:</p>
+                    {typePendingFiles.map((pendingFile, index) => (
+                      <div key={index} className="flex items-center justify-between p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded-md border border-yellow-200 dark:border-yellow-800">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <FileText className="h-4 w-4 text-yellow-600 flex-shrink-0" />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium text-foreground truncate">
+                              {pendingFile.file.name}
+                            </p>
+                            <p className="text-xs text-yellow-600 dark:text-yellow-400">
+                              Pendiente de subir
+                            </p>
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setPendingFiles(prev => prev.filter((_, i) => i !== index))}
+                          className="h-8 w-8 p-0 text-yellow-600 hover:text-yellow-700"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
                   </div>
                 )}
 
@@ -257,7 +327,7 @@ export const InscriptionDocumentUploader: React.FC<InscriptionDocumentUploaderPr
                   </div>
                 )}
 
-                {typeDocuments.length === 0 && (
+                {typeDocuments.length === 0 && typePendingFiles.length === 0 && (
                   <p className="text-sm text-muted-foreground italic">
                     No hay documentos adjuntos
                   </p>
