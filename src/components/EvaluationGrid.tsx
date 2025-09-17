@@ -238,6 +238,9 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
   const handleSave = async (status: 'draft' | 'completed' = 'draft') => {
     if (!user) return;
 
+    // If saving changes to a completed evaluation, maintain completed status
+    const finalStatus = originalEvaluation.status === 'completed' ? 'completed' : status;
+
     setSaving(true);
     try {
       const evaluationData: any = {
@@ -254,7 +257,8 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
         otros_antecedentes_score: evaluation.otros_antecedentes_score,
         red_federal_score: evaluation.red_federal_score,
         notes: evaluation.notes,
-        status: status
+        status: finalStatus,
+        last_modified_by: user.id
       };
 
       // Add selection-specific fields for secondary level
@@ -273,19 +277,22 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
 
       if (error) throw error;
 
-      setEvaluation(prev => ({ ...prev, status }));
+      setEvaluation(prev => ({ ...prev, status: finalStatus }));
       // Update original evaluation to reflect saved state
-      setOriginalEvaluation(prev => ({ ...prev, ...evaluationData, status }));
+      setOriginalEvaluation(prev => ({ ...prev, ...evaluationData, status: finalStatus }));
 
+      const isEditingCompleted = originalEvaluation.status === 'completed';
       toast({
         title: 'Evaluación guardada',
-        description: status === 'completed' 
-          ? 'La evaluación ha sido finalizada correctamente' 
-          : 'Los cambios han sido guardados como borrador',
+        description: isEditingCompleted 
+          ? 'Los cambios en la evaluación completada han sido guardados'
+          : finalStatus === 'completed' 
+            ? 'La evaluación ha sido finalizada correctamente' 
+            : 'Los cambios han sido guardados como borrador',
       });
 
       // Auto-navigate logic if in evaluation context and completed (only for new evaluations, not edited ones)
-      if (status === 'completed' && evaluationNavigation?.hasEvaluationContext && originalEvaluation.status !== 'completed') {
+      if (finalStatus === 'completed' && evaluationNavigation?.hasEvaluationContext && originalEvaluation.status !== 'completed' && status === 'completed') {
         // Check if this is the last unevaluated teacher (count will be 1 before saving)
         if (evaluationNavigation.unevaluatedCount === 1) {
           // This is the last one, return to evaluations after showing success message
@@ -319,7 +326,7 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
 
   // Navigation wrapper functions that check for unsaved changes
   const handleNavigationWithConfirmation = (navigationFn: () => void) => {
-    if (hasUnsavedChanges && evaluation.status !== 'completed') {
+    if (hasUnsavedChanges) {
       setPendingNavigation(() => navigationFn);
       setShowNavigationDialog(true);
     } else {
@@ -489,62 +496,77 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
             />
           </div>
 
-          {evaluation.status !== 'completed' && (
-            <div className="flex justify-between items-center">
-              <div className="flex gap-3">
+          <div className="flex justify-between items-center">
+            <div className="flex gap-3">
+              {evaluation.status === 'completed' ? (
                 <Button
                   variant="outline"
-                  onClick={() => handleSave('draft')}
-                  disabled={saving}
+                  onClick={() => handleSave('completed')}
+                  disabled={saving || !hasUnsavedChanges}
                   className="flex items-center gap-2"
                 >
                   <Save className="h-4 w-4" />
-                  Guardar Borrador
+                  Guardar Cambios
                 </Button>
-                <Button
-                  onClick={() => handleSave('completed')}
-                  disabled={saving}
-                  className="flex items-center gap-2"
-                >
-                  <Calculator className="h-4 w-4" />
-                  Finalizar Evaluación
-                </Button>
-              </div>
-
-              {/* Quick navigation for evaluation context */}
-              {evaluationNavigation?.hasEvaluationContext && (
-                <div className="flex gap-2">
-                  {evaluationNavigation.canGoToNext && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={saving}
-                      onClick={() => handleNavigationWithConfirmation(evaluationNavigation.goToNext)}
-                    >
-                      Siguiente Docente
-                    </Button>
-                  )}
-                  
-                  {evaluationNavigation.unevaluatedCount > 0 && (
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      disabled={saving}
-                      onClick={() => handleNavigationWithConfirmation(evaluationNavigation.goToNextUnevaluated)}
-                    >
-                      <SkipForward className="h-4 w-4 mr-1" />
-                      Siguiente sin evaluar
-                    </Button>
-                  )}
-                </div>
+              ) : (
+                <>
+                  <Button
+                    variant="outline"
+                    onClick={() => handleSave('draft')}
+                    disabled={saving}
+                    className="flex items-center gap-2"
+                  >
+                    <Save className="h-4 w-4" />
+                    Guardar Borrador
+                  </Button>
+                  <Button
+                    onClick={() => handleSave('completed')}
+                    disabled={saving}
+                    className="flex items-center gap-2"
+                  >
+                    <Calculator className="h-4 w-4" />
+                    Finalizar Evaluación
+                  </Button>
+                </>
               )}
             </div>
-          )}
 
-          {evaluation.status === 'completed' && (
+            {/* Quick navigation for evaluation context */}
+            {evaluationNavigation?.hasEvaluationContext && evaluation.status !== 'completed' && (
+              <div className="flex gap-2">
+                {evaluationNavigation.canGoToNext && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={saving}
+                    onClick={() => handleNavigationWithConfirmation(evaluationNavigation.goToNext)}
+                  >
+                    Siguiente Docente
+                  </Button>
+                )}
+                
+                {evaluationNavigation.unevaluatedCount > 0 && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    disabled={saving}
+                    onClick={() => handleNavigationWithConfirmation(evaluationNavigation.goToNextUnevaluated)}
+                  >
+                    <SkipForward className="h-4 w-4 mr-1" />
+                    Siguiente sin evaluar
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {evaluation.status === 'completed' && !hasUnsavedChanges && (
             <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
               <p className="text-green-800 font-medium">
                 ✓ Evaluación finalizada - Total: {calculateTotal().toFixed(1)} puntos
+              </p>
+              <p className="text-green-600 text-sm mt-1">
+                Puedes editar los valores si es necesario hacer correcciones
               </p>
             </div>
           )}
