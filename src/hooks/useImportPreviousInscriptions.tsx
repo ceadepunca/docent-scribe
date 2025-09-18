@@ -138,25 +138,36 @@ export const useImportPreviousInscriptions = () => {
 
     if (error) throw error;
 
-    // For secondary level, create a default position selection (Preceptor/a)
+    // For secondary level, create a default position selection (PRECEPTOR/A)
     if (data.teaching_level === 'secundario') {
       try {
-        // First, get or create the "Preceptor/a" position
+        // First, get the "PRECEPTOR/A" position from Fray M Esquiú school
         let { data: position, error: positionError } = await supabase
-          .from('positions')
+          .from('administrative_positions')
           .select('id')
-          .eq('name', 'Preceptor/a')
+          .eq('name', 'PRECEPTOR/A')
+          .eq('schools.name', 'Fray M Esquiú')
+          .inner('schools', 'administrative_positions.school_id', 'schools.id')
           .maybeSingle();
 
         if (positionError) throw positionError;
 
         if (!position) {
+          // Get the Fray M Esquiú school ID first
+          const { data: school, error: schoolError } = await supabase
+            .from('schools')
+            .select('id')
+            .eq('name', 'Fray M Esquiú')
+            .single();
+
+          if (schoolError) throw schoolError;
+
           // Create the position if it doesn't exist
           const { data: newPosition, error: createError } = await supabase
-            .from('positions')
+            .from('administrative_positions')
             .insert({
-              name: 'Preceptor/a',
-              description: 'Cargo de preceptor/a para evaluaciones importadas',
+              name: 'PRECEPTOR/A',
+              school_id: school.id,
               is_active: true
             })
             .select()
@@ -171,8 +182,7 @@ export const useImportPreviousInscriptions = () => {
           .from('inscription_position_selections')
           .insert({
             inscription_id: data.id,
-            position_id: position.id,
-            priority: 1
+            administrative_position_id: position.id
           });
 
         if (selectionError) {
@@ -205,15 +215,15 @@ export const useImportPreviousInscriptions = () => {
                       excelData['OTROS ANTEC. DOC.'] + 
                       excelData['RED FEDERAL MAX. 3'];
 
-    // Get the default position selection for this inscription (Preceptor/a)
+    // Get the default position selection for this inscription (PRECEPTOR/A)
     let positionSelectionId = null;
     try {
       const { data: positionSelection, error: selectionError } = await supabase
         .from('inscription_position_selections')
         .select('id')
         .eq('inscription_id', inscriptionId)
-        .eq('positions.name', 'Preceptor/a')
-        .inner('positions', 'inscription_position_selections.position_id', 'positions.id')
+        .eq('administrative_positions.name', 'PRECEPTOR/A')
+        .inner('administrative_positions', 'inscription_position_selections.administrative_position_id', 'administrative_positions.id')
         .maybeSingle();
 
       if (!selectionError && positionSelection) {
