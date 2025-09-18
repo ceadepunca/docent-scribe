@@ -111,7 +111,7 @@ const App = () => (
               </ProtectedRoute>
             } />
             <Route path="/inscriptions/:id/edit" element={
-              <ProtectedRoute requiredRole="docente">
+              <ProtectedRoute allowedRoles={['docente', 'super_admin', 'evaluator']}>
                 <ProtectedLayout>
                   <EditInscription />
                 </ProtectedLayout>
