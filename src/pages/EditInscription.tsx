@@ -20,7 +20,7 @@ interface InscriptionData {
 const EditInscription = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, isSuperAdmin, isEvaluator } = useAuth();
   const { toast } = useToast();
   const [inscription, setInscription] = useState<InscriptionData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -33,12 +33,18 @@ const EditInscription = () => {
     if (!user || !id) return;
 
     try {
-      const { data, error } = await supabase
+      // Build query based on user role
+      let query = supabase
         .from('inscriptions')
         .select('*')
-        .eq('id', id)
-        .eq('user_id', user.id)
-        .single();
+        .eq('id', id);
+
+      // Regular users can only edit their own inscriptions
+      if (!isSuperAdmin && !isEvaluator) {
+        query = query.eq('user_id', user.id);
+      }
+
+      const { data, error } = await query.single();
 
       if (error) throw error;
       
@@ -52,8 +58,12 @@ const EditInscription = () => {
         return;
       }
 
-      // Check if inscription can be edited
-      if (!['draft', 'requires_changes'].includes(data.status)) {
+      // Check if inscription can be edited based on user role and status
+      const canEdit = (isSuperAdmin || isEvaluator) 
+        ? ['draft', 'requires_changes', 'submitted'].includes(data.status)
+        : ['draft', 'requires_changes'].includes(data.status) && data.user_id === user.id;
+
+      if (!canEdit) {
         toast({
           title: 'No se puede editar',
           description: 'Esta inscripción no puede ser editada en su estado actual',

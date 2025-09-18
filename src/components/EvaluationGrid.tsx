@@ -302,7 +302,9 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
 
       const { error } = await supabase
         .from('evaluations')
-        .upsert(evaluationData);
+        .upsert(evaluationData, {
+          onConflict: 'inscription_id,evaluator_id,subject_selection_id,position_selection_id'
+        });
 
       if (error) throw error;
 
