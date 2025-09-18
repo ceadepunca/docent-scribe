@@ -481,8 +481,12 @@ const Inscriptions = () => {
                               <Eye className="h-3 w-3" />
                               Ver
                             </Button>
-                            {['draft', 'requires_changes'].includes(inscription.status) && 
-                             (inscription.user_id === user.id || isDocente) && (
+                            {(
+                              // Owner can edit their draft or requires_changes inscriptions
+                              (['draft', 'requires_changes'].includes(inscription.status) && inscription.user_id === user.id) ||
+                              // Super admin and evaluator can edit any inscription including submitted ones
+                              ((isSuperAdmin || isEvaluator) && ['draft', 'requires_changes', 'submitted'].includes(inscription.status))
+                             ) && (
                               <Button
                                 variant="outline"
                                 size="sm"
