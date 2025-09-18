@@ -125,7 +125,7 @@ const Evaluations = () => {
       const { data: profilesData, error: profilesError } = userIds.length > 0
         ? await supabase
             .from('profiles')
-            .select('id, first_name, last_name, email, dni')
+            .select('id, first_name, last_name, email, dni, user_id')
             .in('id', userIds)
         : { data: [], error: null };
 

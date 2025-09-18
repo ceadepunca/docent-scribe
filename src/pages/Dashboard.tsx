@@ -25,7 +25,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 const Dashboard = () => {
-  const { user, isEvaluator, isDocente, isSuperAdmin } = useAuth();
+  const { user, profile, isEvaluator, isDocente, isSuperAdmin } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { isComplete: profileComplete, completionPercentage, missingFields } = useProfileCompleteness();
@@ -46,10 +46,12 @@ const Dashboard = () => {
     
     try {
       setLoadingInscriptions(true);
+      const ids = [user.id];
+      if (profile?.id && !ids.includes(profile.id)) ids.push(profile.id);
       const { data, error } = await supabase
         .from('inscriptions')
         .select('*')
-        .eq('user_id', user.id);
+        .in('user_id', ids);
 
       if (error) throw error;
       setExistingInscriptions(data || []);

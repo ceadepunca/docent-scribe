@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Save, Calculator, User, GraduationCap, SkipForward } from 'lucide-react';
+import { Save, Calculator, User, GraduationCap, SkipForward, Download } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -63,6 +63,7 @@ interface EvaluationData {
   notes?: string;
   status: 'draft' | 'completed';
   title_type: 'docente' | 'habilitante' | 'supletorio';
+  isImported?: boolean; // Flag to indicate if this evaluation was imported
 }
 
 interface GroupedItem {
@@ -246,11 +247,12 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
         // In a real scenario, you might want to load a representative evaluation
         const firstSelection = group.selections[0];
         
+        // First, try to find any existing evaluation for this inscription (regardless of evaluator)
+        // This ensures we show imported scores even if they were imported by a different evaluator
         let query = supabase
           .from('evaluations')
           .select('*')
-          .eq('inscription_id', inscriptionId)
-          .eq('evaluator_id', user.id);
+          .eq('inscription_id', inscriptionId);
 
         if (group.type === 'subject') {
           query = query.eq('subject_selection_id', firstSelection.id);
@@ -262,25 +264,12 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
 
         let finalEvaluationData = evaluationData;
 
-        // If no evaluation found for current user, try to load any existing evaluation for prefilling
-        if (!finalEvaluationData) {
-          console.log('No evaluation found for current user, looking for any existing evaluation...');
-          let fallbackQuery = supabase
-            .from('evaluations')
-            .select('*')
-            .eq('inscription_id', inscriptionId);
-
-          if (group.type === 'subject') {
-            fallbackQuery = fallbackQuery.eq('subject_selection_id', firstSelection.id);
-          } else {
-            fallbackQuery = fallbackQuery.eq('position_selection_id', firstSelection.id);
-          }
-
-          const { data: fallbackData } = await fallbackQuery.maybeSingle();
-          if (fallbackData) {
-            console.log('Found existing evaluation for prefilling:', fallbackData);
-            finalEvaluationData = fallbackData;
-          }
+        // If we found an evaluation, check if it belongs to the current user
+        const isCurrentUserEvaluation = finalEvaluationData && finalEvaluationData.evaluator_id === user.id;
+        
+        if (finalEvaluationData) {
+          console.log('Found existing evaluation for group:', finalEvaluationData);
+          console.log('Is current user evaluation:', isCurrentUserEvaluation);
         }
 
         if (finalEvaluationData) {
@@ -296,8 +285,10 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
             otros_antecedentes_score: finalEvaluationData.otros_antecedentes_score || 0,
             red_federal_score: finalEvaluationData.red_federal_score || 0,
             notes: finalEvaluationData.notes || '',
-            status: evaluationData && evaluationData.evaluator_id === user.id ? (finalEvaluationData.status as 'draft' | 'completed') || 'draft' : 'draft',
-            title_type: (finalEvaluationData.title_type as 'docente' | 'habilitante' | 'supletorio') || 'docente'
+            // If it's not the current user's evaluation, always set as draft to allow editing
+            status: isCurrentUserEvaluation ? (finalEvaluationData.status as 'draft' | 'completed') || 'draft' : 'draft',
+            title_type: (finalEvaluationData.title_type as 'docente' | 'habilitante' | 'supletorio') || 'docente',
+            isImported: !isCurrentUserEvaluation // Mark as imported if it's not the current user's evaluation
           };
         }
       }
@@ -437,11 +428,34 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
         )
       };
 
-      const { error } = await supabase
+      // Check if this is an existing evaluation from the current user
+      // For consolidated grid, we need to check if there's an existing evaluation for this specific selection
+      const { data: existingEval } = await supabase
         .from('evaluations')
-        .upsert(data, { 
-          onConflict: 'inscription_id,evaluator_id,subject_selection_id,position_selection_id' 
-        });
+        .select('evaluator_id')
+        .eq('inscription_id', inscriptionId)
+        .eq('evaluator_id', user.id)
+        .eq(group.type === 'subject' ? 'subject_selection_id' : 'position_selection_id', selection.id)
+        .maybeSingle();
+
+      const isCurrentUserEvaluation = existingEval && existingEval.evaluator_id === user.id;
+      
+      let error;
+      if (isCurrentUserEvaluation) {
+        // Update existing evaluation
+        const { error: updateError } = await supabase
+          .from('evaluations')
+          .upsert(data, { 
+            onConflict: 'inscription_id,evaluator_id,subject_selection_id,position_selection_id' 
+          });
+        error = updateError;
+      } else {
+        // Create new evaluation for current user (this handles imported evaluations)
+        const { error: insertError } = await supabase
+          .from('evaluations')
+          .insert(data);
+        error = insertError;
+      }
 
       if (error) throw error;
     }
@@ -542,9 +556,17 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
               </span>
             </CardDescription>
           </div>
-          <Badge variant={allCompleted ? 'default' : 'secondary'}>
-            {allCompleted ? 'Finalizada' : 'En Progreso'}
-          </Badge>
+          <div className="flex items-center gap-2">
+            {groupedItems.some(group => group.evaluation.isImported) && (
+              <Badge variant="outline" className="text-green-600 border-green-600">
+                <Download className="h-3 w-3 mr-1" />
+                Puntajes importados
+              </Badge>
+            )}
+            <Badge variant={allCompleted ? 'default' : 'secondary'}>
+              {allCompleted ? 'Finalizada' : 'En Progreso'}
+            </Badge>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-6">

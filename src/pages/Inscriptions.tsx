@@ -40,7 +40,7 @@ interface Inscription {
 
 const Inscriptions = () => {
   const navigate = useNavigate();
-  const { user, isSuperAdmin, isEvaluator, isDocente } = useAuth();
+  const { user, profile, isSuperAdmin, isEvaluator, isDocente } = useAuth();
   const { toast } = useToast();
   const { periods, fetchAllPeriods, getCurrentPeriods } = useInscriptionPeriods();
   const [inscriptions, setInscriptions] = useState<Inscription[]>([]);
@@ -127,9 +127,11 @@ const Inscriptions = () => {
         `)
         .order('created_at', { ascending: false });
 
-      // If not super admin or evaluator, only show own inscriptions
+      // If not super admin or evaluator, only show own inscriptions (by auth id or profile id)
       if (!isSuperAdmin && !isEvaluator) {
-        inscriptionsQuery = inscriptionsQuery.eq('user_id', user.id);
+        const ids = [user.id];
+        if (profile?.id && !ids.includes(profile.id)) ids.push(profile.id);
+        inscriptionsQuery = inscriptionsQuery.in('user_id', ids);
       }
 
       const { data: inscriptionsData, error: inscriptionsError } = await inscriptionsQuery;
@@ -483,7 +485,7 @@ const Inscriptions = () => {
                             </Button>
                             {(
                               // Owner can edit their draft or requires_changes inscriptions
-                              (['draft', 'requires_changes'].includes(inscription.status) && inscription.user_id === user.id) ||
+                              (['draft', 'requires_changes'].includes(inscription.status) && (inscription.user_id === user.id || inscription.user_id === profile?.id)) ||
                               // Super admin and evaluator can edit any inscription including submitted ones
                               ((isSuperAdmin || isEvaluator) && ['draft', 'requires_changes', 'submitted'].includes(inscription.status))
                              ) && (

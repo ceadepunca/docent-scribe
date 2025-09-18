@@ -137,6 +137,54 @@ export const useImportPreviousInscriptions = () => {
       .single();
 
     if (error) throw error;
+
+    // For secondary level, create a default position selection (Preceptor/a)
+    if (data.teaching_level === 'secundario') {
+      try {
+        // First, get or create the "Preceptor/a" position
+        let { data: position, error: positionError } = await supabase
+          .from('positions')
+          .select('id')
+          .eq('name', 'Preceptor/a')
+          .maybeSingle();
+
+        if (positionError) throw positionError;
+
+        if (!position) {
+          // Create the position if it doesn't exist
+          const { data: newPosition, error: createError } = await supabase
+            .from('positions')
+            .insert({
+              name: 'Preceptor/a',
+              description: 'Cargo de preceptor/a para evaluaciones importadas',
+              is_active: true
+            })
+            .select()
+            .single();
+
+          if (createError) throw createError;
+          position = newPosition;
+        }
+
+        // Create position selection for this inscription
+        const { error: selectionError } = await supabase
+          .from('inscription_position_selections')
+          .insert({
+            inscription_id: data.id,
+            position_id: position.id,
+            priority: 1
+          });
+
+        if (selectionError) {
+          console.warn('Could not create position selection:', selectionError);
+          // Don't throw error, continue without position selection
+        }
+      } catch (error) {
+        console.warn('Could not create default position selection:', error);
+        // Don't throw error, continue without position selection
+      }
+    }
+
     return data;
   };
 
@@ -157,6 +205,24 @@ export const useImportPreviousInscriptions = () => {
                       excelData['OTROS ANTEC. DOC.'] + 
                       excelData['RED FEDERAL MAX. 3'];
 
+    // Get the default position selection for this inscription (Preceptor/a)
+    let positionSelectionId = null;
+    try {
+      const { data: positionSelection, error: selectionError } = await supabase
+        .from('inscription_position_selections')
+        .select('id')
+        .eq('inscription_id', inscriptionId)
+        .eq('positions.name', 'Preceptor/a')
+        .inner('positions', 'inscription_position_selections.position_id', 'positions.id')
+        .maybeSingle();
+
+      if (!selectionError && positionSelection) {
+        positionSelectionId = positionSelection.id;
+      }
+    } catch (error) {
+      console.warn('Could not find position selection for evaluation:', error);
+    }
+
     const evaluationData = {
       inscription_id: inscriptionId,
       evaluator_id: evaluatorId,
@@ -173,17 +239,18 @@ export const useImportPreviousInscriptions = () => {
       red_federal_score: excelData['RED FEDERAL MAX. 3'],
       total_score: totalScore,
       status: 'draft', // Keep as draft for editability
-      last_modified_by: evaluatorId
+      last_modified_by: evaluatorId,
+      // Associate with position selection if available
+      ...(positionSelectionId && { position_selection_id: positionSelectionId })
     };
 
     console.log('Creating evaluation with data:', evaluationData);
 
-    // Check if evaluation already exists
+    // Check if evaluation already exists (by inscription_id only, not evaluator_id)
     const { data: existingEval } = await supabase
       .from('evaluations')
-      .select('id, status')
+      .select('id, status, evaluator_id')
       .eq('inscription_id', inscriptionId)
-      .eq('evaluator_id', evaluatorId)
       .maybeSingle();
 
     if (existingEval) {

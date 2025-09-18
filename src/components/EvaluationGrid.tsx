@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Save, Calculator, SkipForward, AlertTriangle } from 'lucide-react';
+import { Save, Calculator, SkipForward, AlertTriangle, Download } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -27,6 +27,7 @@ interface EvaluationData {
   notes?: string;
   status: 'draft' | 'completed';
   title_type?: 'docente' | 'habilitante' | 'supletorio';
+  isImported?: boolean; // Flag to indicate if this evaluation was imported
 }
 
 interface EvaluationCriterion {
@@ -148,11 +149,12 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
     if (!user) return;
 
     try {
+      // First, try to find any existing evaluation for this inscription (regardless of evaluator)
+      // This ensures we show imported scores even if they were imported by a different evaluator
       let query = supabase
         .from('evaluations')
         .select('*')
-        .eq('inscription_id', inscriptionId)
-        .eq('evaluator_id', user.id);
+        .eq('inscription_id', inscriptionId);
 
       // Add selection-specific filters for secondary level
       if (isSecondaryLevel) {
@@ -174,31 +176,12 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
 
       let evaluationData = data;
 
-      // If no evaluation found for current user, try to load any existing evaluation for prefilling
-      if (!evaluationData) {
-        console.log('No evaluation found for current user, looking for any existing evaluation...');
-        let fallbackQuery = supabase
-          .from('evaluations')
-          .select('*')
-          .eq('inscription_id', inscriptionId);
-
-        // Add selection-specific filters for secondary level
-        if (isSecondaryLevel) {
-          if (subjectSelection) {
-            fallbackQuery = fallbackQuery.eq('subject_selection_id', subjectSelection.id);
-          } else if (positionSelection) {
-            fallbackQuery = fallbackQuery.eq('position_selection_id', positionSelection.id);
-          }
-        } else {
-          // For non-secondary levels, ensure we get general evaluations
-          fallbackQuery = fallbackQuery.is('subject_selection_id', null).is('position_selection_id', null);
-        }
-
-        const { data: fallbackData } = await fallbackQuery.maybeSingle();
-        if (fallbackData) {
-          console.log('Found existing evaluation for prefilling:', fallbackData);
-          evaluationData = fallbackData;
-        }
+      // If we found an evaluation, check if it belongs to the current user
+      const isCurrentUserEvaluation = evaluationData && evaluationData.evaluator_id === user.id;
+      
+      if (evaluationData) {
+        console.log('Found existing evaluation:', evaluationData);
+        console.log('Is current user evaluation:', isCurrentUserEvaluation);
       }
 
       if (evaluationData) {
@@ -214,8 +197,10 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
           otros_antecedentes_score: evaluationData.otros_antecedentes_score || 0,
           red_federal_score: evaluationData.red_federal_score || 0,
           notes: evaluationData.notes || '',
-          status: data && data.evaluator_id === user.id ? (evaluationData.status as 'draft' | 'completed') || 'draft' : 'draft',
-          title_type: (evaluationData.title_type as 'docente' | 'habilitante' | 'supletorio') || (isSecondaryLevel ? 'docente' : undefined)
+          // If it's not the current user's evaluation, always set as draft to allow editing
+          status: isCurrentUserEvaluation ? (evaluationData.status as 'draft' | 'completed') || 'draft' : 'draft',
+          title_type: (evaluationData.title_type as 'docente' | 'habilitante' | 'supletorio') || (isSecondaryLevel ? 'docente' : undefined),
+          isImported: !isCurrentUserEvaluation // Mark as imported if it's not the current user's evaluation
         };
         setEvaluation(loadedEvaluation);
         setOriginalEvaluation(loadedEvaluation);
@@ -300,11 +285,25 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
         }
       }
 
-      const { error } = await supabase
-        .from('evaluations')
-        .upsert(evaluationData, {
-          onConflict: 'inscription_id,evaluator_id,subject_selection_id,position_selection_id'
-        });
+      // Check if this is an existing evaluation from the current user
+      const isCurrentUserEvaluation = originalEvaluation && originalEvaluation.evaluator_id === user.id;
+      
+      let error;
+      if (isCurrentUserEvaluation) {
+        // Update existing evaluation
+        const { error: updateError } = await supabase
+          .from('evaluations')
+          .upsert(evaluationData, {
+            onConflict: 'inscription_id,evaluator_id,subject_selection_id,position_selection_id'
+          });
+        error = updateError;
+      } else {
+        // Create new evaluation for current user (this handles imported evaluations)
+        const { error: insertError } = await supabase
+          .from('evaluations')
+          .insert(evaluationData);
+        error = insertError;
+      }
 
       if (error) throw error;
 
@@ -425,6 +424,12 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
+            {evaluation.isImported && (
+              <Badge variant="outline" className="text-green-600 border-green-600">
+                <Download className="h-3 w-3 mr-1" />
+                Puntajes importados
+              </Badge>
+            )}
             {hasUnsavedChanges && (
               <Badge variant="outline" className="text-orange-600 border-orange-600">
                 <AlertTriangle className="h-3 w-3 mr-1" />
