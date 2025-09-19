@@ -149,32 +149,20 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
     if (!user) return;
 
     try {
-      // First, try to find any existing evaluation for this inscription (regardless of evaluator)
-      // This ensures we show imported scores even if they were imported by a different evaluator
-      let query = supabase
+      // Simplified approach: Find any evaluation for this inscription
+      // This handles both properly associated and imported evaluations
+      const { data: evaluationData, error } = await supabase
         .from('evaluations')
         .select('*')
-        .eq('inscription_id', inscriptionId);
-
-      // Add selection-specific filters for secondary level
-      if (isSecondaryLevel) {
-        if (subjectSelection) {
-          query = query.eq('subject_selection_id', subjectSelection.id);
-        } else if (positionSelection) {
-          query = query.eq('position_selection_id', positionSelection.id);
-        }
-      } else {
-        // For non-secondary levels, ensure we get general evaluations
-        query = query.is('subject_selection_id', null).is('position_selection_id', null);
-      }
-
-      const { data, error } = await query.maybeSingle();
+        .eq('inscription_id', inscriptionId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
       if (error && error.code !== 'PGRST116') {
+        console.error('Error loading evaluation:', error);
         throw error;
       }
-
-      let evaluationData = data;
 
       // If we found an evaluation, check if it belongs to the current user
       const isCurrentUserEvaluation = evaluationData && evaluationData.evaluator_id === user.id;

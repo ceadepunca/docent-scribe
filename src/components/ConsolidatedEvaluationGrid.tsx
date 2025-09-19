@@ -227,6 +227,7 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
 
     try {
       setLoading(true);
+      console.log('Starting to fetch profile and evaluations for inscription:', inscriptionId);
 
       // Fetch user profile
       const { data: profileData, error: profileError } = await supabase
@@ -235,34 +236,47 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
         .eq('id', userId)
         .single();
 
-      if (profileError) throw profileError;
+      if (profileError) {
+        console.error('Error fetching profile:', profileError);
+        throw profileError;
+      }
       setProfile(profileData);
+      console.log('Profile loaded successfully');
 
       // Initialize grouped items
       const initialGroups = groupItems(subjectSelections, positionSelections);
       
       // Fetch existing evaluations for each group
+      console.log('Loading evaluations for', initialGroups.length, 'groups');
+      
       for (const group of initialGroups) {
-        // For now, load evaluation from the first selection in the group
-        // In a real scenario, you might want to load a representative evaluation
-        const firstSelection = group.selections[0];
-        
-        // First, try to find any existing evaluation for this inscription (regardless of evaluator)
-        // This ensures we show imported scores even if they were imported by a different evaluator
-        let query = supabase
-          .from('evaluations')
-          .select('*')
-          .eq('inscription_id', inscriptionId);
+        try {
+          console.log('Loading evaluation for group:', group.displayName, 'type:', group.type);
+          
+          // Simplified approach: Find any evaluation for this inscription
+          // This handles both properly associated and imported evaluations
+          const { data: evaluationData, error: evalError } = await supabase
+            .from('evaluations')
+            .select('*')
+            .eq('inscription_id', inscriptionId)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
 
-        if (group.type === 'subject') {
-          query = query.eq('subject_selection_id', firstSelection.id);
-        } else {
-          query = query.eq('position_selection_id', firstSelection.id);
-        }
+          if (evalError) {
+            console.error('Error loading evaluation for group', group.displayName, ':', evalError);
+            continue; // Skip this group and continue with the next one
+          } else if (evaluationData) {
+            console.log('Found evaluation for group', group.displayName, ':', {
+              id: evaluationData.id,
+              titulo_score: evaluationData.titulo_score,
+              total_score: evaluationData.total_score
+            });
+          } else {
+            console.log('No evaluation found for group', group.displayName);
+          }
 
-        const { data: evaluationData } = await query.maybeSingle();
-
-        let finalEvaluationData = evaluationData;
+          let finalEvaluationData = evaluationData;
 
         // If we found an evaluation, check if it belongs to the current user
         const isCurrentUserEvaluation = finalEvaluationData && finalEvaluationData.evaluator_id === user.id;
@@ -290,6 +304,10 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
             title_type: (finalEvaluationData.title_type as 'docente' | 'habilitante' | 'supletorio') || 'docente',
             isImported: !isCurrentUserEvaluation // Mark as imported if it's not the current user's evaluation
           };
+        }
+        } catch (groupError) {
+          console.error('Error processing group', group.displayName, ':', groupError);
+          // Continue with the next group
         }
       }
 
