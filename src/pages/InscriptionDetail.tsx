@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Edit2, Clock, CheckCircle2, XCircle, AlertCircle, User, Calendar, BookOpen, GraduationCap } from 'lucide-react';
+import { ArrowLeft, Edit2, Clock, CheckCircle2, XCircle, AlertCircle, User, Calendar, BookOpen, GraduationCap, Calculator } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -337,15 +337,39 @@ const InscriptionDetail = () => {
                 Información completa de tu postulación
               </p>
             </div>
-            {['draft', 'requires_changes', 'submitted'].includes(inscription.status) && (
-              <Button
-                onClick={() => navigate(`/inscriptions/${inscription.id}/edit`)}
-                className="flex items-center gap-2"
-              >
-                <Edit2 className="h-4 w-4" />
-                Editar Inscripción
-              </Button>
-            )}
+            <div className="flex gap-2">
+              {['draft', 'requires_changes', 'submitted'].includes(inscription.status) && (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    // Pass evaluation context if available
+                    const editUrl = evaluationNav.hasEvaluationContext 
+                      ? `/inscriptions/${inscription.id}/edit?evaluationContext=true`
+                      : `/inscriptions/${inscription.id}/edit`;
+                    navigate(editUrl);
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  <Edit2 className="h-4 w-4" />
+                  Editar Inscripción
+                </Button>
+              )}
+              {(isEvaluator || isSuperAdmin) && (
+                <Button
+                  onClick={() => {
+                    // Scroll to the evaluation grid
+                    const evaluationGrid = document.querySelector('[data-evaluation-grid]');
+                    if (evaluationGrid) {
+                      evaluationGrid.scrollIntoView({ behavior: 'smooth' });
+                    }
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  <Calculator className="h-4 w-4" />
+                  Editar Evaluación
+                </Button>
+              )}
+            </div>
           </div>
         </div>
 

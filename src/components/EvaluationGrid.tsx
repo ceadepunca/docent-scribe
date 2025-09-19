@@ -149,19 +149,62 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
     if (!user) return;
 
     try {
-      // Simplified approach: Find any evaluation for this inscription
-      // This handles both properly associated and imported evaluations
-      const { data: evaluationData, error } = await supabase
-        .from('evaluations')
-        .select('*')
-        .eq('inscription_id', inscriptionId)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      // First, try to find evaluation for this specific selection (for secondary level)
+      let evaluationData = null;
+      let error = null;
+
+      if (isSecondaryLevel) {
+        if (subjectSelection) {
+          // For subject selections, look for evaluation with matching subject_selection_id
+          const { data, err } = await supabase
+            .from('evaluations')
+            .select('*')
+            .eq('inscription_id', inscriptionId)
+            .eq('subject_selection_id', subjectSelection.id)
+            .maybeSingle();
+          evaluationData = data;
+          error = err;
+        } else if (positionSelection) {
+          // For position selections, look for evaluation with matching position_selection_id
+          const { data, err } = await supabase
+            .from('evaluations')
+            .select('*')
+            .eq('inscription_id', inscriptionId)
+            .eq('position_selection_id', positionSelection.id)
+            .maybeSingle();
+          evaluationData = data;
+          error = err;
+        }
+      }
+
+      // If no specific evaluation found, try to find any evaluation for this inscription
+      if (!evaluationData && !error) {
+        console.log('No specific evaluation found, looking for any evaluation for inscription...');
+        const { data, err } = await supabase
+          .from('evaluations')
+          .select('*')
+          .eq('inscription_id', inscriptionId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        evaluationData = data;
+        error = err;
+      }
 
       if (error && error.code !== 'PGRST116') {
         console.error('Error loading evaluation:', error);
         throw error;
+      }
+
+      if (evaluationData) {
+        console.log('Found evaluation:', {
+          id: evaluationData.id,
+          titulo_score: evaluationData.titulo_score,
+          total_score: evaluationData.total_score,
+          position_selection_id: evaluationData.position_selection_id,
+          subject_selection_id: evaluationData.subject_selection_id,
+          evaluator_id: evaluationData.evaluator_id
+        });
       }
 
       // If we found an evaluation, check if it belongs to the current user
@@ -258,6 +301,7 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
         concurso_score: evaluation.concurso_score,
         otros_antecedentes_score: evaluation.otros_antecedentes_score,
         red_federal_score: evaluation.red_federal_score,
+        total_score: calculateTotal(), // Calculate and save the total score
         notes: evaluation.notes,
         status: finalStatus,
         last_modified_by: user.id
@@ -396,7 +440,7 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
   };
 
   return (
-    <Card>
+    <Card data-evaluation-grid>
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
@@ -525,12 +569,12 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
               {evaluation.status === 'completed' ? (
                 <Button
                   variant="outline"
-                  onClick={() => handleSave('completed')}
-                  disabled={saving || !hasUnsavedChanges}
+                  onClick={() => hasUnsavedChanges ? handleSave('completed') : handleSave('draft')}
+                  disabled={saving}
                   className="flex items-center gap-2"
                 >
                   <Save className="h-4 w-4" />
-                  Guardar Cambios
+                  {hasUnsavedChanges ? 'Guardar Cambios' : 'Reabrir para Editar'}
                 </Button>
               ) : (
                 <>

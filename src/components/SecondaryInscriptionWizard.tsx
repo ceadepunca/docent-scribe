@@ -126,12 +126,16 @@ export const SecondaryInscriptionWizard: React.FC<SecondaryInscriptionWizardProp
   };
 
   const handleComplete = () => {
-    if (!selectedPeriodId) return;
+    // When editing an existing inscription, use the original period ID
+    // When creating a new inscription, use the selected period ID
+    const periodIdToUse = inscriptionId ? initialInscriptionPeriodId : selectedPeriodId;
+    
+    if (!periodIdToUse) return;
     
     onComplete({
       subjectSelections,
       positionSelections,
-      inscriptionPeriodId: selectedPeriodId,
+      inscriptionPeriodId: periodIdToUse,
     });
   };
 

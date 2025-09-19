@@ -248,20 +248,73 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
       
       // Fetch existing evaluations for each group
       console.log('Loading evaluations for', initialGroups.length, 'groups');
+      console.log('Groups created:', initialGroups.map(g => ({
+        displayName: g.displayName,
+        type: g.type,
+        selections: g.selections.map(s => ({ id: s.id, name: s.name || s.subject?.name || s.administrative_position?.name }))
+      })));
       
       for (const group of initialGroups) {
         try {
           console.log('Loading evaluation for group:', group.displayName, 'type:', group.type);
           
-          // Simplified approach: Find any evaluation for this inscription
-          // This handles both properly associated and imported evaluations
-          const { data: evaluationData, error: evalError } = await supabase
-            .from('evaluations')
-            .select('*')
-            .eq('inscription_id', inscriptionId)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
+          // First, try to find evaluation for this specific group (by position or subject selection)
+          let evaluationData = null;
+          let evalError = null;
+
+          if (group.type === 'position') {
+            // For position groups, look for evaluation with matching position_selection_id
+            const firstSelection = group.selections[0];
+            console.log('Looking for evaluation with position_selection_id:', firstSelection.id, 'for inscription:', inscriptionId);
+            console.log('First selection details:', firstSelection);
+            const { data, error } = await supabase
+              .from('evaluations')
+              .select('*')
+              .eq('inscription_id', inscriptionId)
+              .eq('position_selection_id', firstSelection.id)
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+            evaluationData = data;
+            evalError = error;
+            console.log('Position-specific query result:', { data, error });
+            console.log('Query was: SELECT * FROM evaluations WHERE inscription_id =', inscriptionId, 'AND position_selection_id =', firstSelection.id);
+          } else if (group.type === 'subject') {
+            // For subject groups, look for evaluation with matching subject_selection_id
+            const firstSelection = group.selections[0];
+            console.log('Looking for evaluation with subject_selection_id:', firstSelection.id, 'for inscription:', inscriptionId);
+            console.log('First selection details:', firstSelection);
+            const { data, error } = await supabase
+              .from('evaluations')
+              .select('*')
+              .eq('inscription_id', inscriptionId)
+              .eq('subject_selection_id', firstSelection.id)
+              .maybeSingle();
+            evaluationData = data;
+            evalError = error;
+            console.log('Subject-specific query result:', { data, error });
+            console.log('Query was: SELECT * FROM evaluations WHERE inscription_id =', inscriptionId, 'AND subject_selection_id =', firstSelection.id);
+          }
+
+          // If no specific evaluation found, try to find any evaluation for this inscription
+          if (!evaluationData && !evalError) {
+            console.log('No specific evaluation found for group', group.displayName, ', looking for any evaluation...');
+            const { data, error } = await supabase
+              .from('evaluations')
+              .select('*')
+              .eq('inscription_id', inscriptionId)
+              .order('created_at', { ascending: false })
+              .limit(1);
+            
+            if (error) {
+              evalError = error;
+            } else if (data && data.length > 0) {
+              evaluationData = data[0]; // Take the first (most recent) evaluation
+              console.log('Found fallback evaluation:', evaluationData);
+            } else {
+              console.log('No fallback evaluation found');
+            }
+          }
 
           if (evalError) {
             console.error('Error loading evaluation for group', group.displayName, ':', evalError);
@@ -270,7 +323,19 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
             console.log('Found evaluation for group', group.displayName, ':', {
               id: evaluationData.id,
               titulo_score: evaluationData.titulo_score,
-              total_score: evaluationData.total_score
+              antiguedad_titulo_score: evaluationData.antiguedad_titulo_score,
+              antiguedad_docente_score: evaluationData.antiguedad_docente_score,
+              concepto_score: evaluationData.concepto_score,
+              promedio_titulo_score: evaluationData.promedio_titulo_score,
+              trabajo_publico_score: evaluationData.trabajo_publico_score,
+              becas_otros_score: evaluationData.becas_otros_score,
+              concurso_score: evaluationData.concurso_score,
+              otros_antecedentes_score: evaluationData.otros_antecedentes_score,
+              red_federal_score: evaluationData.red_federal_score,
+              total_score: evaluationData.total_score,
+              position_selection_id: evaluationData.position_selection_id,
+              subject_selection_id: evaluationData.subject_selection_id,
+              evaluator_id: evaluationData.evaluator_id
             });
           } else {
             console.log('No evaluation found for group', group.displayName);
@@ -284,10 +349,7 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
         if (finalEvaluationData) {
           console.log('Found existing evaluation for group:', finalEvaluationData);
           console.log('Is current user evaluation:', isCurrentUserEvaluation);
-        }
-
-        if (finalEvaluationData) {
-          group.evaluation = {
+          const loadedEvaluation = {
             titulo_score: finalEvaluationData.titulo_score || 0,
             antiguedad_titulo_score: finalEvaluationData.antiguedad_titulo_score || 0,
             antiguedad_docente_score: finalEvaluationData.antiguedad_docente_score || 0,
@@ -304,6 +366,9 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
             title_type: (finalEvaluationData.title_type as 'docente' | 'habilitante' | 'supletorio') || 'docente',
             isImported: !isCurrentUserEvaluation // Mark as imported if it's not the current user's evaluation
           };
+          
+          console.log('Setting evaluation for group', group.displayName, ':', loadedEvaluation);
+          group.evaluation = loadedEvaluation;
         }
         } catch (groupError) {
           console.error('Error processing group', group.displayName, ':', groupError);
@@ -430,6 +495,7 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
       concurso_score: group.evaluation.concurso_score,
       otros_antecedentes_score: group.evaluation.otros_antecedentes_score,
       red_federal_score: group.evaluation.red_federal_score,
+      total_score: calculateTotal(group.evaluation), // Calculate and save the total score
       notes: group.evaluation.notes,
       status: group.evaluation.status,
       title_type: group.evaluation.title_type
@@ -484,15 +550,33 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
 
     setSaving(true);
     try {
-      // Save all group evaluations
-      for (const group of groupedItems) {
-        await saveEvaluationsForGroup(group);
-      }
+      const allCompleted = groupedItems.every(group => group.evaluation.status === 'completed');
+      
+      if (allCompleted) {
+        // If all evaluations are completed, reopen them for editing
+        setGroupedItems(prev => prev.map(group => ({
+          ...group,
+          evaluation: {
+            ...group.evaluation,
+            status: 'draft' as const
+          }
+        })));
+        
+        toast({
+          title: 'Evaluaciones reabiertas',
+          description: 'Las evaluaciones han sido reabiertas para edición',
+        });
+      } else {
+        // Save all group evaluations as draft
+        for (const group of groupedItems) {
+          await saveEvaluationsForGroup(group);
+        }
 
-      toast({
-        title: 'Evaluaciones guardadas',
-        description: 'Todas las evaluaciones han sido guardadas correctamente',
-      });
+        toast({
+          title: 'Evaluaciones guardadas',
+          description: 'Todas las evaluaciones han sido guardadas correctamente',
+        });
+      }
     } catch (error: any) {
       console.error('Error saving evaluations:', error);
       toast({
@@ -559,7 +643,7 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
   const hasEvaluations = groupedItems.length > 0;
 
   return (
-    <Card>
+    <Card data-evaluation-grid>
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
@@ -739,32 +823,31 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
               value={globalNotes}
               onChange={(e) => setGlobalNotes(e.target.value)}
               placeholder="Agregar comentarios generales sobre todas las evaluaciones..."
-              disabled={allCompleted}
               rows={3}
             />
           </div>
 
-          {!allCompleted && (
-            <div className="flex justify-between items-center">
-              <div className="flex gap-3">
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="outline"
-                        onClick={handleSaveAll}
-                        disabled={saving || !hasEvaluations}
-                        className="flex items-center gap-2"
-                      >
-                        <Save className="h-4 w-4" />
-                        Guardar Todo
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Guarda como borrador - se puede seguir editando</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+          <div className="flex justify-between items-center">
+            <div className="flex gap-3">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      onClick={handleSaveAll}
+                      disabled={saving || !hasEvaluations}
+                      className="flex items-center gap-2"
+                    >
+                      <Save className="h-4 w-4" />
+                      {allCompleted ? 'Reabrir para Editar' : 'Guardar Todo'}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{allCompleted ? 'Reabre las evaluaciones para permitir edición' : 'Guarda como borrador - se puede seguir editando'}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              {!allCompleted && (
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -782,37 +865,37 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
-              </div>
-
-              {/* Quick navigation for evaluation context */}
-              {evaluationNavigation?.hasEvaluationContext && (
-                <div className="flex gap-2">
-                  {evaluationNavigation.canGoToNext && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={saving}
-                      onClick={evaluationNavigation.goToNext}
-                    >
-                      Siguiente Docente
-                    </Button>
-                  )}
-                  
-                  {evaluationNavigation.unevaluatedCount > 0 && (
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      disabled={saving}
-                      onClick={evaluationNavigation.goToNextUnevaluated}
-                    >
-                      <SkipForward className="h-4 w-4 mr-1" />
-                      Siguiente sin evaluar
-                    </Button>
-                  )}
-                </div>
               )}
             </div>
-          )}
+
+            {/* Quick navigation for evaluation context */}
+            {evaluationNavigation?.hasEvaluationContext && (
+              <div className="flex gap-2">
+                {evaluationNavigation.canGoToNext && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={saving}
+                    onClick={evaluationNavigation.goToNext}
+                  >
+                    Siguiente Docente
+                  </Button>
+                )}
+                
+                {evaluationNavigation.unevaluatedCount > 0 && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    disabled={saving}
+                    onClick={evaluationNavigation.goToNextUnevaluated}
+                  >
+                    <SkipForward className="h-4 w-4 mr-1" />
+                    Siguiente sin evaluar
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
 
           {allCompleted && (
             <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">

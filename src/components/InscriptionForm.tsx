@@ -32,9 +32,17 @@ type InscriptionFormData = z.infer<typeof inscriptionSchema>;
 interface InscriptionFormProps {
   initialData?: Partial<InscriptionFormData & { id: string; status: string; inscription_period_id?: string }>;
   isEdit?: boolean;
+  evaluationNavigation?: {
+    hasEvaluationContext: boolean;
+    canGoToNext: boolean;
+    goToNext: () => void;
+    goToNextUnevaluated: () => void;
+    backToEvaluations: () => void;
+    unevaluatedCount: number;
+  };
 }
 
-const InscriptionForm: React.FC<InscriptionFormProps> = ({ initialData, isEdit = false }) => {
+const InscriptionForm: React.FC<InscriptionFormProps> = ({ initialData, isEdit = false, evaluationNavigation }) => {
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -274,48 +282,97 @@ const InscriptionForm: React.FC<InscriptionFormProps> = ({ initialData, isEdit =
     setIsSubmitting(true);
     
     try {
-      // First, check if there's already a draft inscription for this user and period
-      const { data: existingInscription, error: fetchError } = await supabase
-        .from('inscriptions')
-        .select('id, status')
-        .eq('user_id', user.id)
-        .eq('inscription_period_id', selections.inscriptionPeriodId)
-        .maybeSingle();
-
-      if (fetchError) throw fetchError;
-
-      const inscriptionData = {
-        subject_area: 'Secundario',
-        teaching_level: 'secundario' as const,
-        experience_years: 0,
-        inscription_period_id: selections.inscriptionPeriodId,
-        user_id: user.id,
-        status: 'submitted' as const
-      };
-
       let inscription;
 
-      if (existingInscription) {
-        // Update existing inscription
+      if (isEdit && initialData?.id) {
+        // Editing existing inscription - update it directly
+        // Don't change inscription_period_id to avoid unique constraint violation
+        // Only update fields that actually need to change
+        const inscriptionData: any = {};
+        
+        // Only update if the value is different
+        if (initialData.subject_area !== 'Secundario') {
+          inscriptionData.subject_area = 'Secundario';
+        }
+        if (initialData.teaching_level !== 'secundario') {
+          inscriptionData.teaching_level = 'secundario';
+        }
+        if (initialData.experience_years !== (initialData.experience_years || 0)) {
+          inscriptionData.experience_years = initialData.experience_years || 0;
+        }
+        if (initialData.status !== 'submitted') {
+          inscriptionData.status = 'submitted';
+        }
+        
+        // Always update the timestamp
+        inscriptionData.updated_at = new Date().toISOString();
+
+        console.log('=== EDITING INSCRIPTION ===');
+        console.log('Initial data:', initialData);
+        console.log('Inscription data to update:', inscriptionData);
+        console.log('User ID:', user.id);
+
+        // Check if there's anything to update
+        if (Object.keys(inscriptionData).length === 1 && inscriptionData.updated_at) {
+          console.log('No changes needed, only updating timestamp');
+        }
+
         const { data: updatedInscription, error: updateError } = await supabase
           .from('inscriptions')
           .update(inscriptionData)
-          .eq('id', existingInscription.id)
+          .eq('id', initialData.id)
           .select()
           .single();
 
-        if (updateError) throw updateError;
+        if (updateError) {
+          console.error('Error updating inscription:', updateError);
+          console.error('Inscription data being sent:', inscriptionData);
+          console.error('Initial data:', initialData);
+          throw updateError;
+        }
         inscription = updatedInscription;
       } else {
-        // Create new inscription
-        const { data: newInscription, error: insertError } = await supabase
+        // Creating new inscription - check if there's already a draft inscription for this user and period
+        const { data: existingInscription, error: fetchError } = await supabase
           .from('inscriptions')
-          .insert(inscriptionData)
-          .select()
-          .single();
+          .select('id, status')
+          .eq('user_id', user.id)
+          .eq('inscription_period_id', selections.inscriptionPeriodId)
+          .maybeSingle();
 
-        if (insertError) throw insertError;
-        inscription = newInscription;
+        if (fetchError) throw fetchError;
+
+        const inscriptionData = {
+          subject_area: 'Secundario',
+          teaching_level: 'secundario' as const,
+          experience_years: 0,
+          inscription_period_id: selections.inscriptionPeriodId,
+          user_id: user.id,
+          status: 'submitted' as const
+        };
+
+        if (existingInscription) {
+          // Update existing inscription
+          const { data: updatedInscription, error: updateError } = await supabase
+            .from('inscriptions')
+            .update(inscriptionData)
+            .eq('id', existingInscription.id)
+            .select()
+            .single();
+
+          if (updateError) throw updateError;
+          inscription = updatedInscription;
+        } else {
+          // Create new inscription
+          const { data: newInscription, error: insertError } = await supabase
+            .from('inscriptions')
+            .insert(inscriptionData)
+            .select()
+            .single();
+
+          if (insertError) throw insertError;
+          inscription = newInscription;
+        }
       }
 
       // Save the granular selections
@@ -327,7 +384,14 @@ const InscriptionForm: React.FC<InscriptionFormProps> = ({ initialData, isEdit =
         description: 'Su inscripción para nivel secundario se envió exitosamente con todas las selecciones',
       });
 
-      navigate('/inscriptions');
+      // Navigate based on context
+      if (evaluationNavigation?.hasEvaluationContext) {
+        // If in evaluation context, go back to evaluations
+        evaluationNavigation.backToEvaluations();
+      } else {
+        // Otherwise, go to inscriptions list
+        navigate('/inscriptions');
+      }
     } catch (error) {
       console.error('Error:', error);
       toast({
