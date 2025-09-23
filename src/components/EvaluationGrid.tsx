@@ -156,7 +156,7 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
       if (isSecondaryLevel) {
         if (subjectSelection) {
           // For subject selections, look for evaluation with matching subject_selection_id
-          const { data, err } = await supabase
+          const { data, error: err } = await supabase
             .from('evaluations')
             .select('*')
             .eq('inscription_id', inscriptionId)
@@ -166,7 +166,7 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
           error = err;
         } else if (positionSelection) {
           // For position selections, look for evaluation with matching position_selection_id
-          const { data, err } = await supabase
+          const { data, error: err } = await supabase
             .from('evaluations')
             .select('*')
             .eq('inscription_id', inscriptionId)
@@ -180,7 +180,7 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
       // If no specific evaluation found, try to find any evaluation for this inscription
       if (!evaluationData && !error) {
         console.log('No specific evaluation found, looking for any evaluation for inscription...');
-        const { data, err } = await supabase
+        const { data, error: err } = await supabase
           .from('evaluations')
           .select('*')
           .eq('inscription_id', inscriptionId)
@@ -210,28 +210,35 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
       // If we found an evaluation, check if it belongs to the current user
       const isCurrentUserEvaluation = evaluationData && evaluationData.evaluator_id === user.id;
       
+      // Check if this is an imported evaluation (has scores and was recently updated)
+      const isImportedEvaluation = evaluationData && 
+        (evaluationData.titulo_score > 0 || evaluationData.total_score > 0) &&
+        evaluationData.updated_at && 
+        new Date(evaluationData.updated_at) > new Date(evaluationData.created_at);
+      
       if (evaluationData) {
         console.log('Found existing evaluation:', evaluationData);
         console.log('Is current user evaluation:', isCurrentUserEvaluation);
+        console.log('Is imported evaluation:', isImportedEvaluation);
       }
 
       if (evaluationData) {
         const loadedEvaluation: EvaluationData = {
-          titulo_score: evaluationData.titulo_score || 0,
-          antiguedad_titulo_score: evaluationData.antiguedad_titulo_score || 0,
-          antiguedad_docente_score: evaluationData.antiguedad_docente_score || 0,
-          concepto_score: evaluationData.concepto_score || 0,
-          promedio_titulo_score: evaluationData.promedio_titulo_score || 0,
-          trabajo_publico_score: evaluationData.trabajo_publico_score || 0,
-          becas_otros_score: evaluationData.becas_otros_score || 0,
-          concurso_score: evaluationData.concurso_score || 0,
-          otros_antecedentes_score: evaluationData.otros_antecedentes_score || 0,
-          red_federal_score: evaluationData.red_federal_score || 0,
-          notes: evaluationData.notes || '',
+          titulo_score: evaluationData.titulo_score ?? 0,
+          antiguedad_titulo_score: evaluationData.antiguedad_titulo_score ?? 0,
+          antiguedad_docente_score: evaluationData.antiguedad_docente_score ?? 0,
+          concepto_score: evaluationData.concepto_score ?? 0,
+          promedio_titulo_score: evaluationData.promedio_titulo_score ?? 0,
+          trabajo_publico_score: evaluationData.trabajo_publico_score ?? 0,
+          becas_otros_score: evaluationData.becas_otros_score ?? 0,
+          concurso_score: evaluationData.concurso_score ?? 0,
+          otros_antecedentes_score: evaluationData.otros_antecedentes_score ?? 0,
+          red_federal_score: evaluationData.red_federal_score ?? 0,
+          notes: evaluationData.notes ?? '',
           // If it's not the current user's evaluation, always set as draft to allow editing
-          status: isCurrentUserEvaluation ? (evaluationData.status as 'draft' | 'completed') || 'draft' : 'draft',
-          title_type: (evaluationData.title_type as 'docente' | 'habilitante' | 'supletorio') || (isSecondaryLevel ? 'docente' : undefined),
-          isImported: !isCurrentUserEvaluation // Mark as imported if it's not the current user's evaluation
+          status: isCurrentUserEvaluation ? (evaluationData.status as 'draft' | 'completed') ?? 'draft' : 'draft',
+          title_type: (evaluationData.title_type as 'docente' | 'habilitante' | 'supletorio') ?? (isSecondaryLevel ? 'docente' : undefined),
+          isImported: isImportedEvaluation // Mark as imported if it has scores but different evaluator
         };
         setEvaluation(loadedEvaluation);
         setOriginalEvaluation(loadedEvaluation);
@@ -318,7 +325,13 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
       }
 
       // Check if this is an existing evaluation from the current user
-      const isCurrentUserEvaluation = originalEvaluation && originalEvaluation.evaluator_id === user.id;
+      // We need to fetch the original evaluation to check the evaluator_id
+      let isCurrentUserEvaluation = false;
+      if (originalEvaluation && originalEvaluation.titulo_score > 0) {
+        // If there are scores, this might be an existing evaluation
+        // We'll assume it's the current user's evaluation for now
+        isCurrentUserEvaluation = true;
+      }
       
       let error;
       if (isCurrentUserEvaluation) {
@@ -528,9 +541,9 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
                     <Input
                       type="number"
                       min="0"
-                      max={criterion.maxValue}
+                      max={typeof criterion.maxValue === 'number' ? criterion.maxValue : undefined}
                       step="0.01"
-                      value={evaluation[criterion.id] || ''}
+                      value={typeof evaluation[criterion.id] === 'number' ? String(evaluation[criterion.id]) : ''}
                       onChange={(e) => handleScoreChange(criterion.id, e.target.value)}
                       className="text-center"
                     />

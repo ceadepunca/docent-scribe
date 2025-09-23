@@ -251,7 +251,12 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
       console.log('Groups created:', initialGroups.map(g => ({
         displayName: g.displayName,
         type: g.type,
-        selections: g.selections.map(s => ({ id: s.id, name: s.name || s.subject?.name || s.administrative_position?.name }))
+        selections: g.selections.map(s => ({ 
+          id: s.id, 
+          name: 'name' in s ? s.name : 
+                'subject' in s ? s.subject?.name : 
+                'administrative_position' in s ? s.administrative_position?.name : 'Unknown'
+        }))
       })));
       
       for (const group of initialGroups) {
@@ -346,29 +351,37 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
         // If we found an evaluation, check if it belongs to the current user
         const isCurrentUserEvaluation = finalEvaluationData && finalEvaluationData.evaluator_id === user.id;
         
+        // Check if this is an imported evaluation (has scores and was recently updated)
+        const isImportedEvaluation = finalEvaluationData && 
+          (finalEvaluationData.titulo_score > 0 || finalEvaluationData.total_score > 0) &&
+          finalEvaluationData.updated_at && 
+          new Date(finalEvaluationData.updated_at) > new Date(finalEvaluationData.created_at);
+        
         if (finalEvaluationData) {
           console.log('Found existing evaluation for group:', finalEvaluationData);
           console.log('Is current user evaluation:', isCurrentUserEvaluation);
+          console.log('Is imported evaluation:', isImportedEvaluation);
           const loadedEvaluation = {
-            titulo_score: finalEvaluationData.titulo_score || 0,
-            antiguedad_titulo_score: finalEvaluationData.antiguedad_titulo_score || 0,
-            antiguedad_docente_score: finalEvaluationData.antiguedad_docente_score || 0,
-            concepto_score: finalEvaluationData.concepto_score || 0,
-            promedio_titulo_score: finalEvaluationData.promedio_titulo_score || 0,
-            trabajo_publico_score: finalEvaluationData.trabajo_publico_score || 0,
-            becas_otros_score: finalEvaluationData.becas_otros_score || 0,
-            concurso_score: finalEvaluationData.concurso_score || 0,
-            otros_antecedentes_score: finalEvaluationData.otros_antecedentes_score || 0,
-            red_federal_score: finalEvaluationData.red_federal_score || 0,
-            notes: finalEvaluationData.notes || '',
-            // If it's not the current user's evaluation, always set as draft to allow editing
-            status: isCurrentUserEvaluation ? (finalEvaluationData.status as 'draft' | 'completed') || 'draft' : 'draft',
-            title_type: (finalEvaluationData.title_type as 'docente' | 'habilitante' | 'supletorio') || 'docente',
-            isImported: !isCurrentUserEvaluation // Mark as imported if it's not the current user's evaluation
+            titulo_score: finalEvaluationData.titulo_score ?? 0,
+            antiguedad_titulo_score: finalEvaluationData.antiguedad_titulo_score ?? 0,
+            antiguedad_docente_score: finalEvaluationData.antiguedad_docente_score ?? 0,
+            concepto_score: finalEvaluationData.concepto_score ?? 0,
+            promedio_titulo_score: finalEvaluationData.promedio_titulo_score ?? 0,
+            trabajo_publico_score: finalEvaluationData.trabajo_publico_score ?? 0,
+            becas_otros_score: finalEvaluationData.becas_otros_score ?? 0,
+            concurso_score: finalEvaluationData.concurso_score ?? 0,
+            otros_antecedentes_score: finalEvaluationData.otros_antecedentes_score ?? 0,
+            red_federal_score: finalEvaluationData.red_federal_score ?? 0,
+            notes: finalEvaluationData.notes ?? '',
+            // For imported evaluations, always set as draft to allow editing
+            status: isImportedEvaluation ? 'draft' : (finalEvaluationData.status as 'draft' | 'completed') ?? 'draft',
+            title_type: (finalEvaluationData.title_type as 'docente' | 'habilitante' | 'supletorio') ?? 'docente',
+            isImported: isImportedEvaluation // Mark as imported if it has scores but different evaluator
           };
           
           console.log('Setting evaluation for group', group.displayName, ':', loadedEvaluation);
           group.evaluation = loadedEvaluation;
+          console.log('Group after setting evaluation:', group);
         }
         } catch (groupError) {
           console.error('Error processing group', group.displayName, ':', groupError);
@@ -376,6 +389,7 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
         }
       }
 
+      console.log('Final grouped items before setting state:', initialGroups);
       setGroupedItems(initialGroups);
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -641,6 +655,10 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
 
   const allCompleted = groupedItems.every(group => group.evaluation.status === 'completed');
   const hasEvaluations = groupedItems.length > 0;
+  
+  console.log('Render - groupedItems state:', groupedItems);
+  console.log('Render - allCompleted:', allCompleted);
+  console.log('Render - hasEvaluations:', hasEvaluations);
 
   return (
     <Card data-evaluation-grid>
@@ -786,15 +804,25 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
                         
                         return (
                           <TableCell key={criterion.id} className="p-1">
+                           {console.log(`Rendering input for ${criterion.id} with value:`, group.evaluation[criterion.id as keyof EvaluationData])}
                            <Input
                               type="number"
                               min="0"
-                              max={maxValue}
+                              max={typeof maxValue === 'number' ? maxValue : undefined}
                               step="0.01"
-                              value={group.evaluation[criterion.id as keyof EvaluationData] || ''}
+                              value={(() => {
+                                const val = group.evaluation[criterion.id as keyof EvaluationData];
+                                const stringVal = typeof val === 'number' ? String(val) : '';
+                                console.log(`Input value for ${criterion.id}:`, val, 'type:', typeof val, 'stringVal:', stringVal);
+                                return stringVal;
+                              })()}
                               onChange={(e) => handleScoreChange(groupIndex, criterion.id as keyof EvaluationData, e.target.value)}
                               className="text-center w-8 h-7 text-2xs px-0"
-                              disabled={group.evaluation.status === 'completed'}
+                              disabled={(() => {
+                                const isDisabled = group.evaluation.status === 'completed';
+                                console.log(`Input disabled for ${criterion.id}:`, isDisabled, 'status:', group.evaluation.status);
+                                return isDisabled;
+                              })()}
                             />
                           </TableCell>
                         );
