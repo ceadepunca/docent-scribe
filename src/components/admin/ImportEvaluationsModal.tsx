@@ -51,6 +51,19 @@ export const ImportEvaluationsModal: React.FC<ImportEvaluationsModalProps> = ({
   const [progress, setProgress] = useState(0);
   const [importResults, setImportResults] = useState<ImportResult[]>([]);
   const [showPreview, setShowPreview] = useState(false);
+  const [parseError, setParseError] = useState<string | null>(null);
+
+  // Botón azul destacado para importar
+  const BlueImportButton = ({ onClick, disabled }: { onClick: () => void; disabled?: boolean }) => (
+    <Button
+      onClick={onClick}
+      disabled={disabled}
+      style={{ backgroundColor: '#2563eb', color: 'white', fontWeight: 600, fontSize: 16, margin: '16px 0' }}
+      className="w-full hover:bg-blue-700 focus:ring-2 focus:ring-blue-400 focus:outline-none"
+    >
+      Importar Evaluaciones (.xlsx)
+    </Button>
+  );
 
   const resetModal = useCallback(() => {
     setFile(null);
@@ -85,6 +98,7 @@ export const ImportEvaluationsModal: React.FC<ImportEvaluationsModalProps> = ({
 
   const parseFile = useCallback(async (file: File) => {
     try {
+      setParseError(null);
       const data = await file.arrayBuffer();
       
       // Configure XLSX to handle different number formats
@@ -105,6 +119,7 @@ export const ImportEvaluationsModal: React.FC<ImportEvaluationsModalProps> = ({
       });
 
       if (jsonData.length < 2) {
+        setParseError("El archivo no contiene datos válidos o no tiene filas suficientes.");
         toast({
           title: "Error",
           description: "El archivo no contiene datos válidos",
@@ -118,77 +133,19 @@ export const ImportEvaluationsModal: React.FC<ImportEvaluationsModalProps> = ({
       const dataRows = jsonData.slice(1) as any[][];
 
       // Helper function to parse numbers with better decimal handling
-      // ... existing code ...
-
-// Helper function to parse numbers with better decimal handling
-const parseNumber = (value: any): number => {
-  if (value === null || value === undefined || value === '') {
-    return 0;
-  }
-  
-  if (typeof value === 'number') {
-    return value;
-  }
-  
-  if (typeof value === 'string') {
-    // Remove any non-numeric characters except decimal separators
-    let cleanValue = value.toString().trim();
-    
-    // Handle different decimal separators
-    // If there are multiple dots or commas, keep the last one as decimal
-    const dotCount = (cleanValue.match(/\./g) || []).length;
-    const commaCount = (cleanValue.match(/,/g) || []).length;
-    
-    if (dotCount > 1 || commaCount > 1) {
-      // Multiple separators - assume last one is decimal
-      if (dotCount > 0 && commaCount > 0) {
-        // Mixed separators - use the last one
-        const lastDot = cleanValue.lastIndexOf('.');
-        const lastComma = cleanValue.lastIndexOf(',');
-        if (lastDot > lastComma) {
-          cleanValue = cleanValue.replace(/,/g, '').replace(/\./g, '');
-          cleanValue = cleanValue.slice(0, -2) + '.' + cleanValue.slice(-2);
-        } else {
-          cleanValue = cleanValue.replace(/\./g, '').replace(/,/g, '');
-          cleanValue = cleanValue.slice(0, -2) + '.' + cleanValue.slice(-2);
+      const parseNumber = (value: any): number => {
+        if (value === null || value === undefined || value === '') {
+          return 0;
         }
-      } else if (dotCount > 1) {
-        // Multiple dots - last one is decimal
-        const parts = cleanValue.split('.');
-        cleanValue = parts.slice(0, -1).join('') + '.' + parts[parts.length - 1];
-      } else if (commaCount > 1) {
-        // Multiple commas - last one is decimal
-        const parts = cleanValue.split(',');
-        cleanValue = parts.slice(0, -1).join('') + '.' + parts[parts.length - 1];
-      }
-    } else if (dotCount === 1 && commaCount === 1) {
-      // One of each - assume comma is thousands separator, dot is decimal
-      cleanValue = cleanValue.replace(/,/g, '');
-    } else if (commaCount === 1 && dotCount === 0) {
-      // Only comma - could be decimal separator (European format)
-      // Check if it's likely a decimal (2 digits after comma)
-      const commaIndex = cleanValue.indexOf(',');
-      const afterComma = cleanValue.substring(commaIndex + 1);
-      if (afterComma.length <= 2) {
-        // Likely decimal separator
-        cleanValue = cleanValue.replace(',', '.');
-      } else {
-        // Likely thousands separator
-        cleanValue = cleanValue.replace(',', '');
-      }
-    }
-    
-    // Remove any remaining non-numeric characters except decimal point
-    cleanValue = cleanValue.replace(/[^\d.-]/g, '');
-    
-    const numValue = parseFloat(cleanValue);
-    return isNaN(numValue) ? 0 : numValue;
-  }
-  
-  return 0;
-};
-
-// ... existing code ...
+        if (typeof value === 'number') return value;
+        if (typeof value === 'string') {
+          // Reemplazar coma por punto para decimales
+          const clean = value.replace(',', '.').replace(/[^\d.-]/g, '');
+          const num = parseFloat(clean);
+          return isNaN(num) ? 0 : num;
+        }
+        return 0;
+      };
 
       // Map data to our interface
       const parsedData: CSVEvaluationData[] = dataRows
@@ -201,7 +158,6 @@ const parseNumber = (value: any): number => {
               rowData[header] = parseNumber(value);
             }
           });
-          
           // Calculate total if not provided or if it's 0
           if (!rowData.TOTAL || rowData.TOTAL === 0) {
             const total = Object.keys(rowData).reduce((sum, key) => {
@@ -212,12 +168,11 @@ const parseNumber = (value: any): number => {
             }, 0);
             rowData.TOTAL = Math.round(total * 100) / 100; // Round to 2 decimal places
           }
-          
           return rowData as CSVEvaluationData;
         });
-
       setCsvData(parsedData);
       setShowPreview(true);
+      setParseError(null);
       
       toast({
         title: "Archivo procesado",
@@ -226,6 +181,7 @@ const parseNumber = (value: any): number => {
 
     } catch (error) {
       console.error('Error parsing file:', error);
+      setParseError("Error al procesar el archivo. Verifica el formato y las columnas.");
       toast({
         title: "Error",
         description: "Error al procesar el archivo. Verifica el formato.",
@@ -250,45 +206,45 @@ const parseNumber = (value: any): number => {
         
         for (const evaluationData of batch) {
           try {
-            // Temporarily skip teacher lookup due to RLS issues
-            // We'll proceed with the import using the LEGAJO directly
-            const teacher = null;
-            const teacherError = null;
+            // Buscar docente por legajo_number en profiles
+            const { data: teacherData, error: teacherError } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('legajo_number', evaluationData.LEGAJO)
+              .maybeSingle();
 
-            // Find inscription by LEGAJO using a join query
-            const { data: inscriptionData, error: inscriptionError } = await supabase
-              .from('inscriptions')
-              .select(`
-                id,
-                profiles!inner(dni)
-              `)
-              .eq('profiles.dni', evaluationData.LEGAJO)
-              .eq('teaching_level', 'secundario')
-              .single();
+            const teacher = teacherData || null;
 
-            if (inscriptionError || !inscriptionData) {
+            if (teacherError || !teacher) {
               results.push({
                 success: false,
                 legajo: evaluationData.LEGAJO,
-                message: `No se encontró inscripción para el docente con LEGAJO ${evaluationData.LEGAJO}`
+                message: `Docente con LEGAJO ${evaluationData.LEGAJO} no encontrado`
               });
               continue;
             }
 
-            const inscription = { id: inscriptionData.id };
+            // Find inscription for this teacher using custom function
+            const { data: inscriptionData, error: inscriptionError } = await supabase
+              .rpc('get_inscription_by_user', { user_uuid: teacher.id });
+            
+            const inscription = inscriptionData && inscriptionData.length > 0 ? inscriptionData[0] : null;
 
-            // Find PRECEPTOR/A position selection
-            const { data: positionSelection, error: positionError } = await supabase
-              .from('inscription_position_selections')
-              .select(`
-                id,
-                administrative_positions!inner(name),
-                schools!inner(name)
-              `)
-              .eq('inscription_id', inscription.id)
-              .eq('administrative_positions.name', 'PRECEPTOR/A')
-              .eq('schools.name', 'Fray M Esquiú')
-              .single();
+            if (inscriptionError || !inscription) {
+              results.push({
+                success: false,
+                legajo: evaluationData.LEGAJO,
+                teacherName: `${teacher.first_name} ${teacher.last_name}`,
+                message: `No se encontró inscripción para el docente`
+              });
+              continue;
+            }
+
+            // Find PRECEPTOR/A position selection using custom function
+            const { data: positionData, error: positionError } = await supabase
+              .rpc('get_position_selection_by_inscription', { inscription_uuid: inscription.id });
+            
+            const positionSelection = positionData && positionData.length > 0 ? positionData[0] : null;
 
             if (positionError || !positionSelection) {
               results.push({
@@ -300,13 +256,8 @@ const parseNumber = (value: any): number => {
               continue;
             }
 
-            // Check if evaluation already exists
-            const { data: existingEvaluation } = await supabase
-              .from('evaluations')
-              .select('id')
-              .eq('inscription_id', inscription.id)
-              .eq('position_selection_id', positionSelection.id)
-              .single();
+            // Skip existing evaluation check - we'll use upsert function
+            const existingEvaluation = null;
 
             // Get current user for evaluator_id
             const currentUser = (await supabase.auth.getUser()).data.user;
@@ -314,78 +265,69 @@ const parseNumber = (value: any): number => {
               results.push({
                 success: false,
                 legajo: evaluationData.LEGAJO,
-                teacherName: `${teacher.first_name} ${teacher.last_name}`,
                 message: `Usuario no autenticado`
               });
               continue;
             }
 
-            let evaluationError = null;
-
-            if (existingEvaluation) {
-              // Update existing evaluation
-              console.log(`Updating existing evaluation for ${teacher.first_name} ${teacher.last_name}:`, {
-                evaluationId: existingEvaluation.id,
-                titulo_score: evaluationData.TÍTULO ?? 0,
-                total_score: evaluationData.TOTAL ?? 0
-              });
-              const { error: updateError } = await supabase
-                .from('evaluations')
-                .update({
-                  titulo_score: evaluationData.TÍTULO ?? 0,
-                  antiguedad_titulo_score: evaluationData['ANTIGÜEDAD TÍTULO'] ?? 0,
-                  antiguedad_docente_score: evaluationData['ANTIGÜEDAD DOCEN'] ?? 0,
-                  concepto_score: evaluationData.CONCEPTO ?? 0,
-                  promedio_titulo_score: evaluationData['PROM.GRAL.TIT.DOCEN.'] ?? 0,
-                  trabajo_publico_score: evaluationData['TRAB.PUBLIC.'] ?? 0,
-                  becas_otros_score: evaluationData['BECAS Y OTROS EST.'] ?? 0,
-                  concurso_score: evaluationData.CONCURSOS ?? 0,
-                  otros_antecedentes_score: evaluationData['OTROS ANTEC. DOC.'] ?? 0,
-                  red_federal_score: evaluationData['RED FEDERAL MAX. 3'] ?? 0,
-                  total_score: evaluationData.TOTAL ?? 0,
-                  status: 'draft',
-                  updated_at: new Date().toISOString()
-                })
-                .eq('id', existingEvaluation.id);
-              evaluationError = updateError;
-              console.log(`Update result for ${teacher.first_name} ${teacher.last_name}:`, { error: updateError });
-            } else {
-              // Create new evaluation
-              const { error: insertError } = await supabase
-                .from('evaluations')
-                .insert({
-                  inscription_id: inscription.id,
-                  evaluator_id: currentUser.id,
-                  position_selection_id: positionSelection.id,
-                  titulo_score: evaluationData.TÍTULO ?? 0,
-                  antiguedad_titulo_score: evaluationData['ANTIGÜEDAD TÍTULO'] ?? 0,
-                  antiguedad_docente_score: evaluationData['ANTIGÜEDAD DOCEN'] ?? 0,
-                  concepto_score: evaluationData.CONCEPTO ?? 0,
-                  promedio_titulo_score: evaluationData['PROM.GRAL.TIT.DOCEN.'] ?? 0,
-                  trabajo_publico_score: evaluationData['TRAB.PUBLIC.'] ?? 0,
-                  becas_otros_score: evaluationData['BECAS Y OTROS EST.'] ?? 0,
-                  concurso_score: evaluationData.CONCURSOS ?? 0,
-                  otros_antecedentes_score: evaluationData['OTROS ANTEC. DOC.'] ?? 0,
-                  red_federal_score: evaluationData['RED FEDERAL MAX. 3'] ?? 0,
-                  total_score: evaluationData.TOTAL ?? 0,
-                  status: 'draft'
-                });
-              evaluationError = insertError;
-            }
-
-
-            if (evaluationError) {
+            // Use upsert function to create or update evaluation
+            const upsertPayload = {
+              p_inscription_id: inscription.id,
+              p_evaluator_id: currentUser.id,
+              p_position_selection_id: positionSelection.id,
+              p_titulo_score: evaluationData.TÍTULO ?? 0,
+              p_antiguedad_titulo_score: evaluationData['ANTIGÜEDAD TÍTULO'] ?? 0,
+              p_antiguedad_docente_score: evaluationData['ANTIGÜEDAD DOCEN'] ?? 0,
+              p_concepto_score: evaluationData.CONCEPTO ?? 0,
+              p_promedio_titulo_score: evaluationData['PROM.GRAL.TIT.DOCEN.'] ?? 0,
+              p_trabajo_publico_score: evaluationData['TRAB.PUBLIC.'] ?? 0,
+              p_becas_otros_score: evaluationData['BECAS Y OTROS EST.'] ?? 0,
+              p_concurso_score: evaluationData.CONCURSOS ?? 0,
+              p_otros_antecedentes_score: evaluationData['OTROS ANTEC. DOC.'] ?? 0,
+              p_red_federal_score: evaluationData['RED FEDERAL MAX. 3'] ?? 0,
+              p_total_score: evaluationData.TOTAL ?? 0
+            };
+            // Log para depuración
+            console.log('Payload enviado a upsert_evaluation:', upsertPayload);
+            // Log de tipos y valores antes de upsert
+            Object.entries(upsertPayload).forEach(([key, value]) => {
+              console.log(`Tipo de ${key}:`, typeof value, '| Valor:', value);
+              if (typeof value === 'string' && value.trim() === '') {
+                console.warn(`El parámetro ${key} es string vacío, se enviará como 0`);
+                upsertPayload[key] = 0;
+              }
+            });
+            if (!upsertPayload.p_inscription_id || !upsertPayload.p_evaluator_id || !upsertPayload.p_position_selection_id) {
+              console.error('Faltan datos clave para upsert:', upsertPayload);
               results.push({
                 success: false,
                 legajo: evaluationData.LEGAJO,
                 teacherName: `${teacher.first_name} ${teacher.last_name}`,
+                message: `Faltan datos clave para la evaluación (inscription_id, evaluator_id o position_selection_id)`
+              });
+              continue;
+            }
+            const { data: evaluationId, error: evaluationError } = await supabase
+              .rpc('upsert_evaluation', upsertPayload);
+            
+            console.log(`Upsert result for ${teacher.first_name} ${teacher.last_name}:`, { 
+              evaluationId, 
+              error: evaluationError 
+            });
+            if (evaluationError) {
+              // Mostrar el mensaje de error detallado en consola
+              console.error('Supabase/Postgres error:', evaluationError);
+              results.push({
+                success: false,
+                legajo: evaluationData.LEGAJO,
+                teacherName: `LEGAJO ${evaluationData.LEGAJO}`,
                 message: `Error al crear evaluación: ${evaluationError.message}`
               });
             } else {
               results.push({
                 success: true,
                 legajo: evaluationData.LEGAJO,
-                teacherName: `${teacher.first_name} ${teacher.last_name}`,
+                teacherName: `LEGAJO ${evaluationData.LEGAJO}`,
                 message: `Evaluación creada exitosamente`
               });
             }
@@ -433,8 +375,24 @@ const parseNumber = (value: any): number => {
   }, [csvData, toast, onImportComplete]);
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+        {/* Botón azul destacado en la parte superior */}
+        <div className="w-full flex flex-col items-center mb-4">
+          <Button
+            onClick={importEvaluations}
+            disabled={isProcessing || !showPreview || csvData.length === 0}
+            style={{ backgroundColor: '#2563eb', color: 'white', fontWeight: 700, fontSize: 18, padding: '16px 32px' }}
+            className="hover:bg-blue-700 focus:ring-2 focus:ring-blue-400 focus:outline-none shadow-lg"
+          >
+            Importar Evaluaciones (.xlsx)
+          </Button>
+          {parseError && (
+            <div className="mt-2 text-red-600 font-semibold text-center">
+              {parseError}
+            </div>
+          )}
+        </div>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Calculator className="h-5 w-5" />
@@ -446,6 +404,15 @@ const parseNumber = (value: any): number => {
             Solo se importarán evaluaciones para docentes que ya tienen inscripciones con posición PRECEPTOR/A.
           </DialogDescription>
         </DialogHeader>
+
+        {/* RLS Fixed Notice */}
+        <Alert className="border-green-200 bg-green-50">
+          <CheckCircle className="h-4 w-4 text-green-600" />
+          <AlertDescription className="text-green-800">
+            <strong>RLS Corregido:</strong> Las políticas de Row Level Security han sido actualizadas. 
+            La importación ahora debería funcionar correctamente y guardar los datos en la base de datos.
+          </AlertDescription>
+        </Alert>
 
         <div className="space-y-6">
           {/* Expected CSV Structure Documentation */}
@@ -497,38 +464,9 @@ const parseNumber = (value: any): number => {
                 <Upload className="h-4 w-4" />
                 {file ? file.name : 'Seleccionar archivo'}
               </Button>
-              {file && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setFile(null);
-                    setCsvData([]);
-                    setShowPreview(false);
-                  }}
-                  disabled={isProcessing}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              )}
             </div>
-          </div>
 
-          {/* Preview */}
-          {showPreview && csvData.length > 0 && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h4 className="font-medium">Vista previa de datos ({csvData.length} registros)</h4>
-                <Button
-                  onClick={importEvaluations}
-                  disabled={isProcessing}
-                  className="flex items-center gap-2"
-                >
-                  <FileSpreadsheet className="h-4 w-4" />
-                  Importar Evaluaciones
-                </Button>
-              </div>
-
+            {showPreview && (
               <div className="border rounded-lg max-h-60 overflow-auto">
                 <Table>
                   <TableHeader>
@@ -572,8 +510,8 @@ const parseNumber = (value: any): number => {
                   </div>
                 )}
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
           {/* Progress */}
           {isProcessing && (
@@ -633,7 +571,7 @@ const parseNumber = (value: any): number => {
               {isProcessing ? 'Procesando...' : 'Cerrar'}
             </Button>
           </div>
-        </div>
+        </div> {/* <-- cierre agregado */}
       </DialogContent>
     </Dialog>
   );

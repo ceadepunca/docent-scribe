@@ -210,11 +210,10 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
       // If we found an evaluation, check if it belongs to the current user
       const isCurrentUserEvaluation = evaluationData && evaluationData.evaluator_id === user.id;
       
-      // Check if this is an imported evaluation (has scores and was recently updated)
+      // Check if this is an imported evaluation (has scores and either doesn't belong to current user or has significant scores)
       const isImportedEvaluation = evaluationData && 
         (evaluationData.titulo_score > 0 || evaluationData.total_score > 0) &&
-        evaluationData.updated_at && 
-        new Date(evaluationData.updated_at) > new Date(evaluationData.created_at);
+        (!isCurrentUserEvaluation || evaluationData.total_score > 0);
       
       if (evaluationData) {
         console.log('Found existing evaluation:', evaluationData);

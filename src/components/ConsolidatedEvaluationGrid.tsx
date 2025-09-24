@@ -349,18 +349,8 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
           let finalEvaluationData = evaluationData;
 
         // If we found an evaluation, check if it belongs to the current user
-        const isCurrentUserEvaluation = finalEvaluationData && finalEvaluationData.evaluator_id === user.id;
-        
-        // Check if this is an imported evaluation (has scores and was recently updated)
-        const isImportedEvaluation = finalEvaluationData && 
-          (finalEvaluationData.titulo_score > 0 || finalEvaluationData.total_score > 0) &&
-          finalEvaluationData.updated_at && 
-          new Date(finalEvaluationData.updated_at) > new Date(finalEvaluationData.created_at);
-        
+        // No filtrar por evaluador: mostrar cualquier evaluación encontrada
         if (finalEvaluationData) {
-          console.log('Found existing evaluation for group:', finalEvaluationData);
-          console.log('Is current user evaluation:', isCurrentUserEvaluation);
-          console.log('Is imported evaluation:', isImportedEvaluation);
           const loadedEvaluation = {
             titulo_score: finalEvaluationData.titulo_score ?? 0,
             antiguedad_titulo_score: finalEvaluationData.antiguedad_titulo_score ?? 0,
@@ -373,15 +363,11 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
             otros_antecedentes_score: finalEvaluationData.otros_antecedentes_score ?? 0,
             red_federal_score: finalEvaluationData.red_federal_score ?? 0,
             notes: finalEvaluationData.notes ?? '',
-            // For imported evaluations, always set as draft to allow editing
-            status: isImportedEvaluation ? 'draft' : (finalEvaluationData.status as 'draft' | 'completed') ?? 'draft',
+            status: (finalEvaluationData.status as 'draft' | 'completed') ?? 'draft',
             title_type: (finalEvaluationData.title_type as 'docente' | 'habilitante' | 'supletorio') ?? 'docente',
-            isImported: isImportedEvaluation // Mark as imported if it has scores but different evaluator
+            isImported: false
           };
-          
-          console.log('Setting evaluation for group', group.displayName, ':', loadedEvaluation);
           group.evaluation = loadedEvaluation;
-          console.log('Group after setting evaluation:', group);
         }
         } catch (groupError) {
           console.error('Error processing group', group.displayName, ':', groupError);

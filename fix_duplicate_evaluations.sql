@@ -80,3 +80,29 @@ WHERE (e.inscription_id, e.position_selection_id, e.subject_selection_id) IN (
   HAVING COUNT(*) > 1
 )
 ORDER BY e.inscription_id, e.position_selection_id, e.created_at DESC;
+
+-- ========================================
+-- CORREGIR EVALUACIONES DUPLICADAS
+-- ========================================
+
+-- 1. Ver duplicados
+SELECT inscription_id, position_selection_id, COUNT(*)
+FROM evaluations
+GROUP BY inscription_id, position_selection_id
+HAVING COUNT(*) > 1;
+
+-- 2. Eliminar duplicados (mantener solo uno por combinación)
+DELETE FROM evaluations
+WHERE id IN (
+  SELECT id
+  FROM (
+    SELECT id,
+           ROW_NUMBER() OVER (PARTITION BY inscription_id, position_selection_id ORDER BY id) AS rn
+    FROM evaluations
+  ) t
+  WHERE t.rn > 1
+);
+
+-- 3. Crear el índice único
+CREATE UNIQUE INDEX IF NOT EXISTS evaluations_inscription_position_unique
+ON evaluations (inscription_id, position_selection_id);
