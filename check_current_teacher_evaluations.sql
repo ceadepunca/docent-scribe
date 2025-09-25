@@ -64,3 +64,25 @@ SELECT
 FROM inscription_subject_selections iss
 JOIN subjects s ON iss.subject_id = s.id
 WHERE iss.inscription_id = '1a958c32-f407-4f6d-b75d-b3eb73ca9869';
+
+-- 5. ¿Cuántas inscripciones cumplen el filtro del update?
+SELECT COUNT(*) AS inscripciones_submitted_con_evaluacion
+FROM public.inscriptions
+WHERE status = 'submitted'
+  AND id IN (
+    SELECT DISTINCT inscription_id
+    FROM public.evaluations
+    WHERE inscription_id IS NOT NULL
+  );
+
+-- 6. ¿Cuántas inscripciones tienen evaluaciones (sin importar el estado)?
+SELECT COUNT(DISTINCT i.id) AS inscripciones_con_evaluacion
+FROM public.inscriptions i
+JOIN public.evaluations e ON e.inscription_id = i.id;
+
+-- 7. ¿Cuáles son los estados actuales de todas las inscripciones con evaluaciones?
+SELECT i.status, COUNT(*) AS cantidad
+FROM public.inscriptions i
+JOIN public.evaluations e ON e.inscription_id = i.id
+GROUP BY i.status
+ORDER BY cantidad DESC;
