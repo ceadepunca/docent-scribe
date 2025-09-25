@@ -187,6 +187,13 @@ export type Database = {
             referencedRelation: "inscriptions"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "inscription_deletion_requests_inscription_id_fkey"
+            columns: ["inscription_id"]
+            isOneToOne: false
+            referencedRelation: "inscriptions_with_evaluations"
+            referencedColumns: ["inscription_id"]
+          },
         ]
       }
       inscription_documents: {
@@ -222,11 +229,18 @@ export type Database = {
             referencedRelation: "inscriptions"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "inscription_documents_inscription_id_fkey"
+            columns: ["inscription_id"]
+            isOneToOne: false
+            referencedRelation: "inscriptions_with_evaluations"
+            referencedColumns: ["inscription_id"]
+          },
         ]
       }
       inscription_history: {
         Row: {
-          changed_by: string
+          changed_by: string | null
           created_at: string
           id: string
           inscription_id: string
@@ -237,7 +251,7 @@ export type Database = {
             | null
         }
         Insert: {
-          changed_by: string
+          changed_by?: string | null
           created_at?: string
           id?: string
           inscription_id: string
@@ -248,7 +262,7 @@ export type Database = {
             | null
         }
         Update: {
-          changed_by?: string
+          changed_by?: string | null
           created_at?: string
           id?: string
           inscription_id?: string
@@ -265,6 +279,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "inscriptions"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inscription_history_inscription_id_fkey"
+            columns: ["inscription_id"]
+            isOneToOne: false
+            referencedRelation: "inscriptions_with_evaluations"
+            referencedColumns: ["inscription_id"]
           },
         ]
       }
@@ -341,6 +362,13 @@ export type Database = {
             referencedRelation: "inscriptions"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "inscription_position_selections_inscription_id_fkey"
+            columns: ["inscription_id"]
+            isOneToOne: false
+            referencedRelation: "inscriptions_with_evaluations"
+            referencedColumns: ["inscription_id"]
+          },
         ]
       }
       inscription_subject_selections: {
@@ -372,6 +400,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "inscriptions"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inscription_subject_selections_inscription_id_fkey"
+            columns: ["inscription_id"]
+            isOneToOne: false
+            referencedRelation: "inscriptions_with_evaluations"
+            referencedColumns: ["inscription_id"]
           },
           {
             foreignKeyName: "inscription_subject_selections_subject_id_fkey"
@@ -710,7 +745,29 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      inscriptions_with_evaluations: {
+        Row: {
+          cantidad_evaluaciones: number | null
+          dni: string | null
+          first_name: string | null
+          inscription_id: string | null
+          last_name: string | null
+          status: Database["public"]["Enums"]["inscription_status"] | null
+          teaching_level:
+            | Database["public"]["Enums"]["teaching_level_enum"]
+            | null
+          user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_inscriptions_user_profile"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       generate_legajo_code: {
@@ -719,6 +776,33 @@ export type Database = {
           p_teaching_level: Database["public"]["Enums"]["teaching_level_enum"]
         }
         Returns: string
+      }
+      get_inscription_by_user: {
+        Args: { user_uuid: string }
+        Returns: {
+          id: string
+          teaching_level: string
+          user_id: string
+        }[]
+      }
+      get_position_selection_by_inscription: {
+        Args: { inscription_uuid: string }
+        Returns: {
+          administrative_position_id: string
+          id: string
+          inscription_id: string
+          position_name: string
+          school_name: string
+        }[]
+      }
+      get_profile_by_dni: {
+        Args: { profile_dni: string }
+        Returns: {
+          dni: string
+          first_name: string
+          id: string
+          last_name: string
+        }[]
       }
       gtrgm_compress: {
         Args: { "": unknown }
@@ -758,6 +842,25 @@ export type Database = {
       show_trgm: {
         Args: { "": string }
         Returns: string[]
+      }
+      upsert_evaluation: {
+        Args: {
+          p_antiguedad_docente_score: number
+          p_antiguedad_titulo_score: number
+          p_becas_otros_score: number
+          p_concepto_score: number
+          p_concurso_score: number
+          p_evaluator_id: string
+          p_inscription_id: string
+          p_otros_antecedentes_score: number
+          p_position_selection_id: string
+          p_promedio_titulo_score: number
+          p_red_federal_score: number
+          p_titulo_score: number
+          p_total_score: number
+          p_trabajo_publico_score: number
+        }
+        Returns: string
       }
       validate_profile_completeness: {
         Args: { user_id: string }
