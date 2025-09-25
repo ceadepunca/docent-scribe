@@ -224,11 +224,15 @@ export const ImportEvaluationsModal: React.FC<ImportEvaluationsModalProps> = ({
               continue;
             }
 
-            // Find inscription for this teacher using custom function
+            // Find inscription for this teacher using direct query
             const { data: inscriptionData, error: inscriptionError } = await supabase
-              .rpc('get_inscription_by_user', { user_uuid: teacher.id });
+              .from('inscriptions')
+              .select('id, user_id, teaching_level')
+              .eq('user_id', teacher.id)
+              .eq('teaching_level', 'secundario')
+              .maybeSingle();
             
-            const inscription = inscriptionData && inscriptionData.length > 0 ? inscriptionData[0] : null;
+            const inscription = inscriptionData;
 
             if (inscriptionError || !inscription) {
               results.push({
@@ -240,11 +244,21 @@ export const ImportEvaluationsModal: React.FC<ImportEvaluationsModalProps> = ({
               continue;
             }
 
-            // Find PRECEPTOR/A position selection using custom function
+            // Find PRECEPTOR/A position selection using direct query
             const { data: positionData, error: positionError } = await supabase
-              .rpc('get_position_selection_by_inscription', { inscription_uuid: inscription.id });
+              .from('inscription_position_selections')
+              .select(`
+                id,
+                inscription_id,
+                administrative_position_id,
+                administrative_positions!inner(name, schools!inner(name))
+              `)
+              .eq('inscription_id', inscription.id)
+              .eq('administrative_positions.name', 'PRECEPTOR/A')
+              .eq('administrative_positions.schools.name', 'Fray M Esquiú')
+              .maybeSingle();
             
-            const positionSelection = positionData && positionData.length > 0 ? positionData[0] : null;
+            const positionSelection = positionData;
 
             if (positionError || !positionSelection) {
               results.push({
@@ -270,35 +284,29 @@ export const ImportEvaluationsModal: React.FC<ImportEvaluationsModalProps> = ({
               continue;
             }
 
-            // Use upsert function to create or update evaluation
+            // Use upsert to create or update evaluation
             const upsertPayload = {
-              p_inscription_id: inscription.id,
-              p_evaluator_id: currentUser.id,
-              p_position_selection_id: positionSelection.id,
-              p_titulo_score: evaluationData.TÍTULO ?? 0,
-              p_antiguedad_titulo_score: evaluationData['ANTIGÜEDAD TÍTULO'] ?? 0,
-              p_antiguedad_docente_score: evaluationData['ANTIGÜEDAD DOCEN'] ?? 0,
-              p_concepto_score: evaluationData.CONCEPTO ?? 0,
-              p_promedio_titulo_score: evaluationData['PROM.GRAL.TIT.DOCEN.'] ?? 0,
-              p_trabajo_publico_score: evaluationData['TRAB.PUBLIC.'] ?? 0,
-              p_becas_otros_score: evaluationData['BECAS Y OTROS EST.'] ?? 0,
-              p_concurso_score: evaluationData.CONCURSOS ?? 0,
-              p_otros_antecedentes_score: evaluationData['OTROS ANTEC. DOC.'] ?? 0,
-              p_red_federal_score: evaluationData['RED FEDERAL MAX. 3'] ?? 0,
-              p_total_score: evaluationData.TOTAL ?? 0
+              inscription_id: inscription.id,
+              evaluator_id: currentUser.id,
+              position_selection_id: positionSelection.id,
+              titulo_score: evaluationData.TÍTULO ?? 0,
+              antiguedad_titulo_score: evaluationData['ANTIGÜEDAD TÍTULO'] ?? 0,
+              antiguedad_docente_score: evaluationData['ANTIGÜEDAD DOCEN'] ?? 0,
+              concepto_score: evaluationData.CONCEPTO ?? 0,
+              promedio_titulo_score: evaluationData['PROM.GRAL.TIT.DOCEN.'] ?? 0,
+              trabajo_publico_score: evaluationData['TRAB.PUBLIC.'] ?? 0,
+              becas_otros_score: evaluationData['BECAS Y OTROS EST.'] ?? 0,
+              concurso_score: evaluationData.CONCURSOS ?? 0,
+              otros_antecedentes_score: evaluationData['OTROS ANTEC. DOC.'] ?? 0,
+              red_federal_score: evaluationData['RED FEDERAL MAX. 3'] ?? 0,
+              total_score: evaluationData.TOTAL ?? 0,
+              status: 'draft',
+              title_type: 'docente'
             };
             // Log para depuración
-            console.log('Payload enviado a upsert_evaluation:', upsertPayload);
-            // Log de tipos y valores antes de upsert
-            Object.entries(upsertPayload).forEach(([key, value]) => {
-              console.log(`Tipo de ${key}:`, typeof value, '| Valor:', value);
-              if (typeof value === 'string' && value.trim() === '') {
-                console.warn(`El parámetro ${key} es string vacío, se enviará como 0`);
-                upsertPayload[key] = 0;
-              }
-            });
-            if (!upsertPayload.p_inscription_id || !upsertPayload.p_evaluator_id || !upsertPayload.p_position_selection_id) {
-              console.error('Faltan datos clave para upsert:', upsertPayload);
+            console.log('Payload enviado a evaluations upsert:', upsertPayload);
+            if (!upsertPayload.inscription_id || !upsertPayload.evaluator_id || !upsertPayload.position_selection_id) {
+              console.error('Missing key data for upsert:', upsertPayload);
               results.push({
                 success: false,
                 legajo: evaluationData.LEGAJO,
@@ -307,11 +315,16 @@ export const ImportEvaluationsModal: React.FC<ImportEvaluationsModalProps> = ({
               });
               continue;
             }
-            const { data: evaluationId, error: evaluationError } = await supabase
-              .rpc('upsert_evaluation', upsertPayload);
+            const { data: evaluationResult, error: evaluationError } = await supabase
+              .from('evaluations')
+              .upsert(upsertPayload, {
+                onConflict: 'inscription_id,position_selection_id'
+              })
+              .select('id')
+              .single();
             
             console.log(`Upsert result for ${teacher.first_name} ${teacher.last_name}:`, { 
-              evaluationId, 
+              evaluationResult, 
               error: evaluationError 
             });
             if (evaluationError) {

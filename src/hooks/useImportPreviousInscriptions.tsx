@@ -144,10 +144,14 @@ export const useImportPreviousInscriptions = () => {
         // First, get the "PRECEPTOR/A" position from Fray M Esquiú school
         let { data: position, error: positionError } = await supabase
           .from('administrative_positions')
-          .select('id')
+          .select(`
+            id,
+            schools!inner(
+              name
+            )
+          `)
           .eq('name', 'PRECEPTOR/A')
           .eq('schools.name', 'Fray M Esquiú')
-          .inner('schools', 'administrative_positions.school_id', 'schools.id')
           .maybeSingle();
 
         if (positionError) throw positionError;
@@ -170,7 +174,12 @@ export const useImportPreviousInscriptions = () => {
               school_id: school.id,
               is_active: true
             })
-            .select()
+            .select(`
+              id,
+              schools!inner(
+                name
+              )
+            `)
             .single();
 
           if (createError) throw createError;
@@ -220,10 +229,12 @@ export const useImportPreviousInscriptions = () => {
     try {
       const { data: positionSelection, error: selectionError } = await supabase
         .from('inscription_position_selections')
-        .select('id')
+        .select(`
+          id,
+          administrative_positions!inner(name)
+        `)
         .eq('inscription_id', inscriptionId)
         .eq('administrative_positions.name', 'PRECEPTOR/A')
-        .inner('administrative_positions', 'inscription_position_selections.administrative_position_id', 'administrative_positions.id')
         .maybeSingle();
 
       if (!selectionError && positionSelection) {

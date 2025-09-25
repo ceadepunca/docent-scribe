@@ -97,7 +97,7 @@ const Evaluations = () => {
             subjects(name)
           )
         `)
-        .in('status', ['submitted', 'under_review', 'approved', 'rejected', 'requires_changes'])
+        .in('status', ['draft', 'submitted', 'under_review', 'approved', 'rejected', 'requires_changes'])
         .order('created_at', { ascending: false });
 
       if (allError) throw allError;

@@ -788,10 +788,9 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
                           maxValue = titleMaxValue;
                         }
                         
-                        return (
-                          <TableCell key={criterion.id} className="p-1">
-                           {console.log(`Rendering input for ${criterion.id} with value:`, group.evaluation[criterion.id as keyof EvaluationData])}
-                           <Input
+                         return (
+                           <TableCell key={criterion.id} className="p-1">
+                            <Input
                               type="number"
                               min="0"
                               max={typeof maxValue === 'number' ? maxValue : undefined}
