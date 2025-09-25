@@ -140,20 +140,24 @@ const InscriptionForm: React.FC<InscriptionFormProps> = ({ initialData, isEdit =
       navigate('/inscriptions');
     } catch (error: any) {
       console.error('Error:', error);
-      
+
       let errorMessage = 'Ocurrió un error al guardar el borrador';
-      
-      // Handle unique constraint violation
-      if (error.code === '23505' && error.message?.includes('unique_user_inscription_per_period')) {
-        errorMessage = 'Ya tiene una inscripción para este período. Si desea crear una nueva inscripción, debe solicitar la eliminación de la existente desde el panel principal.';
+
+      // Mejorar mensaje para errores de duplicado que no sean por inscripción única
+      if (error.code === '23505') {
+        if (error.message?.includes('unique_user_inscription_per_period')) {
+          errorMessage = 'Ya tiene una inscripción para este período. Si desea crear una nueva inscripción, debe solicitar la eliminación de la existente desde el panel principal.';
+        } else {
+          errorMessage = 'La inscripción se guardó, pero algunos cargos o materias ya estaban asociados y no se volvieron a agregar.';
+        }
       } else if (error.message) {
         errorMessage = error.message;
       }
-      
+
       toast({
-        title: 'Error',
+        title: error.code === '23505' ? 'Inscripción guardada con advertencia' : 'Error',
         description: errorMessage,
-        variant: 'destructive',
+        variant: error.code === '23505' ? 'default' : 'destructive',
       });
     } finally {
       setIsSubmitting(false);
@@ -211,7 +215,16 @@ const InscriptionForm: React.FC<InscriptionFormProps> = ({ initialData, isEdit =
           : 'La inscripción se envió exitosamente',
       });
 
-      navigate('/inscriptions');
+      // Redirigir al formulario de la grilla de evaluación (InscriptionDetail)
+      if (result.data?.id) {
+        navigate(`/inscriptions/${result.data.id}`);
+      } else if (result.id) {
+        navigate(`/inscriptions/${result.id}`);
+      } else if (isEdit && initialData?.id) {
+        navigate(`/inscriptions/${initialData.id}`);
+      } else {
+        navigate('/inscriptions');
+      }
     } catch (error: any) {
       console.error('Error:', error);
       
@@ -286,36 +299,20 @@ const InscriptionForm: React.FC<InscriptionFormProps> = ({ initialData, isEdit =
 
       if (isEdit && initialData?.id) {
         // Editing existing inscription - update it directly
-        // Don't change inscription_period_id to avoid unique constraint violation
-        // Only update fields that actually need to change
-        const inscriptionData: any = {};
-        
-        // Only update if the value is different
-        if (initialData.subject_area !== 'Secundario') {
-          inscriptionData.subject_area = 'Secundario';
-        }
-        if (initialData.teaching_level !== 'secundario') {
-          inscriptionData.teaching_level = 'secundario';
-        }
-        if (initialData.experience_years !== (initialData.experience_years || 0)) {
-          inscriptionData.experience_years = initialData.experience_years || 0;
-        }
-        if (initialData.status !== 'submitted') {
-          inscriptionData.status = 'submitted';
-        }
-        
-        // Always update the timestamp
-        inscriptionData.updated_at = new Date().toISOString();
+
+        // Always set status to submitted on secondary wizard completion and update timestamp
+        const inscriptionData = {
+          status: 'submitted' as const,
+          updated_at: new Date().toISOString(),
+          // Ensure teaching_level and subject_area are correct for secondary
+          teaching_level: 'secundario' as const,
+          subject_area: 'Secundario',
+        };
 
         console.log('=== EDITING INSCRIPTION ===');
         console.log('Initial data:', initialData);
         console.log('Inscription data to update:', inscriptionData);
         console.log('User ID:', user.id);
-
-        // Check if there's anything to update
-        if (Object.keys(inscriptionData).length === 1 && inscriptionData.updated_at) {
-          console.log('No changes needed, only updating timestamp');
-        }
 
         const { data: updatedInscription, error: updateError } = await supabase
           .from('inscriptions')
@@ -389,8 +386,8 @@ const InscriptionForm: React.FC<InscriptionFormProps> = ({ initialData, isEdit =
         // If in evaluation context, go back to evaluations
         evaluationNavigation.backToEvaluations();
       } else {
-        // Otherwise, go to inscriptions list
-        navigate('/inscriptions');
+        // Otherwise, go to the inscription detail page to show the evaluation grid
+        navigate(`/inscriptions/${inscription.id}`);
       }
     } catch (error) {
       console.error('Error:', error);

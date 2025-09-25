@@ -24,7 +24,7 @@ interface InscriptionWithProfile {
   updated_at: string;
   user_id: string;
   inscription_period_id: string;
-  evaluation_state: 'evaluada' | 'no_evaluada';
+  evaluation_state: 'evaluada' | 'pendiente';
   inscription_period?: {
     id: string;
     name: string;
@@ -145,7 +145,7 @@ const Evaluations = () => {
         updated_at: inscription.updated_at,
         user_id: inscription.user_id,
         inscription_period_id: inscription.inscription_period_id,
-        evaluation_state: evaluationMap.has(inscription.id) ? 'evaluada' as const : 'no_evaluada' as const,
+  evaluation_state: evaluationMap.has(inscription.id) ? 'evaluada' as const : 'pendiente' as const,
         inscription_period: inscription.inscription_periods,
         profiles: profilesMap.get(inscription.user_id) || null
       }));
@@ -363,18 +363,18 @@ const Evaluations = () => {
     }
   };
 
-  const getEvaluationStatusColor = (status: 'evaluada' | 'no_evaluada') => {
+  const getEvaluationStatusColor = (status: 'evaluada' | 'pendiente') => {
     switch (status) {
       case 'evaluada': return 'bg-green-100 text-green-800';
-      case 'no_evaluada': return 'bg-gray-100 text-gray-800';
+      case 'pendiente': return 'bg-gray-100 text-gray-800';
       default: return 'bg-muted text-muted-foreground';
     }
   };
 
-  const getEvaluationStatusLabel = (status: 'evaluada' | 'no_evaluada') => {
+  const getEvaluationStatusLabel = (status: 'evaluada' | 'pendiente') => {
     switch (status) {
       case 'evaluada': return 'Evaluada';
-      case 'no_evaluada': return 'No evaluada';
+      case 'pendiente': return 'Pendiente';
       default: return 'Desconocido';
     }
   };
@@ -457,7 +457,7 @@ const Evaluations = () => {
                 <SelectContent>
                   <SelectItem value="all">Todos los estados</SelectItem>
                   <SelectItem value="evaluada">Evaluada</SelectItem>
-                  <SelectItem value="no_evaluada">No evaluada</SelectItem>
+                  <SelectItem value="pendiente">Pendiente</SelectItem>
                 </SelectContent>
               </Select>
 

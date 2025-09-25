@@ -75,27 +75,30 @@ export const FraySubjectsAndPositions: React.FC<FraySubjectsAndPositionsProps> =
   };
 
   const handleSubjectChange = (subjectId: string, checked: boolean) => {
-    let newSelections = [...selectedSubjects];
+    // Filter out selections from other schools to avoid overwriting them
+    const otherSchoolsSelections = selectedSubjects.filter(sel => !fraySubjects.some(subj => subj.id === sel.subjectId));
+    let fraySelections = selectedSubjects.filter(sel => fraySubjects.some(subj => subj.id === sel.subjectId));
     
     if (checked) {
-      newSelections.push({ subjectId, positionType: 'titular' });
+      fraySelections.push({ subjectId, positionType: 'titular' });
     } else {
-      newSelections = newSelections.filter(sel => sel.subjectId !== subjectId);
+      fraySelections = fraySelections.filter(sel => sel.subjectId !== subjectId);
     }
     
-    onSubjectSelectionChange(newSelections);
+    onSubjectSelectionChange([...otherSchoolsSelections, ...fraySelections]);
   };
 
   const handlePositionChange = (positionId: string, checked: boolean) => {
-    let newSelections = [...selectedPositions];
+    const otherSchoolsSelections = selectedPositions.filter(sel => !frayPositions.some(pos => pos.id === sel.positionId));
+    let fraySelections = selectedPositions.filter(sel => frayPositions.some(pos => pos.id === sel.positionId));
     
     if (checked) {
-      newSelections.push({ positionId });
+      fraySelections.push({ positionId });
     } else {
-      newSelections = newSelections.filter(sel => sel.positionId !== positionId);
+      fraySelections = fraySelections.filter(sel => sel.positionId !== positionId);
     }
     
-    onPositionSelectionChange(newSelections);
+    onPositionSelectionChange([...otherSchoolsSelections, ...fraySelections]);
   };
 
   const getSpecialtyLabel = (specialty: string) => {

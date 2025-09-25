@@ -24,7 +24,7 @@ interface Inscription {
   updated_at: string;
   user_id: string;
   inscription_period_id: string;
-  has_evaluation?: boolean;
+  status_evaluacion: 'draft' | 'completed';
   profiles?: {
     first_name: string;
     last_name: string;
@@ -116,7 +116,7 @@ const Inscriptions = () => {
     try {
       // Build inscriptions query with period information
       let inscriptionsQuery = supabase
-        .from('inscriptions')
+        .from('inscriptions_with_evaluation_status')
         .select(`
           *,
           inscription_periods (
@@ -152,28 +152,12 @@ const Inscriptions = () => {
       // Create profiles map for easy lookup
       const profilesMap = new Map(profilesData?.map(profile => [profile.id, profile]) || []);
 
-      // Get inscription IDs to check for evaluations
-      const inscriptionIds = inscriptionsData?.map(inscription => inscription.id) || [];
-      
-      // Fetch evaluations for these inscriptions
-      const { data: evaluationsData, error: evaluationsError } = await supabase
-        .from('evaluations')
-        .select('inscription_id')
-        .in('inscription_id', inscriptionIds);
-
-      if (evaluationsError) throw evaluationsError;
-
-      // Create set of inscription IDs that have evaluations
-      const evaluatedInscriptionIds = new Set(evaluationsData?.map(evaluation => evaluation.inscription_id) || []);
-
-      // Combine inscriptions with profiles and evaluation status
+      // Combine inscriptions with profiles (status_evaluacion ya viene del SQL/vista)
       const inscriptionsWithProfiles = inscriptionsData?.map(inscription => ({
         ...inscription,
-        profiles: profilesMap.get(inscription.user_id) || null,
-        has_evaluation: evaluatedInscriptionIds.has(inscription.id)
+        profiles: profilesMap.get(inscription.user_id) || null
       })) || [];
 
-      console.log('Debug - Inscriptions with profiles:', inscriptionsWithProfiles);
       setInscriptions(inscriptionsWithProfiles);
       setFilteredInscriptions(inscriptionsWithProfiles);
     } catch (error) {
@@ -207,11 +191,11 @@ const Inscriptions = () => {
       });
     }
 
-    // Filter by evaluation status
+    // Filter by evaluation status usando status_evaluacion
     if (statusFilter === 'evaluated') {
-      filtered = filtered.filter(inscription => inscription.has_evaluation);
+      filtered = filtered.filter(inscription => inscription.status_evaluacion === 'completed');
     } else if (statusFilter === 'not_evaluated') {
-      filtered = filtered.filter(inscription => !inscription.has_evaluation);
+      filtered = filtered.filter(inscription => inscription.status_evaluacion === 'draft');
     }
 
     // Filter by period
@@ -448,13 +432,13 @@ const Inscriptions = () => {
                           {inscription.experience_years} {inscription.experience_years === 1 ? 'año' : 'años'}
                         </TableCell>
                         <TableCell>
-                          <Badge 
-                            className={inscription.has_evaluation 
-                              ? 'bg-green-100 text-green-800 hover:bg-green-100' 
+                          <Badge
+                            className={inscription.status_evaluacion === 'completed'
+                              ? 'bg-green-100 text-green-800 hover:bg-green-100'
                               : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100'
                             }
                           >
-                            {inscription.has_evaluation ? (
+                            {inscription.status_evaluacion === 'completed' ? (
                               <>
                                 <CheckCircle2 className="h-3 w-3 mr-1" />
                                 Evaluada

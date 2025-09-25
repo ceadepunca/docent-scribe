@@ -155,24 +155,42 @@ export const useSecondaryInscriptionData = () => {
 
   const savePositionSelections = async (inscriptionId: string, selections: PositionSelection[]) => {
     try {
-      // Delete existing selections
-      await supabase
+      // Get current selections
+      const { data: currentSelections, error: fetchError } = await supabase
         .from('inscription_position_selections')
-        .delete()
+        .select('administrative_position_id')
         .eq('inscription_id', inscriptionId);
 
-      // Insert new selections
-      if (selections.length > 0) {
-        const selectionsToInsert = selections.map(selection => ({
+      if (fetchError) throw fetchError;
+
+      const currentPositionIds = currentSelections.map(s => s.administrative_position_id);
+      const newPositionIds = selections.map(s => s.administrative_position_id);
+
+      // Positions to delete
+      const positionsToDelete = currentPositionIds.filter(id => !newPositionIds.includes(id));
+      if (positionsToDelete.length > 0) {
+        const { error: deleteError } = await supabase
+          .from('inscription_position_selections')
+          .delete()
+          .eq('inscription_id', inscriptionId)
+          .in('administrative_position_id', positionsToDelete);
+        
+        if (deleteError) throw deleteError;
+      }
+
+      // Positions to insert
+      const positionsToInsert = selections.filter(s => !currentPositionIds.includes(s.administrative_position_id));
+      if (positionsToInsert.length > 0) {
+        const selectionsToInsert = positionsToInsert.map(selection => ({
           inscription_id: inscriptionId,
           administrative_position_id: selection.administrative_position_id
         }));
 
-        const { error } = await supabase
+        const { error: insertError } = await supabase
           .from('inscription_position_selections')
           .insert(selectionsToInsert);
 
-        if (error) throw error;
+        if (insertError) throw insertError;
       }
     } catch (error) {
       console.error('Error saving position selections:', error);

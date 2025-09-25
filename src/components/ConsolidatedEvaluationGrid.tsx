@@ -484,7 +484,7 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
 
     const evaluationData = {
       inscription_id: inscriptionId,
-      evaluator_id: user.id,
+      evaluator_id: user.id, // actualiza el evaluador al actual
       titulo_score: group.evaluation.titulo_score,
       antiguedad_titulo_score: group.evaluation.antiguedad_titulo_score,
       antiguedad_docente_score: group.evaluation.antiguedad_docente_score,
@@ -495,49 +495,43 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
       concurso_score: group.evaluation.concurso_score,
       otros_antecedentes_score: group.evaluation.otros_antecedentes_score,
       red_federal_score: group.evaluation.red_federal_score,
-      total_score: calculateTotal(group.evaluation), // Calculate and save the total score
+      total_score: calculateTotal(group.evaluation),
       notes: group.evaluation.notes,
       status: group.evaluation.status,
-      title_type: group.evaluation.title_type
+      title_type: group.evaluation.title_type,
+      last_modified_by: user.id
     };
 
-    // Save evaluation for each selection in the group
+    // Guardar evaluación para cada selección en el grupo
     for (const selection of group.selections) {
-      const data = {
-        ...evaluationData,
-        last_modified_by: user.id,
-        ...(group.type === 'subject' 
+      const filter = {
+        inscription_id: inscriptionId,
+        ...(group.type === 'subject'
           ? { subject_selection_id: selection.id }
           : { position_selection_id: selection.id }
         )
       };
 
-      // Check if this is an existing evaluation from the current user
-      // For consolidated grid, we need to check if there's an existing evaluation for this specific selection
-      const { data: existingEval } = await supabase
+      // Buscar si ya existe una evaluación para esta inscripción/selección
+      const { data: existingEval, error: fetchError } = await supabase
         .from('evaluations')
-        .select('evaluator_id')
-        .eq('inscription_id', inscriptionId)
-        .eq('evaluator_id', user.id)
-        .eq(group.type === 'subject' ? 'subject_selection_id' : 'position_selection_id', selection.id)
+        .select('id')
+        .match(filter)
         .maybeSingle();
 
-      const isCurrentUserEvaluation = existingEval && existingEval.evaluator_id === user.id;
-      
       let error;
-      if (isCurrentUserEvaluation) {
-        // Update existing evaluation
+      if (existingEval && existingEval.id) {
+        // Si existe, hacer update (y actualizar el evaluador al actual)
         const { error: updateError } = await supabase
           .from('evaluations')
-          .upsert(data, { 
-            onConflict: 'inscription_id,evaluator_id,subject_selection_id,position_selection_id' 
-          });
+          .update({ ...evaluationData })
+          .eq('id', existingEval.id);
         error = updateError;
       } else {
-        // Create new evaluation for current user (this handles imported evaluations)
+        // Si no existe, hacer insert
         const { error: insertError } = await supabase
           .from('evaluations')
-          .insert(data);
+          .insert({ ...evaluationData, ...filter });
         error = insertError;
       }
 
@@ -718,7 +712,7 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
                     {evaluationCriteria.map((criterion) => (
                       <Tooltip key={criterion.id}>
                         <TooltipTrigger asChild>
-                          <TableHead className="w-8 text-center font-semibold p-1 h-20">
+                          <TableHead className="w-14 text-center font-semibold p-1 h-20">
                             <div className="flex flex-col items-center justify-center h-full leading-none">
                               {criterion.label.split('').map((char, index) => (
                                 <span key={index} className="block text-xs font-bold">
@@ -789,7 +783,7 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
                         }
                         
                          return (
-                           <TableCell key={criterion.id} className="p-1">
+                           <TableCell key={criterion.id} className="p-1 w-14">
                             <Input
                               type="number"
                               min="0"
@@ -802,7 +796,7 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
                                 return stringVal;
                               })()}
                               onChange={(e) => handleScoreChange(groupIndex, criterion.id as keyof EvaluationData, e.target.value)}
-                              className="text-center w-8 h-7 text-2xs px-0"
+                              className="text-center w-14 h-7 text-2xs px-0"
                               disabled={(() => {
                                 const isDisabled = group.evaluation.status === 'completed';
                                 console.log(`Input disabled for ${criterion.id}:`, isDisabled, 'status:', group.evaluation.status);
@@ -812,9 +806,9 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
                           </TableCell>
                         );
                       })}
-                      <TableCell className="text-center p-1">
+                      <TableCell className="text-center p-1 w-16">
                         <div className="px-1 py-1 bg-primary/10 rounded font-bold text-2xs">
-                          {total.toFixed(2)}
+                          {Number(total).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </div>
                       </TableCell>
                     </TableRow>

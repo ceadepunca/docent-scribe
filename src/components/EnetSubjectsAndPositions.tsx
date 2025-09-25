@@ -74,27 +74,29 @@ export const EnetSubjectsAndPositions: React.FC<EnetSubjectsAndPositionsProps> =
   };
 
   const handleSubjectChange = (subjectId: string, checked: boolean) => {
-    let newSelections = [...selectedSubjects];
+    const otherSchoolsSelections = selectedSubjects.filter(sel => !enetSubjects.some(subj => subj.id === sel.subjectId));
+    let enetSelections = selectedSubjects.filter(sel => enetSubjects.some(subj => subj.id === sel.subjectId));
     
     if (checked) {
-      newSelections.push({ subjectId, positionType: 'titular' });
+      enetSelections.push({ subjectId, positionType: 'titular' });
     } else {
-      newSelections = newSelections.filter(sel => sel.subjectId !== subjectId);
+      enetSelections = enetSelections.filter(sel => sel.subjectId !== subjectId);
     }
     
-    onSubjectSelectionChange(newSelections);
+    onSubjectSelectionChange([...otherSchoolsSelections, ...enetSelections]);
   };
 
   const handlePositionChange = (positionId: string, checked: boolean) => {
-    let newSelections = [...selectedPositions];
+    const otherSchoolsSelections = selectedPositions.filter(sel => !enetPositions.some(pos => pos.id === sel.positionId));
+    let enetSelections = selectedPositions.filter(sel => enetPositions.some(pos => pos.id === sel.positionId));
     
     if (checked) {
-      newSelections.push({ positionId });
+      enetSelections.push({ positionId });
     } else {
-      newSelections = newSelections.filter(sel => sel.positionId !== positionId);
+      enetSelections = enetSelections.filter(sel => sel.positionId !== positionId);
     }
     
-    onPositionSelectionChange(newSelections);
+    onPositionSelectionChange([...otherSchoolsSelections, ...enetSelections]);
   };
 
   const getSpecialtyLabel = (specialty: string) => {
