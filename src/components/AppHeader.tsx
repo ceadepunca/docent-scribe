@@ -44,7 +44,7 @@ const AppHeader = () => {
     { to: '/admin', label: 'Administración', icon: <UserPlus className="h-4 w-4" />, roles: ['super_admin'] },
   ];
 
-  const filteredNavLinks = navLinks.filter(link => link.roles.some((role: any) => userRoles.includes(role)));
+  const filteredNavLinks = navLinks.filter(link => link.roles.some(role => userRoles.includes(role)));
 
   return (
     <header className="border-b bg-card/80 backdrop-blur-sm sticky top-0 z-50">
