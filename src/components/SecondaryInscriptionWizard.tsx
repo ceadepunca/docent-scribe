@@ -75,32 +75,6 @@ export const SecondaryInscriptionWizard: React.FC<SecondaryInscriptionWizardProp
     }
   }, [loadedPositionSelections, inscriptionId]);
 
-  // Keyboard navigation between tabs
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.ctrlKey) {
-        const tabs: (typeof activeTab)[] = ['period', 'fray', 'enet', 'documents', 'summary'];
-        const currentIndex = tabs.indexOf(activeTab);
-
-        if (event.key === 'ArrowRight') {
-          event.preventDefault();
-          const nextIndex = (currentIndex + 1) % tabs.length;
-          setActiveTab(tabs[nextIndex]);
-        } else if (event.key === 'ArrowLeft') {
-          event.preventDefault();
-          const prevIndex = (currentIndex - 1 + tabs.length) % tabs.length;
-          setActiveTab(tabs[prevIndex]);
-        }
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [activeTab, setActiveTab]);
-
   const handleSubjectSelectionsChange = (selections: SubjectSelection[]) => {
     setSubjectSelections(selections);
     onSubjectSelectionsChange?.(selections);

@@ -83,7 +83,7 @@ const App = () => (
               </ProtectedRoute>
             } />
             <Route path="/inscriptions" element={
-              <ProtectedRoute allowedRoles={['docente', 'super_admin']}>
+              <ProtectedRoute allowedRoles={['docente', 'super_admin', 'evaluator']}>
                 <ProtectedLayout>
                   <Inscriptions />
                 </ProtectedLayout>
@@ -104,14 +104,14 @@ const App = () => (
               </ProtectedRoute>
             } />
             <Route path="/inscriptions/:id" element={
-              <ProtectedRoute allowedRoles={['docente', 'super_admin']}>
+              <ProtectedRoute allowedRoles={['docente', 'super_admin', 'evaluator']}>
                 <ProtectedLayout>
                   <InscriptionDetail />
                 </ProtectedLayout>
               </ProtectedRoute>
             } />
             <Route path="/inscriptions/:id/edit" element={
-              <ProtectedRoute allowedRoles={['docente', 'super_admin']}>
+              <ProtectedRoute allowedRoles={['docente', 'super_admin', 'evaluator']}>
                 <ProtectedLayout>
                   <EditInscription />
                 </ProtectedLayout>

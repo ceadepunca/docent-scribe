@@ -2,8 +2,8 @@ import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { LogOut, FileText, ClipboardList, UserPlus, Home, List } from 'lucide-react';
-import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { LogOut, FileText, ClipboardList, UserPlus } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 const AppHeader = () => {
   const { userRoles, profile, signOut } = useAuth();
@@ -36,38 +36,44 @@ const AppHeader = () => {
     }
   };
 
-  const navLinks = [
-    { to: '/dashboard', label: 'Inicio', icon: <Home className="h-4 w-4" />, roles: ['docente', 'evaluator', 'super_admin'] },
-    { to: '/inscriptions', label: 'Inscripciones', icon: <ClipboardList className="h-4 w-4" />, roles: ['docente', 'super_admin'] },
-    { to: '/evaluations', label: 'Evaluaciones', icon: <ClipboardList className="h-4 w-4" />, roles: ['evaluator', 'super_admin'] },
-    { to: '/listings', label: 'Listados', icon: <FileText className="h-4 w-4" />, roles: ['evaluator', 'super_admin'] },
-    { to: '/admin', label: 'Administración', icon: <UserPlus className="h-4 w-4" />, roles: ['super_admin'] },
-  ];
-
-  const filteredNavLinks = navLinks.filter(link => link.roles.some(role => userRoles.includes(role)));
-
   return (
     <header className="border-b bg-card/80 backdrop-blur-sm sticky top-0 z-50">
       <div className="flex h-16 items-center justify-between px-6">
         <div className="flex items-center space-x-6">
-          <Link to="/dashboard" className="flex items-center space-x-2">
-            <List className="h-6 w-6" />
-            <h1 className="text-xl font-semibold">Gestión de Inscripciones</h1>
-          </Link>
-          <nav className="flex items-center space-x-2">
-            {filteredNavLinks.map(link => (
+          <h1 className="text-xl font-semibold">CEADEP - Gestión de Inscripciones</h1>
+          {(userRoles.includes('evaluator') || userRoles.includes('super_admin')) && (
+            <nav className="flex items-center space-x-2">
               <Button
-                key={link.to}
-                variant={location.pathname === link.to ? 'default' : 'ghost'}
+                variant={location.pathname === '/evaluations' ? 'default' : 'ghost'}
                 size="sm"
-                onClick={() => navigate(link.to)}
+                onClick={() => navigate('/evaluations')}
                 className="flex items-center gap-2"
               >
-                {link.icon}
-                {link.label}
+                <ClipboardList className="h-4 w-4" />
+                Evaluaciones
               </Button>
-            ))}
-          </nav>
+              <Button
+                variant={location.pathname === '/listings' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => navigate('/listings')}
+                className="flex items-center gap-2"
+              >
+                <FileText className="h-4 w-4" />
+                Listados
+              </Button>
+              {userRoles.includes('super_admin') && (
+                <Button
+                  variant={location.pathname === '/admin/assisted-inscription' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => navigate('/admin/assisted-inscription')}
+                  className="flex items-center gap-2"
+                >
+                  <UserPlus className="h-4 w-4" />
+                  Inscripción Asistida
+                </Button>
+              )}
+            </nav>
+          )}
         </div>
         <div className="flex items-center space-x-4">
           <div className="flex flex-wrap gap-1">

@@ -57,39 +57,48 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [profile, setProfile] = useState<Profile | null>(null);
   const [userRoles, setUserRoles] = useState<UserRole[]>([]);
   const [loading, setLoading] = useState(true);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [rolesLoading, setRolesLoading] = useState(false);
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    const getSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        await Promise.all([
-          fetchUserProfile(session.user.id),
-          fetchUserRoles(session.user.id),
-        ]);
-      }
-      setLoading(false);
-    };
-
-    getSession();
-
+    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
+        
         if (session?.user) {
-          await Promise.all([
-            fetchUserProfile(session.user.id),
-            fetchUserRoles(session.user.id),
-          ]);
+          setProfileLoading(true);
+          setRolesLoading(true);
+          setTimeout(() => {
+            fetchUserProfile(session.user.id);
+            fetchUserRoles(session.user.id);
+          }, 0);
         } else {
           setProfile(null);
           setUserRoles([]);
+          setProfileLoading(false);
+          setRolesLoading(false);
+          setLoading(false);
         }
       }
     );
+
+    // Check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      
+      if (session?.user) {
+        setProfileLoading(true);
+        setRolesLoading(true);
+        fetchUserProfile(session.user.id);
+        fetchUserRoles(session.user.id);
+      } else {
+        setLoading(false);
+      }
+    });
 
     return () => subscription.unsubscribe();
   }, []);
@@ -112,6 +121,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } catch (error) {
       console.error('Error fetching profile:', error);
+    } finally {
+      setProfileLoading(false);
     }
   };
 
@@ -132,6 +143,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } catch (error) {
       console.error('Error fetching user roles:', error);
+    } finally {
+      setRolesLoading(false);
     }
   };
 
@@ -236,6 +249,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const isSuperAdmin = hasRole('super_admin');
   const isEvaluator = hasRole('evaluator');
   const isDocente = hasRole('docente');
+
+  // Update loading state based on profile and roles loading states
+  useEffect(() => {
+    if (user) {
+      setLoading(profileLoading || rolesLoading);
+    }
+  }, [user, profileLoading, rolesLoading]);
 
   // Clear cache whenever user changes (prevents data leakage between sessions)
   useEffect(() => {
