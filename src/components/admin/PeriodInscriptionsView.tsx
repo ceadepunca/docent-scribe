@@ -4,16 +4,19 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Calendar, Users, BookOpen, Eye, FileText, ArrowRight } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Calendar, Users, BookOpen, Eye, FileText, ArrowRight, CheckCircle2, Clock } from 'lucide-react';
 import { useInscriptionPeriods } from '@/hooks/useInscriptionPeriods';
 import { usePeriodInscriptions } from '@/hooks/usePeriodInscriptions';
 import { ListingGenerator } from '@/components/ListingGenerator';
+import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 export const PeriodInscriptionsView: React.FC = () => {
   const { periods, loading: periodsLoading, fetchAllPeriods } = useInscriptionPeriods();
   const [selectedPeriodId, setSelectedPeriodId] = useState<string>('');
+  const { isSuperAdmin, isEvaluator } = useAuth();
   
   const { 
     inscriptions, 
@@ -56,6 +59,42 @@ export const PeriodInscriptionsView: React.FC = () => {
       case 'rejected': return 'Rechazada';
       case 'requires_changes': return 'Requiere Cambios';
       default: return 'Desconocido';
+    }
+  };
+
+  const getEvaluationStatusColor = (inscription: any) => {
+    // Check if inscription has completed evaluations
+    const hasEvaluations = inscription.evaluations && inscription.evaluations.length > 0;
+    const hasCompletedEvaluations = hasEvaluations && inscription.evaluations.some((ev: any) => ev.status === 'completed');
+    
+    if (hasCompletedEvaluations) {
+      return 'bg-green-100 text-green-800 hover:bg-green-100';
+    } else {
+      return 'bg-gray-100 text-gray-800 hover:bg-gray-100';
+    }
+  };
+
+  const getEvaluationStatusLabel = (inscription: any) => {
+    // Check if inscription has completed evaluations
+    const hasEvaluations = inscription.evaluations && inscription.evaluations.length > 0;
+    const hasCompletedEvaluations = hasEvaluations && inscription.evaluations.some((ev: any) => ev.status === 'completed');
+    
+    if (hasCompletedEvaluations) {
+      return 'Eval';
+    } else {
+      return 'Pend';
+    }
+  };
+
+  const getEvaluationStatusIcon = (inscription: any) => {
+    // Check if inscription has completed evaluations
+    const hasEvaluations = inscription.evaluations && inscription.evaluations.length > 0;
+    const hasCompletedEvaluations = hasEvaluations && inscription.evaluations.some((ev: any) => ev.status === 'completed');
+    
+    if (hasCompletedEvaluations) {
+      return <CheckCircle2 className="h-3 w-3 mr-1" />;
+    } else {
+      return <Clock className="h-3 w-3 mr-1" />;
     }
   };
 
@@ -201,52 +240,75 @@ export const PeriodInscriptionsView: React.FC = () => {
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-4">
-                      {inscriptions.map((inscription: any) => (
-                        <div key={inscription.id} className="border rounded-lg p-4 hover:bg-muted/50 transition-colors">
-                          <div className="flex items-center justify-between">
-                            <div className="space-y-2">
-                              <div className="flex items-center gap-2">
-                                <h4 className="font-medium">
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Docente</TableHead>
+                            <TableHead>Email</TableHead>
+                            <TableHead>DNI</TableHead>
+                            <TableHead>Nivel</TableHead>
+                            <TableHead>Período</TableHead>
+                            <TableHead>Estado</TableHead>
+                            <TableHead>Evaluación</TableHead>
+                            {(isSuperAdmin || isEvaluator) && <TableHead>Acciones</TableHead>}
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {inscriptions.length === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={isSuperAdmin || isEvaluator ? 8 : 7} className="text-center py-8">
+                                <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                                <p className="text-muted-foreground">No hay inscripciones para este período</p>
+                              </TableCell>
+                            </TableRow>
+                          ) : (
+                            inscriptions.map((inscription: any) => (
+                              <TableRow key={inscription.id} className="hover:bg-muted/50">
+                                <TableCell className="font-medium">
                                   {inscription.profiles?.first_name} {inscription.profiles?.last_name}
-                                </h4>
-                                <Badge variant="outline">
-                                  {inscription.teaching_level}
-                                </Badge>
-                                <Badge className={getStatusColor(inscription.status)}>
-                                  {getStatusLabel(inscription.status)}
-                                </Badge>
-                              </div>
-                              <p className="text-sm text-muted-foreground">
-                                Área: {inscription.subject_area} • DNI: {inscription.profiles?.dni || 'Sin DNI'}
-                              </p>
-                              <p className="text-sm text-muted-foreground">
-                                Email: {inscription.profiles?.email}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                Creada: {format(new Date(inscription.created_at), 'dd/MM/yyyy HH:mm', { locale: es })}
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => window.open(`/inscriptions/${inscription.id}`, '_blank')}
-                              >
-                                <Eye className="h-4 w-4 mr-1" />
-                                Ver
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                      
-                      {inscriptions.length === 0 && (
-                        <div className="text-center py-8">
-                          <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                          <p className="text-muted-foreground">No hay inscripciones para este período</p>
-                        </div>
-                      )}
+                                </TableCell>
+                                <TableCell>{inscription.profiles?.email || 'No disponible'}</TableCell>
+                                <TableCell>{inscription.profiles?.dni || 'No disponible'}</TableCell>
+                                <TableCell>
+                                  <Badge variant="outline">
+                                    {inscription.teaching_level}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>
+                                  <Badge variant="outline" className="text-xs">
+                                    {selectedPeriod?.name || 'Sin período'}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>
+                                  <Badge className={getStatusColor(inscription.status)}>
+                                    {getStatusLabel(inscription.status)}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>
+                                  <Badge className={getEvaluationStatusColor(inscription)}>
+                                    {getEvaluationStatusIcon(inscription)}
+                                    {getEvaluationStatusLabel(inscription)}
+                                  </Badge>
+                                </TableCell>
+                                {(isSuperAdmin || isEvaluator) && (
+                                  <TableCell>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => window.open(`/inscriptions/${inscription.id}`, '_blank')}
+                                      className="flex items-center gap-2"
+                                    >
+                                      <Eye className="h-4 w-4" />
+                                      Evaluar
+                                    </Button>
+                                  </TableCell>
+                                )}
+                              </TableRow>
+                            ))
+                          )}
+                        </TableBody>
+                      </Table>
                     </div>
                   </CardContent>
                 </Card>

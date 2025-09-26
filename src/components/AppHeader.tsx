@@ -2,7 +2,7 @@ import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { LogOut, FileText, ClipboardList, UserPlus } from 'lucide-react';
+import { LogOut, FileText, ClipboardList, UserPlus, Users } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 const AppHeader = () => {
@@ -44,6 +44,15 @@ const AppHeader = () => {
           <nav className="flex items-center space-x-2">
             {(userRoles.includes('evaluator') || userRoles.includes('super_admin')) && (
               <>
+                <Button
+                  variant={location.pathname === '/inscription-management' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => navigate('/inscription-management')}
+                  className="flex items-center gap-2"
+                >
+                  <Users className="h-4 w-4" />
+                  Gestión de Inscripciones
+                </Button>
                 <Button
                   variant={location.pathname === '/evaluations' ? 'default' : 'ghost'}
                   size="sm"

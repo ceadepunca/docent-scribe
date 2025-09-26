@@ -20,6 +20,7 @@ import InscriptionDetail from "./pages/InscriptionDetail";
 import EditInscription from "./pages/EditInscription";
 import Evaluations from "./pages/Evaluations";
 import Listings from "./pages/Listings";
+import InscriptionManagement from "./pages/InscriptionManagement";
 import AssistedInscription from "./pages/admin/AssistedInscription";
 import BulkInscription from "./pages/admin/BulkInscription";
 
@@ -60,12 +61,16 @@ const App = () => (
             } />
             <Route path="/admin/assisted-inscription" element={
               <ProtectedRoute requiredRole="super_admin">
-                <AssistedInscription />
+                <ProtectedLayout>
+                  <AssistedInscription />
+                </ProtectedLayout>
               </ProtectedRoute>
             } />
             <Route path="/admin/bulk-inscription" element={
               <ProtectedRoute requiredRole="super_admin">
-                <BulkInscription />
+                <ProtectedLayout>
+                  <BulkInscription />
+                </ProtectedLayout>
               </ProtectedRoute>
             } />
             <Route path="/inscriptions/new" element={
@@ -100,6 +105,13 @@ const App = () => (
               <ProtectedRoute allowedRoles={['evaluator', 'super_admin']}>
                 <ProtectedLayout>
                   <Listings />
+                </ProtectedLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/inscription-management" element={
+              <ProtectedRoute allowedRoles={['evaluator', 'super_admin']}>
+                <ProtectedLayout>
+                  <InscriptionManagement />
                 </ProtectedLayout>
               </ProtectedRoute>
             } />

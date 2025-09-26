@@ -24,7 +24,7 @@ interface Inscription {
   updated_at: string;
   user_id: string;
   inscription_period_id: string;
-  status_evaluacion: 'draft' | 'completed';
+  evaluation_state: 'evaluada' | 'pendiente';
   profiles?: {
     first_name: string;
     last_name: string;
@@ -156,17 +156,17 @@ const Inscriptions = () => {
             console.error('Error fetching evaluations:', evalError);
             return {
               ...inscription,
-              status_evaluacion: 'draft' as const
+              evaluation_state: 'pendiente' as const
             };
           }
 
           // Determine evaluation status
           const hasCompletedEvaluations = evaluations?.some(ev => ev.status === 'completed');
-          const status_evaluacion = hasCompletedEvaluations ? 'completed' as const : 'draft' as const;
+          const evaluation_state = hasCompletedEvaluations ? 'evaluada' as const : 'pendiente' as const;
 
           return {
             ...inscription,
-            status_evaluacion
+            evaluation_state
           };
         })
       );
@@ -204,11 +204,11 @@ const Inscriptions = () => {
       });
     }
 
-    // Filter by evaluation status usando status_evaluacion
+    // Filter by evaluation status usando evaluation_state
     if (statusFilter === 'evaluated') {
-      filtered = filtered.filter(inscription => inscription.status_evaluacion === 'completed');
+      filtered = filtered.filter(inscription => inscription.evaluation_state === 'evaluada');
     } else if (statusFilter === 'not_evaluated') {
-      filtered = filtered.filter(inscription => inscription.status_evaluacion === 'draft');
+      filtered = filtered.filter(inscription => inscription.evaluation_state === 'pendiente');
     }
 
     // Filter by period
@@ -323,7 +323,7 @@ const Inscriptions = () => {
                       <SelectContent>
                         <SelectItem value="all">Todos los estados</SelectItem>
                         <SelectItem value="evaluated">Evaluada</SelectItem>
-                        <SelectItem value="not_evaluated">No evaluada</SelectItem>
+                        <SelectItem value="not_evaluated">Pendiente</SelectItem>
                       </SelectContent>
                     </Select>
                   )}
@@ -446,12 +446,12 @@ const Inscriptions = () => {
                         </TableCell>
                         <TableCell>
                           <Badge
-                            className={inscription.status_evaluacion === 'completed'
+                            className={inscription.evaluation_state === 'evaluada'
                               ? 'bg-green-100 text-green-800 hover:bg-green-100'
-                              : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100'
+                              : 'bg-gray-100 text-gray-800 hover:bg-gray-100'
                             }
                           >
-                            {inscription.status_evaluacion === 'completed' ? (
+                            {inscription.evaluation_state === 'evaluada' ? (
                               <>
                                 <CheckCircle2 className="h-3 w-3 mr-1" />
                                 Evaluada
@@ -459,7 +459,7 @@ const Inscriptions = () => {
                             ) : (
                               <>
                                 <Clock className="h-3 w-3 mr-1" />
-                                No evaluada
+                                Pendiente
                               </>
                             )}
                           </Badge>

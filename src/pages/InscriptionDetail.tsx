@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Edit2, Clock, CheckCircle2, XCircle, AlertCircle, User, Calendar, BookOpen, GraduationCap, Calculator } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -63,6 +63,7 @@ interface HistoryEntry {
 const InscriptionDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user, isEvaluator, isSuperAdmin } = useAuth();
   const { toast } = useToast();
   const evaluationNav = useEvaluationNavigation(id);
@@ -72,6 +73,9 @@ const InscriptionDetail = () => {
   const [subjectSelections, setSubjectSelections] = useState<SubjectSelection[]>([]);
   const [positionSelections, setPositionSelections] = useState<PositionSelection[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Get return URL from search params
+  const returnTo = searchParams.get('returnTo');
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -240,7 +244,7 @@ const InscriptionDetail = () => {
             <p className="text-muted-foreground mb-4">
               La inscripción que buscas no existe o no tienes permisos para verla.
             </p>
-            <Button onClick={() => navigate('/inscriptions')}>
+            <Button onClick={() => navigate(returnTo || '/inscriptions')}>
               Volver a Inscripciones
             </Button>
           </CardContent>
@@ -255,11 +259,20 @@ const InscriptionDetail = () => {
         <div className="mb-6">
           <Button
             variant="ghost"
-            onClick={() => evaluationNav.hasEvaluationContext ? evaluationNav.backToEvaluations() : navigate('/inscriptions')}
+            onClick={() => {
+              if (returnTo) {
+                navigate(returnTo);
+              } else if (evaluationNav.hasEvaluationContext) {
+                evaluationNav.backToEvaluations();
+              } else {
+                navigate('/inscriptions');
+              }
+            }}
             className="mb-4"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
-            {evaluationNav.hasEvaluationContext ? 'Volver a Evaluaciones' : 'Volver a Inscripciones'}
+            {returnTo ? 'Volver a Gestión de Inscripciones' : 
+             evaluationNav.hasEvaluationContext ? 'Volver a Evaluaciones' : 'Volver a Inscripciones'}
           </Button>
           
           {/* Evaluation Navigation Header */}

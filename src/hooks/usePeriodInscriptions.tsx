@@ -45,6 +45,7 @@ export const usePeriodInscriptions = () => {
           subject_area,
           teaching_level,
           status,
+          experience_years,
           created_at,
           profiles!fk_inscriptions_user_profile(
             first_name,
@@ -60,31 +61,36 @@ export const usePeriodInscriptions = () => {
       if (inscriptionsError) throw inscriptionsError;
 
       const inscriptionsList = (inscriptionsData as any[]) || [];
-      setInscriptions(inscriptionsList);
-
-      // Calculate stats
+      
+      // Calculate stats and add evaluation data to each inscription
       const total = inscriptionsList.length;
       let evaluated = 0;
       let pending = 0;
 
-      // Count evaluations for each inscription
-      for (const inscription of inscriptionsList) {
-        const { data: evaluations, error: evalError } = await supabase
-          .from('evaluations')
-          .select('status')
-          .eq('inscription_id', inscription.id);
+      // Add evaluation data to each inscription
+      const inscriptionsWithEvaluations = await Promise.all(
+        inscriptionsList.map(async (inscription) => {
+          const { data: evaluations, error: evalError } = await supabase
+            .from('evaluations')
+            .select('status')
+            .eq('inscription_id', inscription.id);
 
-        if (!evalError && evaluations && evaluations.length > 0) {
-          const hasCompletedEvaluation = evaluations.some(evaluation => evaluation.status === 'completed');
-          if (hasCompletedEvaluation) {
-            evaluated++;
+          if (!evalError && evaluations && evaluations.length > 0) {
+            const hasCompletedEvaluation = evaluations.some(evaluation => evaluation.status === 'completed');
+            if (hasCompletedEvaluation) {
+              evaluated++;
+            } else {
+              pending++;
+            }
+            return { ...inscription, evaluations };
           } else {
             pending++;
+            return { ...inscription, evaluations: [] };
           }
-        } else {
-          pending++;
-        }
-      }
+        })
+      );
+
+      setInscriptions(inscriptionsWithEvaluations);
 
       setStats({ total, evaluated, pending });
 
