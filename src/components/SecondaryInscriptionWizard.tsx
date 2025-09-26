@@ -11,6 +11,7 @@ import { PeriodSelectionGrid } from './PeriodSelectionGrid';
 import { SubjectSelection, PositionSelection, useSecondaryInscriptionData } from '@/hooks/useSecondaryInscriptionData';
 import { useInscriptionPeriods } from '@/hooks/useInscriptionPeriods';
 import { useSecondaryInscriptionSelections } from '@/hooks/useSecondaryInscriptionSelections';
+import { useKeyboardNavigation } from '@/hooks/useKeyboardNavigation';
 
 interface SecondaryInscriptionWizardProps {
   onComplete: (data: {
@@ -55,6 +56,15 @@ export const SecondaryInscriptionWizard: React.FC<SecondaryInscriptionWizardProp
     positionSelections: loadedPositionSelections, 
     loading: selectionsLoading 
   } = useSecondaryInscriptionSelections(inscriptionId);
+
+  // Keyboard navigation setup
+  const tabs: ('period' | 'fray' | 'enet' | 'documents' | 'summary')[] = ['period', 'fray', 'enet', 'documents', 'summary'];
+  const { navigateToTab } = useKeyboardNavigation({
+    activeTab,
+    onTabChange: setActiveTab,
+    tabs,
+    disabled: isLoading || autoSaving || loading || periodsLoading || selectionsLoading
+  });
 
   // Load existing selections when editing
   useEffect(() => {
@@ -147,6 +157,11 @@ export const SecondaryInscriptionWizard: React.FC<SecondaryInscriptionWizardProp
           <p className="text-muted-foreground">
             Complete las selecciones de materias y cargos administrativos para las escuelas secundarias.
           </p>
+          <div className="mt-2 p-2 bg-muted/50 rounded-md">
+            <p className="text-xs text-muted-foreground flex items-center gap-1">
+              💡 <strong>Navegación rápida:</strong> Use <strong>Ctrl + ←/→</strong> para navegar entre las pestañas
+            </p>
+          </div>
         </CardHeader>
       </Card>
 
