@@ -191,6 +191,13 @@ export type Database = {
             foreignKeyName: "inscription_deletion_requests_inscription_id_fkey"
             columns: ["inscription_id"]
             isOneToOne: false
+            referencedRelation: "inscriptions_with_evaluation_status"
+            referencedColumns: ["inscription_id"]
+          },
+          {
+            foreignKeyName: "inscription_deletion_requests_inscription_id_fkey"
+            columns: ["inscription_id"]
+            isOneToOne: false
             referencedRelation: "inscriptions_with_evaluations"
             referencedColumns: ["inscription_id"]
           },
@@ -228,6 +235,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "inscriptions"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inscription_documents_inscription_id_fkey"
+            columns: ["inscription_id"]
+            isOneToOne: false
+            referencedRelation: "inscriptions_with_evaluation_status"
+            referencedColumns: ["inscription_id"]
           },
           {
             foreignKeyName: "inscription_documents_inscription_id_fkey"
@@ -279,6 +293,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "inscriptions"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inscription_history_inscription_id_fkey"
+            columns: ["inscription_id"]
+            isOneToOne: false
+            referencedRelation: "inscriptions_with_evaluation_status"
+            referencedColumns: ["inscription_id"]
           },
           {
             foreignKeyName: "inscription_history_inscription_id_fkey"
@@ -366,6 +387,13 @@ export type Database = {
             foreignKeyName: "inscription_position_selections_inscription_id_fkey"
             columns: ["inscription_id"]
             isOneToOne: false
+            referencedRelation: "inscriptions_with_evaluation_status"
+            referencedColumns: ["inscription_id"]
+          },
+          {
+            foreignKeyName: "inscription_position_selections_inscription_id_fkey"
+            columns: ["inscription_id"]
+            isOneToOne: false
             referencedRelation: "inscriptions_with_evaluations"
             referencedColumns: ["inscription_id"]
           },
@@ -400,6 +428,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "inscriptions"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inscription_subject_selections_inscription_id_fkey"
+            columns: ["inscription_id"]
+            isOneToOne: false
+            referencedRelation: "inscriptions_with_evaluation_status"
+            referencedColumns: ["inscription_id"]
           },
           {
             foreignKeyName: "inscription_subject_selections_inscription_id_fkey"
@@ -745,6 +780,46 @@ export type Database = {
       }
     }
     Views: {
+      inscriptions_with_evaluation_status: {
+        Row: {
+          cantidad_evaluaciones: number | null
+          created_at: string | null
+          dni: string | null
+          evaluaciones_borrador: number | null
+          evaluaciones_completadas: number | null
+          experience_years: number | null
+          first_name: string | null
+          inscription_id: string | null
+          inscription_period_id: string | null
+          inscription_status:
+            | Database["public"]["Enums"]["inscription_status"]
+            | null
+          last_name: string | null
+          status_evaluacion: string | null
+          subject_area: string | null
+          teaching_level:
+            | Database["public"]["Enums"]["teaching_level_enum"]
+            | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_inscriptions_user_profile"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inscriptions_inscription_period_id_fkey"
+            columns: ["inscription_period_id"]
+            isOneToOne: false
+            referencedRelation: "inscription_periods"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inscriptions_with_evaluations: {
         Row: {
           cantidad_evaluaciones: number | null
