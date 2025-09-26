@@ -41,39 +41,41 @@ const AppHeader = () => {
       <div className="flex h-16 items-center justify-between px-6">
         <div className="flex items-center space-x-6">
           <h1 className="text-xl font-semibold">CEADEP - Gestión de Inscripciones</h1>
-          {(userRoles.includes('evaluator') || userRoles.includes('super_admin')) && (
-            <nav className="flex items-center space-x-2">
-              <Button
-                variant={location.pathname === '/evaluations' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => navigate('/evaluations')}
-                className="flex items-center gap-2"
-              >
-                <ClipboardList className="h-4 w-4" />
-                Evaluaciones
-              </Button>
-              <Button
-                variant={location.pathname === '/listings' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => navigate('/listings')}
-                className="flex items-center gap-2"
-              >
-                <FileText className="h-4 w-4" />
-                Listados
-              </Button>
-              {userRoles.includes('super_admin') && (
+          <nav className="flex items-center space-x-2">
+            {(userRoles.includes('evaluator') || userRoles.includes('super_admin')) && (
+              <>
                 <Button
-                  variant={location.pathname === '/admin/assisted-inscription' ? 'default' : 'ghost'}
+                  variant={location.pathname === '/evaluations' ? 'default' : 'ghost'}
                   size="sm"
-                  onClick={() => navigate('/admin/assisted-inscription')}
+                  onClick={() => navigate('/evaluations')}
                   className="flex items-center gap-2"
                 >
-                  <UserPlus className="h-4 w-4" />
-                  Inscripción Asistida
+                  <ClipboardList className="h-4 w-4" />
+                  Evaluaciones
                 </Button>
-              )}
-            </nav>
-          )}
+                <Button
+                  variant={location.pathname === '/listings' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => navigate('/listings')}
+                  className="flex items-center gap-2"
+                >
+                  <FileText className="h-4 w-4" />
+                  Listados
+                </Button>
+              </>
+            )}
+            {userRoles.includes('super_admin') && (
+              <Button
+                variant={location.pathname.startsWith('/admin') ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => navigate('/admin')}
+                className="flex items-center gap-2"
+              >
+                <UserPlus className="h-4 w-4" />
+                Administración
+              </Button>
+            )}
+          </nav>
         </div>
         <div className="flex items-center space-x-4">
           <div className="flex flex-wrap gap-1">

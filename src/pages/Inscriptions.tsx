@@ -114,52 +114,65 @@ const Inscriptions = () => {
     if (!user) return;
 
     try {
-      // Build inscriptions query with period information
+      // Build inscriptions query with period information and profiles
       let inscriptionsQuery = supabase
-        .from('inscriptions_with_evaluation_status')
+        .from('inscriptions')
         .select(`
           *,
           inscription_periods (
             id,
             name,
             is_active
+          ),
+          profiles (
+            id,
+            first_name,
+            last_name,
+            email,
+            dni
           )
         `)
         .order('created_at', { ascending: false });
 
-      // If not super admin or evaluator, only show own inscriptions (by auth id or profile id)
+      // If not super admin or evaluator, only show own inscriptions
       if (!isSuperAdmin && !isEvaluator) {
-        const ids = [user.id];
-        if (profile?.id && !ids.includes(profile.id)) ids.push(profile.id);
-        inscriptionsQuery = inscriptionsQuery.in('user_id', ids);
+        inscriptionsQuery = inscriptionsQuery.eq('user_id', user.id);
       }
 
       const { data: inscriptionsData, error: inscriptionsError } = await inscriptionsQuery;
 
       if (inscriptionsError) throw inscriptionsError;
 
-      // Get unique user IDs to fetch profiles
-      const userIds = [...new Set(inscriptionsData?.map(inscription => inscription.user_id) || [])];
-      
-      // Fetch profiles for these users
-      const { data: profilesData, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, first_name, last_name, email, dni')
-        .in('id', userIds);
+      // For each inscription, check evaluation status
+      const inscriptionsWithEvalStatus = await Promise.all(
+        (inscriptionsData || []).map(async (inscription) => {
+          // Get evaluation count for this inscription
+          const { data: evaluations, error: evalError } = await supabase
+            .from('evaluations')
+            .select('status')
+            .eq('inscription_id', inscription.id);
 
-      if (profilesError) throw profilesError;
+          if (evalError) {
+            console.error('Error fetching evaluations:', evalError);
+            return {
+              ...inscription,
+              status_evaluacion: 'draft' as const
+            };
+          }
 
-      // Create profiles map for easy lookup
-      const profilesMap = new Map(profilesData?.map(profile => [profile.id, profile]) || []);
+          // Determine evaluation status
+          const hasCompletedEvaluations = evaluations?.some(ev => ev.status === 'completed');
+          const status_evaluacion = hasCompletedEvaluations ? 'completed' as const : 'draft' as const;
 
-      // Combine inscriptions with profiles (status_evaluacion ya viene del SQL/vista)
-      const inscriptionsWithProfiles = inscriptionsData?.map(inscription => ({
-        ...inscription,
-        profiles: profilesMap.get(inscription.user_id) || null
-      })) || [];
+          return {
+            ...inscription,
+            status_evaluacion
+          };
+        })
+      );
 
-      setInscriptions(inscriptionsWithProfiles);
-      setFilteredInscriptions(inscriptionsWithProfiles);
+      setInscriptions(inscriptionsWithEvalStatus);
+      setFilteredInscriptions(inscriptionsWithEvalStatus);
     } catch (error) {
       console.error('Error fetching inscriptions:', error);
       toast({
