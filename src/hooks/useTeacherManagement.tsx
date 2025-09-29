@@ -44,6 +44,12 @@ interface ImportResult {
   errorDetails: string[];
 }
 
+// Consistent DNI normalization function
+const normalizeDNI = (dni: string): string => {
+  if (!dni) return '';
+  return dni.toString().replace(/\./g, '').replace(/\D/g, '');
+};
+
 export const useTeacherManagement = () => {
   const [teachers, setTeachers] = useState<TeacherProfile[]>([]);
   const [loading, setLoading] = useState(false);
@@ -54,13 +60,35 @@ export const useTeacherManagement = () => {
   const fetchTeachers = useCallback(async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('last_name', { ascending: true });
+      console.log('Fetching all teachers...');
+      
+      // Fetch all teachers with pagination to handle large datasets
+      let allTeachers: TeacherProfile[] = [];
+      let from = 0;
+      const batchSize = 1000;
+      let hasMore = true;
 
-      if (error) throw error;
-      setTeachers(data || []);
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .order('last_name', { ascending: true })
+          .range(from, from + batchSize - 1);
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          allTeachers = [...allTeachers, ...data];
+          from += batchSize;
+          hasMore = data.length === batchSize;
+          console.log(`Loaded ${allTeachers.length} teachers so far...`);
+        } else {
+          hasMore = false;
+        }
+      }
+
+      console.log(`Total teachers loaded: ${allTeachers.length}`);
+      setTeachers(allTeachers);
     } catch (error) {
       console.error('Error fetching teachers:', error);
       toast({
@@ -75,14 +103,17 @@ export const useTeacherManagement = () => {
 
   const searchTeacherByDNI = useCallback(async (dni: string): Promise<TeacherProfile | null> => {
     try {
-      const cleanDNI = dni.replace(/\./g, '');
+      const normalizedDNI = normalizeDNI(dni);
+      console.log('Searching for DNI:', dni, 'normalized to:', normalizedDNI);
+      
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('dni', cleanDNI)
+        .eq('dni', normalizedDNI)
         .maybeSingle();
 
       if (error) throw error;
+      console.log('Search result for DNI', normalizedDNI, ':', data);
       return data;
     } catch (error) {
       console.error('Error searching teacher by DNI:', error);
@@ -92,6 +123,20 @@ export const useTeacherManagement = () => {
 
   const createTeacher = useCallback(async (teacherData: Partial<TeacherProfile>): Promise<TeacherProfile | null> => {
     try {
+      const normalizedDNI = normalizeDNI(teacherData.dni || '');
+      console.log('Creating teacher with DNI:', teacherData.dni, 'normalized to:', normalizedDNI);
+      
+      // Check if teacher already exists before creating
+      const existingTeacher = await searchTeacherByDNI(normalizedDNI);
+      if (existingTeacher) {
+        toast({
+          title: 'Error',
+          description: `Ya existe un docente con DNI ${normalizedDNI}: ${existingTeacher.first_name} ${existingTeacher.last_name}`,
+          variant: 'destructive',
+        });
+        return null;
+      }
+      
       const { data, error } = await supabase
         .from('profiles')
         .insert({
@@ -99,7 +144,7 @@ export const useTeacherManagement = () => {
           first_name: teacherData.first_name,
           last_name: teacherData.last_name,
           email: teacherData.email,
-          dni: teacherData.dni?.replace(/\./g, ''),
+          dni: normalizedDNI,
           phone: teacherData.phone,
           legajo_number: teacherData.legajo_number,
           titulo_1_nombre: teacherData.titulo_1_nombre,
@@ -122,28 +167,52 @@ export const useTeacherManagement = () => {
       return data;
     } catch (error: any) {
       console.error('Error creating teacher:', error);
-      if (error.code === '23505') {
-        toast({
-          title: 'Error',
-          description: 'Ya existe un docente con ese DNI',
-          variant: 'destructive',
-        });
-      } else {
-        toast({
-          title: 'Error',
-          description: 'No se pudo crear el docente',
-          variant: 'destructive',
-        });
+      
+      let errorMessage = 'No se pudo crear el docente';
+      
+      if (error?.code === '23505') {
+        errorMessage = 'Ya existe un docente con ese DNI o email';
+      } else if (error?.code === '23503') {
+        errorMessage = 'Error de referencia: verifique que los datos sean válidos';
+      } else if (error?.message) {
+        errorMessage = `Error: ${error.message}`;
       }
+      
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive',
+      });
       return null;
     }
-  }, [toast]);
+  }, [toast, searchTeacherByDNI]);
 
   const updateTeacher = useCallback(async (id: string, updates: Partial<TeacherProfile>): Promise<boolean> => {
     try {
+      const normalizedDNI = normalizeDNI(updates.dni || '');
+      console.log('Updating teacher with DNI:', updates.dni, 'normalized to:', normalizedDNI);
+      
+      // If DNI is being updated, check if another teacher already has this DNI
+      if (updates.dni) {
+        const existingTeacher = await searchTeacherByDNI(normalizedDNI);
+        if (existingTeacher && existingTeacher.id !== id) {
+          toast({
+            title: 'Error',
+            description: `Ya existe otro docente con DNI ${normalizedDNI}: ${existingTeacher.first_name} ${existingTeacher.last_name}`,
+            variant: 'destructive',
+          });
+          return false;
+        }
+      }
+      
+      const updateData = {
+        ...updates,
+        dni: updates.dni ? normalizedDNI : updates.dni
+      };
+      
       const { error } = await supabase
         .from('profiles')
-        .update(updates)
+        .update(updateData)
         .eq('id', id);
 
       if (error) throw error;
@@ -154,16 +223,27 @@ export const useTeacherManagement = () => {
       });
 
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating teacher:', error);
+      
+      let errorMessage = 'No se pudo actualizar el docente';
+      
+      if (error?.code === '23505') {
+        errorMessage = 'Ya existe un docente con ese DNI o email';
+      } else if (error?.code === '23503') {
+        errorMessage = 'Error de referencia: verifique que los datos sean válidos';
+      } else if (error?.message) {
+        errorMessage = `Error: ${error.message}`;
+      }
+      
       toast({
         title: 'Error',
-        description: 'No se pudo actualizar el docente',
+        description: errorMessage,
         variant: 'destructive',
       });
       return false;
     }
-  }, [toast]);
+  }, [toast, searchTeacherByDNI]);
 
   // Helper function to normalize column headers
   const normalizeHeaders = useCallback((data: any[]): ExcelTeacher[] => {
@@ -348,6 +428,30 @@ export const useTeacherManagement = () => {
     return { registered, migrated, incomplete, total: teachers.length };
   }, [teachers]);
 
+  // Function to check if a teacher exists by DNI (for debugging)
+  const checkTeacherExists = useCallback(async (dni: string): Promise<{ exists: boolean; teacher?: TeacherProfile }> => {
+    try {
+      const normalizedDNI = normalizeDNI(dni);
+      console.log('Checking if teacher exists with DNI:', dni, 'normalized to:', normalizedDNI);
+      
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('dni', normalizedDNI)
+        .maybeSingle();
+
+      if (error) throw error;
+      
+      const exists = !!data;
+      console.log('Teacher exists:', exists, data);
+      
+      return { exists, teacher: data || undefined };
+    } catch (error) {
+      console.error('Error checking teacher existence:', error);
+      return { exists: false };
+    }
+  }, []);
+
   return {
     teachers,
     loading,
@@ -360,5 +464,6 @@ export const useTeacherManagement = () => {
     updateTeacher,
     importTeachersFromExcel,
     getTeacherStats,
+    checkTeacherExists,
   };
 };

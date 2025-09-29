@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Calendar, Users, BookOpen, Eye, CheckCircle2, Clock, ArrowLeft, Search, UserPlus } from 'lucide-react';
+import { Calendar, Users, BookOpen, Eye, CheckCircle2, Clock, ArrowLeft, Search, UserPlus, X } from 'lucide-react';
 import { useInscriptionPeriods } from '@/hooks/useInscriptionPeriods';
 import { usePeriodInscriptions } from '@/hooks/usePeriodInscriptions';
 import { useAuth } from '@/contexts/AuthContext';
@@ -246,8 +246,18 @@ export const InscriptionManagement = () => {
                       placeholder="Buscar por nombre, apellido o DNI..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10"
+                      className="pl-10 pr-10"
                     />
+                    {searchTerm && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSearchTerm('')}
+                        className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0 hover:bg-muted"
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    )}
                   </div>
                 </div>
                 <div className="flex-1 max-w-md">

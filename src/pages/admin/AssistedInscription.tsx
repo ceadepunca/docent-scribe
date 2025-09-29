@@ -386,6 +386,13 @@ const AssistedInscription = () => {
       // Refresh existing inscriptions
       await checkExistingInscriptions(selectedTeacher.id);
 
+      // Redirect to evaluation page after successful inscription creation/update
+      if (inscription?.id) {
+        setTimeout(() => {
+          navigate(`/inscriptions/${inscription.id}`);
+        }, 1500); // Wait 1.5 seconds to show the success message
+      }
+
     } catch (error: any) {
       console.error('Error saving inscription:', error);
       toast({

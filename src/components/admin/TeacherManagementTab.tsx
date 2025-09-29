@@ -13,11 +13,13 @@ import { TeacherFormModal } from './TeacherFormModal';
 
 export const TeacherManagementTab = () => {
   const navigate = useNavigate();
-  const { teachers, loading, fetchTeachers, getTeacherStats } = useTeacherManagement();
+  const { teachers, loading, fetchTeachers, getTeacherStats, checkTeacherExists } = useTeacherManagement();
   const [searchTerm, setSearchTerm] = useState('');
   const [showImportModal, setShowImportModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [selectedTeacher, setSelectedTeacher] = useState<any>(null);
+  const [editingTeacher, setEditingTeacher] = useState<any>(null);
 
   useEffect(() => {
     fetchTeachers();
@@ -25,12 +27,44 @@ export const TeacherManagementTab = () => {
 
   const stats = getTeacherStats();
 
-  const filteredTeachers = teachers.filter(teacher =>
-    teacher.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    teacher.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    teacher.dni?.includes(searchTerm) ||
-    teacher.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Consistent DNI normalization function
+  const normalizeDNI = (dni: string): string => {
+    if (!dni) return '';
+    return dni.toString().replace(/\./g, '').replace(/\D/g, '');
+  };
+
+  const filteredTeachers = teachers.filter(teacher => {
+    const searchLower = searchTerm.toLowerCase();
+    const normalizedSearchTerm = normalizeDNI(searchTerm);
+    
+    // Debug logging
+    if (searchTerm === '20072342') {
+      console.log('Filtering for DNI 20072342:');
+      console.log('- Teacher DNI:', teacher.dni);
+      console.log('- Normalized teacher DNI:', normalizeDNI(teacher.dni || ''));
+      console.log('- Normalized search term:', normalizedSearchTerm);
+      console.log('- Teacher name:', teacher.first_name, teacher.last_name);
+    }
+    
+    // If search term looks like a DNI (only numbers or numbers with dots), prioritize DNI search
+    if (/^[\d\.]+$/.test(searchTerm)) {
+      const teacherDNI = normalizeDNI(teacher.dni || '');
+      const matches = teacherDNI.includes(normalizedSearchTerm);
+      
+      if (searchTerm === '20072342') {
+        console.log('- DNI match result:', matches);
+      }
+      
+      return matches;
+    }
+    
+    // Otherwise, search in all fields
+    return teacher.first_name.toLowerCase().includes(searchLower) ||
+           teacher.last_name.toLowerCase().includes(searchLower) ||
+           normalizeDNI(teacher.dni || '').includes(normalizedSearchTerm) ||
+           teacher.email.toLowerCase().includes(searchLower) ||
+           teacher.legajo_number?.toLowerCase().includes(searchLower);
+  });
 
   const getStatusBadge = (teacher: any) => {
     if (teacher.user_id && teacher.data_complete) {
@@ -117,12 +151,69 @@ export const TeacherManagementTab = () => {
           <div className="flex items-center gap-2 mb-4">
             <Search className="h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Buscar por nombre, DNI o email..."
+              placeholder="Buscar por nombre, apellido, DNI, email o legajo..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="max-w-md"
             />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                const result = await checkTeacherExists('20072342');
+                console.log('Debug check for DNI 20072342:', result);
+                alert(`Docente con DNI 20072342: ${result.exists ? 'EXISTE' : 'NO EXISTE'}\n${result.teacher ? `Nombre: ${result.teacher.first_name} ${result.teacher.last_name}` : ''}`);
+              }}
+              title="Debug: Verificar DNI 20072342"
+            >
+              Debug DNI
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                console.log('All teachers:', teachers);
+                const teacherWithDNI = teachers.find(t => normalizeDNI(t.dni || '') === '20072342');
+                console.log('Teacher with DNI 20072342 in teachers array:', teacherWithDNI);
+                alert(`Total docentes cargados: ${teachers.length}\nDocente con DNI 20072342 en array: ${teacherWithDNI ? `${teacherWithDNI.first_name} ${teacherWithDNI.last_name}` : 'NO ENCONTRADA'}`);
+              }}
+              title="Debug: Verificar en array de docentes"
+            >
+              Debug Array
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setSearchTerm('');
+                console.log('Search term cleared');
+              }}
+              title="Limpiar búsqueda"
+            >
+              Limpiar
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                console.log('Reloading teachers...');
+                fetchTeachers();
+              }}
+              title="Recargar todos los docentes"
+            >
+              Recargar
+            </Button>
           </div>
+
+          {/* Debug Info */}
+          {searchTerm && (
+            <div className="mb-4 p-2 bg-blue-50 rounded text-sm">
+              <strong>Debug Info:</strong> Búsqueda: "{searchTerm}" | 
+              Total docentes: {teachers.length} | 
+              Filtrados: {filteredTeachers.length} |
+              Normalizado: {normalizeDNI(searchTerm)}
+            </div>
+          )}
 
           {/* Teachers Table */}
           <div className="border rounded-lg">
@@ -166,8 +257,20 @@ export const TeacherManagementTab = () => {
                             size="sm"
                             variant="outline"
                             onClick={() => setSelectedTeacher(teacher)}
+                            title="Ver detalles"
                           >
                             <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setEditingTeacher(teacher);
+                              setShowEditModal(true);
+                            }}
+                            title="Editar docente"
+                          >
+                            <Edit className="h-4 w-4" />
                           </Button>
                         </div>
                       </TableCell>
@@ -191,6 +294,13 @@ export const TeacherManagementTab = () => {
         open={showCreateModal}
         onOpenChange={setShowCreateModal}
         onSave={fetchTeachers}
+      />
+
+      <TeacherFormModal
+        open={showEditModal}
+        onOpenChange={setShowEditModal}
+        onSave={fetchTeachers}
+        teacher={editingTeacher}
       />
 
       {/* Teacher Details Modal */}
@@ -247,6 +357,23 @@ export const TeacherManagementTab = () => {
                   </div>
                 </div>
               )}
+              
+              <div className="flex justify-end gap-2 pt-4 border-t">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setSelectedTeacher(null);
+                    setEditingTeacher(selectedTeacher);
+                    setShowEditModal(true);
+                  }}
+                >
+                  <Edit className="h-4 w-4 mr-2" />
+                  Editar Docente
+                </Button>
+                <Button onClick={() => setSelectedTeacher(null)}>
+                  Cerrar
+                </Button>
+              </div>
             </div>
           )}
         </DialogContent>

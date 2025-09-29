@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
@@ -119,6 +120,7 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
 }) => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [groupedItems, setGroupedItems] = useState<GroupedItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -393,10 +395,10 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
     fetchProfileAndEvaluations();
   }, [inscriptionId, user, subjectSelections, positionSelections, userId]);
 
-  // Handle Ctrl+R shortcut to replicate titulo_score from first row to all rows
+  // Handle Ctrl+Shift+D shortcut to replicate titulo_score from first row to all rows
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.key === 'r') {
+      if (e.ctrlKey && e.shiftKey && e.key === 'D') {
         e.preventDefault();
         e.stopPropagation();
         e.stopImmediatePropagation();
@@ -645,6 +647,11 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
       if (evaluationNavigation?.hasEvaluationContext && evaluationNavigation.unevaluatedCount > 0) {
         setTimeout(() => {
           evaluationNavigation.goToNextUnevaluated();
+        }, 1500);
+      } else if (!evaluationNavigation?.hasEvaluationContext) {
+        // If not in evaluation context, redirect to inscription management
+        setTimeout(() => {
+          navigate('/inscription-management');
         }, 1500);
       }
     } catch (error: any) {

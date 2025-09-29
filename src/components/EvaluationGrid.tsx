@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
@@ -92,6 +93,7 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
 }) => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   
   const initialEvaluation: EvaluationData = {
     titulo_score: 0,
@@ -145,10 +147,10 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
     fetchExistingEvaluation();
   }, [inscriptionId, user, subjectSelection, positionSelection]);
 
-  // Handle Ctrl+R shortcut to replicate titulo_score from first row
+  // Handle Ctrl+Shift+D shortcut to replicate titulo_score from first row
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.key === 'r') {
+      if (e.ctrlKey && e.shiftKey && e.key === 'D') {
         e.preventDefault();
         e.stopPropagation();
         e.stopImmediatePropagation();
@@ -415,6 +417,17 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
             evaluationNavigation.goToNextUnevaluated();
           }, 1500);
         }
+      } else if (finalStatus === 'completed' && !evaluationNavigation?.hasEvaluationContext) {
+        // If not in evaluation context, redirect to evaluations page
+        setTimeout(() => {
+          toast({
+            title: 'Evaluación completada',
+            description: 'La evaluación ha sido finalizada correctamente',
+          });
+          setTimeout(() => {
+            navigate('/evaluations');
+          }, 1500);
+        }, 1500);
       }
     } catch (error) {
       console.error('Error saving evaluation:', error);
