@@ -55,9 +55,9 @@ const deriveTitleType = (item: ListingItem): string => {
 const getTitleTypeDisplay = (item: ListingItem): string => {
   const score = item.titulo_score;
   if (score !== null && score !== undefined) {
-    if (score >= 8.5) return `Doc (${score.toFixed(1)})`;
-    if (score >= 5.5) return `Hab (${score.toFixed(1)})`;
-    if (score >= 2.5) return `Sup (${score.toFixed(1)})`;
+    if (score >= 8.5) return `Doc (${score.toFixed(2)})`;
+    if (score >= 5.5) return `Hab (${score.toFixed(2)})`;
+    if (score >= 2.5) return `Sup (${score.toFixed(2)})`;
   }
   
   // Fallback to title_type based display
@@ -239,7 +239,7 @@ export const ListingTable: React.FC<ListingTableProps> = ({ listings }) => {
                   <TableCell key={criterion.id} className="p-1 text-center border-r">
                     <span className="text-2xs">
                       {item[criterion.id as keyof ListingItem] !== null && item[criterion.id as keyof ListingItem] !== undefined
-                        ? (item[criterion.id as keyof ListingItem] as number).toFixed(1)
+                        ? (item[criterion.id as keyof ListingItem] as number).toFixed(2)
                         : '--'
                       }
                     </span>
@@ -251,7 +251,7 @@ export const ListingTable: React.FC<ListingTableProps> = ({ listings }) => {
                       ? 'bg-primary/10 text-primary' 
                       : 'bg-muted text-muted-foreground'
                   }`}>
-                    {item.total_score !== null ? item.total_score.toFixed(1) : '--'}
+                    {item.total_score !== null ? item.total_score.toFixed(2) : '--'}
                   </div>
                 </TableCell>
               </TableRow>

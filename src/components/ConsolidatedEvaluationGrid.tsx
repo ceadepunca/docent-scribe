@@ -393,6 +393,41 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
     fetchProfileAndEvaluations();
   }, [inscriptionId, user, subjectSelections, positionSelections, userId]);
 
+  // Handle Ctrl+R shortcut to replicate titulo_score from first row to all rows
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.key === 'r') {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        
+        if (groupedItems.length > 0) {
+          const firstTituloScore = groupedItems[0].evaluation.titulo_score;
+          if (firstTituloScore > 0) {
+            setGroupedItems(prev => prev.map((group, index) => {
+              if (index === 0) return group; // Don't change the first row
+              return {
+                ...group,
+                evaluation: {
+                  ...group.evaluation,
+                  titulo_score: firstTituloScore
+                }
+              };
+            }));
+            toast({
+              title: 'Puntaje de títulos replicado',
+              description: `Se aplicó el puntaje de títulos (${firstTituloScore}) de la primera fila a todas las demás`,
+            });
+          }
+        }
+        return false;
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown, true); // Use capture phase
+    return () => document.removeEventListener('keydown', handleKeyDown, true);
+  }, [groupedItems, toast]);
+
   // Function to replicate evaluation values to all other rows
   const replicateToAllRows = (sourceGroupIndex: number, fieldName: keyof EvaluationData, value: any) => {
     setGroupedItems(prev => {
@@ -417,7 +452,9 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
   };
 
   const handleScoreChange = (groupIndex: number, criterionId: keyof EvaluationData, value: string) => {
-    const numericValue = parseFloat(value) || 0;
+    // Convert "." to "," for better UX
+    const normalizedValue = value.replace('.', ',');
+    const numericValue = parseFloat(normalizedValue.replace(',', '.')) || 0;
     const criterion = evaluationCriteria.find(c => c.id === criterionId);
     const group = groupedItems[groupIndex];
     
@@ -796,6 +833,25 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
                                 return stringVal;
                               })()}
                               onChange={(e) => handleScoreChange(groupIndex, criterion.id as keyof EvaluationData, e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === '.') {
+                                  e.preventDefault();
+                                  const target = e.target as HTMLInputElement;
+                                  const cursorPosition = target.selectionStart || 0;
+                                  const selectionEnd = target.selectionEnd || 0;
+                                  
+                                  // Replace selected text with comma, or insert comma at cursor position
+                                  const newValue = target.value.slice(0, cursorPosition) + ',' + target.value.slice(selectionEnd);
+                                  target.value = newValue;
+                                  
+                                  // Set cursor position after the comma
+                                  setTimeout(() => {
+                                    target.setSelectionRange(cursorPosition + 1, cursorPosition + 1);
+                                  }, 0);
+                                  
+                                  handleScoreChange(groupIndex, criterion.id as keyof EvaluationData, newValue);
+                                }
+                              }}
                               className="text-center w-14 h-7 text-2xs px-0"
                               disabled={(() => {
                                 const isDisabled = group.evaluation.status === 'completed';

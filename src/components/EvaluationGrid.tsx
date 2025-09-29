@@ -145,6 +145,34 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
     fetchExistingEvaluation();
   }, [inscriptionId, user, subjectSelection, positionSelection]);
 
+  // Handle Ctrl+R shortcut to replicate titulo_score from first row
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.key === 'r') {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        
+        // Get the first titulo_score value and apply it to all other criteria
+        const firstTituloScore = evaluation.titulo_score;
+        if (firstTituloScore > 0) {
+          setEvaluation(prev => ({
+            ...prev,
+            titulo_score: firstTituloScore
+          }));
+          toast({
+            title: 'Puntaje replicado',
+            description: `Se aplicó el puntaje de títulos (${firstTituloScore}) a la primera fila`,
+          });
+        }
+        return false;
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown, true); // Use capture phase
+    return () => document.removeEventListener('keydown', handleKeyDown, true);
+  }, [evaluation.titulo_score, toast]);
+
   const fetchExistingEvaluation = async () => {
     if (!user) return;
 
@@ -255,7 +283,9 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
   };
 
   const handleScoreChange = (criterionId: keyof EvaluationData, value: string) => {
-    const numericValue = parseFloat(value) || 0;
+    // Convert "." to "," for better UX
+    const normalizedValue = value.replace('.', ',');
+    const numericValue = parseFloat(normalizedValue.replace(',', '.')) || 0;
     const criterion = evaluationCriteria.find(c => c.id === criterionId);
     
     // Validate against maximum value if set
@@ -544,6 +574,25 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
                       step="0.01"
                       value={typeof evaluation[criterion.id] === 'number' ? String(evaluation[criterion.id]) : ''}
                       onChange={(e) => handleScoreChange(criterion.id, e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === '.') {
+                          e.preventDefault();
+                          const target = e.target as HTMLInputElement;
+                          const cursorPosition = target.selectionStart || 0;
+                          const selectionEnd = target.selectionEnd || 0;
+                          
+                          // Replace selected text with comma, or insert comma at cursor position
+                          const newValue = target.value.slice(0, cursorPosition) + ',' + target.value.slice(selectionEnd);
+                          target.value = newValue;
+                          
+                          // Set cursor position after the comma
+                          setTimeout(() => {
+                            target.setSelectionRange(cursorPosition + 1, cursorPosition + 1);
+                          }, 0);
+                          
+                          handleScoreChange(criterion.id, newValue);
+                        }
+                      }}
                       className="text-center"
                     />
                   </TableCell>
