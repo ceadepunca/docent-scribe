@@ -152,7 +152,7 @@ export const EnetSubjectsAndPositions: React.FC<EnetSubjectsAndPositionsProps> =
       {enetPositions.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Cargos Administrativos - ENET nro 1</CardTitle>
+            <CardTitle>CARGOS DOCENTES - ENET nro 1</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">

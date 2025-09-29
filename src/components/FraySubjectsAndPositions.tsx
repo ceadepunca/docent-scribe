@@ -154,7 +154,7 @@ export const FraySubjectsAndPositions: React.FC<FraySubjectsAndPositionsProps> =
       {frayPositions.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Cargos Administrativos - Fray M Esquiú</CardTitle>
+            <CardTitle>CARGOS DOCENTES - Fray M Esquiú</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
