@@ -658,9 +658,10 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
       });
 
       // Auto-navigate to next unevaluated if in evaluation context
-      if (evaluationNavigation?.hasEvaluationContext && evaluationNavigation.unevaluatedCount > 0) {
+      if (evaluationNavigation?.hasEvaluationContext) {
+        // Siempre regresar a la página de selección de docente (evaluaciones)
         setTimeout(() => {
-          evaluationNavigation.goToNextUnevaluated();
+          evaluationNavigation.backToEvaluations();
         }, 1500);
       } else if (!evaluationNavigation?.hasEvaluationContext) {
         // If not in evaluation context, redirect to inscription management

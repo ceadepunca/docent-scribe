@@ -411,24 +411,10 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
 
       // Auto-navigate logic if in evaluation context and completed (only for new evaluations, not edited ones)
       if (finalStatus === 'completed' && evaluationNavigation?.hasEvaluationContext && originalEvaluation.status !== 'completed' && status === 'completed') {
-        // Check if this is the last unevaluated teacher (count will be 1 before saving)
-        if (evaluationNavigation.unevaluatedCount === 1) {
-          // This is the last one, return to evaluations after showing success message
-          setTimeout(() => {
-            toast({
-              title: 'Período completado',
-              description: 'Todas las evaluaciones del período han sido finalizadas',
-            });
-            setTimeout(() => {
-              evaluationNavigation.backToEvaluations();
-            }, 1500);
-          }, 1500);
-        } else if (evaluationNavigation.unevaluatedCount > 1) {
-          // There are more to evaluate, go to next
-          setTimeout(() => {
-            evaluationNavigation.goToNextUnevaluated();
-          }, 1500);
-        }
+        // Siempre regresar a la página de selección de docente (evaluaciones)
+        setTimeout(() => {
+          evaluationNavigation.backToEvaluations();
+        }, 1500);
       } else if (finalStatus === 'completed' && !evaluationNavigation?.hasEvaluationContext) {
         // If not in evaluation context, redirect to inscription management
         setTimeout(() => {

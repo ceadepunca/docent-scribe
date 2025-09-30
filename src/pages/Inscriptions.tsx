@@ -277,7 +277,14 @@ const Inscriptions = () => {
                       <Input
                         placeholder="Buscar por nombre, email o DNI del docente..."
                         value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          setSearchTerm(value);
+                          if (value === "") {
+                            // Forzar el cambio del filtro y el combo
+                            setStatusFilter(prev => prev !== "all" ? "all" : prev);
+                          }
+                        }}
                         className="pl-10"
                       />
                     </div>
