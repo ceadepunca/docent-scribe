@@ -844,18 +844,14 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
                                 if (e.key === '.') {
                                   e.preventDefault();
                                   const target = e.target as HTMLInputElement;
+                                  const currentValue = target.value;
                                   const cursorPosition = target.selectionStart || 0;
                                   const selectionEnd = target.selectionEnd || 0;
                                   
                                   // Replace selected text with comma, or insert comma at cursor position
-                                  const newValue = target.value.slice(0, cursorPosition) + ',' + target.value.slice(selectionEnd);
-                                  target.value = newValue;
+                                  const newValue = currentValue.slice(0, cursorPosition) + ',' + currentValue.slice(selectionEnd);
                                   
-                                  // Set cursor position after the comma
-                                  setTimeout(() => {
-                                    target.setSelectionRange(cursorPosition + 1, cursorPosition + 1);
-                                  }, 0);
-                                  
+                                  // Trigger handleScoreChange directly without manipulating input
                                   handleScoreChange(groupIndex, criterion.id as keyof EvaluationData, newValue);
                                 }
                               }}

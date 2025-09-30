@@ -19,6 +19,10 @@ export const useKeyboardNavigation = ({
     // Only handle if Control key is pressed and not disabled
     if (!event.ctrlKey || disabled) return;
     
+    // Ignore if user is typing in an input/textarea
+    const target = event.target as HTMLElement;
+    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
+    
     // Find current tab index
     const currentIndex = tabs.indexOf(activeTab);
     if (currentIndex === -1) return;
@@ -29,10 +33,12 @@ export const useKeyboardNavigation = ({
       // Go to previous tab (wrap around to last tab if at first)
       newIndex = currentIndex === 0 ? tabs.length - 1 : currentIndex - 1;
       event.preventDefault();
+      event.stopPropagation();
     } else if (event.key === 'ArrowRight') {
       // Go to next tab (wrap around to first tab if at last)
       newIndex = currentIndex === tabs.length - 1 ? 0 : currentIndex + 1;
       event.preventDefault();
+      event.stopPropagation();
     } else {
       return;
     }
@@ -42,12 +48,12 @@ export const useKeyboardNavigation = ({
   }, [activeTab, onTabChange, tabs, disabled]);
 
   useEffect(() => {
-    // Add event listener
-    document.addEventListener('keydown', handleKeyPress);
+    // Add event listener with capture to intercept before other handlers
+    document.addEventListener('keydown', handleKeyPress, { capture: true });
     
     // Cleanup
     return () => {
-      document.removeEventListener('keydown', handleKeyPress);
+      document.removeEventListener('keydown', handleKeyPress, { capture: true });
     };
   }, [handleKeyPress]);
 
