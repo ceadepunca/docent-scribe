@@ -19,10 +19,6 @@ export const useKeyboardNavigation = ({
     // Only handle if Control key is pressed and not disabled
     if (!event.ctrlKey || disabled) return;
     
-    // Ignore if user is typing in an input/textarea
-    const target = event.target as HTMLElement;
-    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
-    
     // Find current tab index
     const currentIndex = tabs.indexOf(activeTab);
     if (currentIndex === -1) return;

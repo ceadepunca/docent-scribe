@@ -829,15 +829,10 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
                          return (
                            <TableCell key={criterion.id} className="p-1 w-14">
                             <Input
-                              type="number"
-                              min="0"
-                              max={typeof maxValue === 'number' ? maxValue : undefined}
-                              step="0.01"
+                              type="text"
                               value={(() => {
                                 const val = group.evaluation[criterion.id as keyof EvaluationData];
-                                const stringVal = typeof val === 'number' ? String(val) : '';
-                                console.log(`Input value for ${criterion.id}:`, val, 'type:', typeof val, 'stringVal:', stringVal);
-                                return stringVal;
+                                return typeof val === 'number' ? String(val).replace('.', ',') : '';
                               })()}
                               onChange={(e) => handleScoreChange(groupIndex, criterion.id as keyof EvaluationData, e.target.value)}
                               onKeyDown={(e) => {
@@ -856,11 +851,7 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
                                 }
                               }}
                               className="text-center w-14 h-7 text-2xs px-0"
-                              disabled={(() => {
-                                const isDisabled = group.evaluation.status === 'completed';
-                                console.log(`Input disabled for ${criterion.id}:`, isDisabled, 'status:', group.evaluation.status);
-                                return isDisabled;
-                              })()}
+                              disabled={group.evaluation.status === 'completed'}
                             />
                           </TableCell>
                         );

@@ -581,12 +581,12 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
                   </TableCell>
                   <TableCell>
                     <Input
-                      type="number"
-                      min="0"
-                      max={typeof criterion.maxValue === 'number' ? criterion.maxValue : undefined}
-                      step="0.01"
-                      value={typeof evaluation[criterion.id] === 'number' ? String(evaluation[criterion.id]) : ''}
-                      onChange={(e) => handleScoreChange(criterion.id, e.target.value)}
+                      type="text"
+                      value={typeof evaluation[criterion.id] === 'number' ? String(evaluation[criterion.id]).replace('.', ',') : ''}
+                      onChange={(e) => {
+                        const newValue = e.target.value.replace('.', ',');
+                        handleScoreChange(criterion.id, newValue);
+                      }}
                       onKeyDown={(e) => {
                         if (e.key === '.') {
                           e.preventDefault();
@@ -594,11 +594,7 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
                           const currentValue = target.value;
                           const cursorPosition = target.selectionStart || 0;
                           const selectionEnd = target.selectionEnd || 0;
-                          
-                          // Replace selected text with comma, or insert comma at cursor position
                           const newValue = currentValue.slice(0, cursorPosition) + ',' + currentValue.slice(selectionEnd);
-                          
-                          // Trigger handleScoreChange directly
                           handleScoreChange(criterion.id, newValue);
                         }
                       }}
