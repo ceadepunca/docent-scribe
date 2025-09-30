@@ -395,10 +395,10 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
     fetchProfileAndEvaluations();
   }, [inscriptionId, user, subjectSelections, positionSelections, userId]);
 
-  // Handle Ctrl+Shift+D shortcut to replicate titulo_score from first row to all rows
+  // Handle Ctrl+Shift+R shortcut to replicate titulo_score from first row to all rows
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.shiftKey && e.key === 'D') {
+      if (e.ctrlKey && e.shiftKey && e.key === 'R') {
         e.preventDefault();
         e.stopPropagation();
         e.stopImmediatePropagation();

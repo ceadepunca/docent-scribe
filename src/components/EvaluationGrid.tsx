@@ -147,10 +147,10 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
     fetchExistingEvaluation();
   }, [inscriptionId, user, subjectSelection, positionSelection]);
 
-  // Handle Ctrl+Shift+D shortcut to replicate titulo_score from first row
+  // Handle Ctrl+Shift+R shortcut to replicate titulo_score from first row
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.shiftKey && e.key === 'D') {
+      if (e.ctrlKey && e.shiftKey && e.key === 'R') {
         e.preventDefault();
         e.stopPropagation();
         e.stopImmediatePropagation();

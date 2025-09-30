@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { LogOut, FileText, ClipboardList, UserPlus, Users } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 const AppHeader = () => {
   const { userRoles, profile, signOut } = useAuth();
@@ -97,6 +98,7 @@ const AppHeader = () => {
           <span className="text-sm text-muted-foreground">
             {profile?.first_name} {profile?.last_name}
           </span>
+          <ThemeToggle />
           <Button variant="outline" size="sm" onClick={signOut}>
             <LogOut className="mr-2 h-4 w-4" />
             Cerrar Sesión
