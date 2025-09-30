@@ -130,6 +130,19 @@ const InscriptionDetail = () => {
     fetchInscriptionDetail();
   }, [id, user]);
 
+  // Handle automatic scroll to evaluation when hash is present
+  useEffect(() => {
+    if (window.location.hash === '#evaluation') {
+      // Wait for the component to render and then scroll to evaluation
+      setTimeout(() => {
+        const evaluationGrid = document.querySelector('[data-evaluation-grid]');
+        if (evaluationGrid) {
+          evaluationGrid.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 500);
+    }
+  }, [inscription]);
+
   const fetchInscriptionDetail = async () => {
     if (!user || !id) return;
 

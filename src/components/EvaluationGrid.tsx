@@ -118,6 +118,9 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
   const [showNavigationDialog, setShowNavigationDialog] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState<() => void | null>(null);
 
+  // State for input values to allow comma input
+  const [inputValues, setInputValues] = useState<Record<string, string>>({});
+
   // Use unsaved changes hook
   const { hasUnsavedChanges } = useUnsavedChanges(evaluation, originalEvaluation);
 
@@ -285,13 +288,21 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
   };
 
   const handleScoreChange = (criterionId: keyof EvaluationData, value: string) => {
-    // Convert "." to "," for better UX
+    // Convert "." to "," for better UX - only replace the first decimal point
     const normalizedValue = value.replace('.', ',');
+    
+    // Store the input value as string to allow comma input
+    setInputValues(prev => ({
+      ...prev,
+      [criterionId]: normalizedValue
+    }));
+    
+    // Convert to number for calculations
     const numericValue = parseFloat(normalizedValue.replace(',', '.')) || 0;
     const criterion = evaluationCriteria.find(c => c.id === criterionId);
     
-    // Validate against maximum value if set
-    if (criterion?.maxValue && numericValue > criterion.maxValue) {
+    // Validate against maximum value if set (only if we have a valid number)
+    if (criterion?.maxValue && numericValue > criterion.maxValue && !isNaN(numericValue)) {
       toast({
         title: 'Valor inválido',
         description: `El puntaje máximo para ${criterion.label} es ${criterion.maxValue}`,
@@ -300,6 +311,7 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
       return;
     }
 
+    // Store the numeric value for calculations
     setEvaluation(prev => ({
       ...prev,
       [criterionId]: numericValue
@@ -418,16 +430,10 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
           }, 1500);
         }
       } else if (finalStatus === 'completed' && !evaluationNavigation?.hasEvaluationContext) {
-        // If not in evaluation context, redirect to evaluations page
+        // If not in evaluation context, redirect to inscription management
         setTimeout(() => {
-          toast({
-            title: 'Evaluación completada',
-            description: 'La evaluación ha sido finalizada correctamente',
-          });
-          setTimeout(() => {
-            navigate('/evaluations');
-          }, 1500);
-        }, 1500);
+          navigate('/inscription-management');
+        }, 2000); // Wait 2 seconds to show the success message
       }
     } catch (error) {
       console.error('Error saving evaluation:', error);
@@ -582,10 +588,9 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
                   <TableCell>
                     <Input
                       type="text"
-                      value={typeof evaluation[criterion.id] === 'number' ? String(evaluation[criterion.id]).replace('.', ',') : ''}
+                      value={inputValues[criterion.id] || (typeof evaluation[criterion.id] === 'number' ? String(evaluation[criterion.id]).replace('.', ',') : '')}
                       onChange={(e) => {
-                        const newValue = e.target.value.replace('.', ',');
-                        handleScoreChange(criterion.id, newValue);
+                        handleScoreChange(criterion.id, e.target.value);
                       }}
                       onKeyDown={(e) => {
                         if (e.key === '.') {

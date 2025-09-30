@@ -389,7 +389,7 @@ const AssistedInscription = () => {
       // Redirect to evaluation page after successful inscription creation/update
       if (inscription?.id) {
         setTimeout(() => {
-          navigate(`/inscriptions/${inscription.id}`);
+          navigate(`/inscriptions/${inscription.id}#evaluation`);
         }, 1500); // Wait 1.5 seconds to show the success message
       }
 

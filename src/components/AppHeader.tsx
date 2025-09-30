@@ -52,7 +52,7 @@ const AppHeader = () => {
                   className="flex items-center gap-2"
                 >
                   <Users className="h-4 w-4" />
-                  Gestión de Inscripciones
+                  Inscripciones y evaluaciones
                 </Button>
                 <Button
                   variant={location.pathname === '/evaluations' ? 'default' : 'ghost'}

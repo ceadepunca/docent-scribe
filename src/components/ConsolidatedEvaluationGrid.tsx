@@ -126,6 +126,9 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [globalNotes, setGlobalNotes] = useState('');
+  
+  // State for input values to allow comma input
+  const [inputValues, setInputValues] = useState<Record<string, Record<string, string>>>({});
 
   // Group similar items by name/title scope
   const groupItems = (subjects: SubjectSelection[], positions: PositionSelection[]): GroupedItem[] => {
@@ -454,8 +457,19 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
   };
 
   const handleScoreChange = (groupIndex: number, criterionId: keyof EvaluationData, value: string) => {
-    // Convert "." to "," for better UX
+    // Convert "." to "," for better UX - only replace the first decimal point
     const normalizedValue = value.replace('.', ',');
+    
+    // Store the input value as string to allow comma input
+    const groupId = groupedItems[groupIndex]?.id || groupIndex.toString();
+    setInputValues(prev => ({
+      ...prev,
+      [groupId]: {
+        ...prev[groupId],
+        [criterionId]: normalizedValue
+      }
+    }));
+    
     const numericValue = parseFloat(normalizedValue.replace(',', '.')) || 0;
     const criterion = evaluationCriteria.find(c => c.id === criterionId);
     const group = groupedItems[groupIndex];
@@ -639,8 +653,8 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
       }
 
       toast({
-        title: 'Evaluaciones finalizadas',
-        description: 'Todas las evaluaciones han sido finalizadas correctamente',
+        title: 'Evaluación guardada',
+        description: 'La evaluación ha sido guardada correctamente',
       });
 
       // Auto-navigate to next unevaluated if in evaluation context
@@ -652,13 +666,13 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
         // If not in evaluation context, redirect to inscription management
         setTimeout(() => {
           navigate('/inscription-management');
-        }, 1500);
+        }, 2000); // Wait 2 seconds to show the success message
       }
     } catch (error: any) {
       console.error('Error completing evaluations:', error);
       toast({
         title: 'Error',
-        description: `No se pudieron finalizar las evaluaciones: ${error.message || error}`,
+        description: `No se pudo guardar la evaluación: ${error.message || error}`,
         variant: 'destructive',
       });
     } finally {
@@ -831,10 +845,17 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
                             <Input
                               type="text"
                               value={(() => {
+                                const groupId = group.id || groupIndex.toString();
+                                const inputValue = inputValues[groupId]?.[criterion.id];
+                                if (inputValue !== undefined) {
+                                  return inputValue;
+                                }
                                 const val = group.evaluation[criterion.id as keyof EvaluationData];
                                 return typeof val === 'number' ? String(val).replace('.', ',') : '';
                               })()}
-                              onChange={(e) => handleScoreChange(groupIndex, criterion.id as keyof EvaluationData, e.target.value)}
+                              onChange={(e) => {
+                                handleScoreChange(groupIndex, criterion.id as keyof EvaluationData, e.target.value);
+                              }}
                               onKeyDown={(e) => {
                                 if (e.key === '.') {
                                   e.preventDefault();
@@ -846,7 +867,6 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
                                   // Replace selected text with comma, or insert comma at cursor position
                                   const newValue = currentValue.slice(0, cursorPosition) + ',' + currentValue.slice(selectionEnd);
                                   
-                                  // Trigger handleScoreChange directly without manipulating input
                                   handleScoreChange(groupIndex, criterion.id as keyof EvaluationData, newValue);
                                 }
                               }}
@@ -914,7 +934,7 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
                         className="flex items-center gap-2"
                       >
                         <Calculator className="h-4 w-4" />
-                        Finalizar Todas las Evaluaciones
+                        Guardar evaluación
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>

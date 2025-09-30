@@ -217,11 +217,11 @@ const InscriptionForm: React.FC<InscriptionFormProps> = ({ initialData, isEdit =
 
       // Redirigir al formulario de la grilla de evaluación (InscriptionDetail)
       if (result.data?.id) {
-        navigate(`/inscriptions/${result.data.id}`);
+        navigate(`/inscriptions/${result.data.id}#evaluation`);
       } else if (result.id) {
-        navigate(`/inscriptions/${result.id}`);
+        navigate(`/inscriptions/${result.id}#evaluation`);
       } else if (isEdit && initialData?.id) {
-        navigate(`/inscriptions/${initialData.id}`);
+        navigate(`/inscriptions/${initialData.id}#evaluation`);
       } else {
         navigate('/inscriptions');
       }
@@ -387,7 +387,7 @@ const InscriptionForm: React.FC<InscriptionFormProps> = ({ initialData, isEdit =
         evaluationNavigation.backToEvaluations();
       } else {
         // Otherwise, go to the inscription detail page to show the evaluation grid
-        navigate(`/inscriptions/${inscription.id}`);
+        navigate(`/inscriptions/${inscription.id}#evaluation`);
       }
     } catch (error) {
       console.error('Error:', error);

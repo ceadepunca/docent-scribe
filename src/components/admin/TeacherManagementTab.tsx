@@ -34,36 +34,24 @@ export const TeacherManagementTab = () => {
   };
 
   const filteredTeachers = teachers.filter(teacher => {
-    const searchLower = searchTerm.toLowerCase();
+    if (!searchTerm.trim()) return true;
+    
+    const searchLower = searchTerm.toLowerCase().trim();
     const normalizedSearchTerm = normalizeDNI(searchTerm);
     
-    // Debug logging
-    if (searchTerm === '20072342') {
-      console.log('Filtering for DNI 20072342:');
-      console.log('- Teacher DNI:', teacher.dni);
-      console.log('- Normalized teacher DNI:', normalizeDNI(teacher.dni || ''));
-      console.log('- Normalized search term:', normalizedSearchTerm);
-      console.log('- Teacher name:', teacher.first_name, teacher.last_name);
-    }
+    // Search in all fields simultaneously
+    const matchesName = teacher.first_name?.toLowerCase().includes(searchLower) || false;
+    const matchesLastName = teacher.last_name?.toLowerCase().includes(searchLower) || false;
+    const matchesEmail = teacher.email?.toLowerCase().includes(searchLower) || false;
+    const matchesLegajo = teacher.legajo_number?.toLowerCase().includes(searchLower) || false;
+    const matchesDNI = normalizedSearchTerm && normalizeDNI(teacher.dni || '').includes(normalizedSearchTerm);
     
-    // If search term looks like a DNI (only numbers or numbers with dots), prioritize DNI search
-    if (/^[\d\.]+$/.test(searchTerm)) {
-      const teacherDNI = normalizeDNI(teacher.dni || '');
-      const matches = teacherDNI.includes(normalizedSearchTerm);
-      
-      if (searchTerm === '20072342') {
-        console.log('- DNI match result:', matches);
-      }
-      
-      return matches;
-    }
+    // Also check if the search term matches the full name (first + last)
+    const fullName = `${teacher.first_name || ''} ${teacher.last_name || ''}`.toLowerCase().trim();
+    const matchesFullName = fullName.includes(searchLower);
     
-    // Otherwise, search in all fields
-    return teacher.first_name.toLowerCase().includes(searchLower) ||
-           teacher.last_name.toLowerCase().includes(searchLower) ||
-           normalizeDNI(teacher.dni || '').includes(normalizedSearchTerm) ||
-           teacher.email.toLowerCase().includes(searchLower) ||
-           teacher.legajo_number?.toLowerCase().includes(searchLower);
+    // Return true if any field matches
+    return matchesName || matchesLastName || matchesFullName || matchesEmail || matchesLegajo || matchesDNI;
   });
 
   const getStatusBadge = (teacher: any) => {
@@ -156,62 +144,22 @@ export const TeacherManagementTab = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
               className="max-w-md"
             />
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={async () => {
-                const result = await checkTeacherExists('20072342');
-                console.log('Debug check for DNI 20072342:', result);
-                alert(`Docente con DNI 20072342: ${result.exists ? 'EXISTE' : 'NO EXISTE'}\n${result.teacher ? `Nombre: ${result.teacher.first_name} ${result.teacher.last_name}` : ''}`);
-              }}
-              title="Debug: Verificar DNI 20072342"
-            >
-              Debug DNI
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                console.log('All teachers:', teachers);
-                const teacherWithDNI = teachers.find(t => normalizeDNI(t.dni || '') === '20072342');
-                console.log('Teacher with DNI 20072342 in teachers array:', teacherWithDNI);
-                alert(`Total docentes cargados: ${teachers.length}\nDocente con DNI 20072342 en array: ${teacherWithDNI ? `${teacherWithDNI.first_name} ${teacherWithDNI.last_name}` : 'NO ENCONTRADA'}`);
-              }}
-              title="Debug: Verificar en array de docentes"
-            >
-              Debug Array
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setSearchTerm('');
-                console.log('Search term cleared');
-              }}
-              title="Limpiar búsqueda"
-            >
-              Limpiar
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                console.log('Reloading teachers...');
-                fetchTeachers();
-              }}
-              title="Recargar todos los docentes"
-            >
-              Recargar
-            </Button>
+            {searchTerm && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setSearchTerm('')}
+                title="Limpiar búsqueda"
+              >
+                Limpiar
+              </Button>
+            )}
           </div>
 
-          {/* Debug Info */}
+          {/* Search Results Info */}
           {searchTerm && (
             <div className="mb-4 p-2 bg-blue-50 rounded text-sm">
-              <strong>Debug Info:</strong> Búsqueda: "{searchTerm}" | 
-              Total docentes: {teachers.length} | 
-              Filtrados: {filteredTeachers.length} |
-              Normalizado: {normalizeDNI(searchTerm)}
+              <strong>Resultados:</strong> {filteredTeachers.length} de {teachers.length} docentes encontrados para "{searchTerm}"
             </div>
           )}
 
