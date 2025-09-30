@@ -247,7 +247,7 @@ export const useEvaluationNavigation = (currentInscriptionId: string | undefined
     if (statusFilter) params.set('status', statusFilter);
     
     const queryString = params.toString();
-    navigate(`/evaluations${queryString ? `?${queryString}` : ''}`);
+    navigate(`/inscription-management${queryString ? `?${queryString}` : ''}`);
   }, [currentPeriodId, periodId, levelFilter, statusFilter, navigate]);
 
   return {

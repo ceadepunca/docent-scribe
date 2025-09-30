@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -14,6 +15,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 export const PeriodInscriptionsView: React.FC = () => {
+  const navigate = useNavigate();
   const { periods, loading: periodsLoading, fetchAllPeriods } = useInscriptionPeriods();
   const [selectedPeriodId, setSelectedPeriodId] = useState<string>('');
   const { isSuperAdmin, isEvaluator } = useAuth();
@@ -296,7 +298,7 @@ export const PeriodInscriptionsView: React.FC = () => {
                                     <Button
                                       variant="outline"
                                       size="sm"
-                                      onClick={() => window.open(`/inscriptions/${inscription.id}`, '_blank')}
+                                      onClick={() => navigate(`/inscriptions/${inscription.id}`)}
                                       className="flex items-center gap-2"
                                     >
                                       <Eye className="h-4 w-4" />

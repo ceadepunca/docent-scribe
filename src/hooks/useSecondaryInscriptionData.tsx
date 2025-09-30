@@ -12,6 +12,7 @@ export interface Subject {
   name: string;
   school_id: string;
   specialty: 'ciclo_basico' | 'electromecanica' | 'construccion';
+  display_order?: number;
   school?: School;
 }
 
@@ -19,6 +20,7 @@ export interface AdministrativePosition {
   id: string;
   name: string;
   school_id: string;
+  display_order?: number;
   school?: School;
 }
 
@@ -52,13 +54,15 @@ export const useSecondaryInscriptionData = () => {
         
         supabase
           .from('subjects')
-          .select('id, name, school_id, specialty')
-          .eq('is_active', true),
+          .select('id, name, school_id, specialty, display_order')
+          .eq('is_active', true)
+          .order('display_order', { ascending: true, nullsFirst: false }),
         
         supabase
           .from('administrative_positions')
-          .select('id, name, school_id')
+          .select('id, name, school_id, display_order')
           .eq('is_active', true)
+          .order('display_order', { ascending: true, nullsFirst: false })
       ]);
 
       if (schoolsResult.error) throw schoolsResult.error;
@@ -169,6 +173,40 @@ export const useSecondaryInscriptionData = () => {
       // Positions to delete
       const positionsToDelete = currentPositionIds.filter(id => !newPositionIds.includes(id));
       if (positionsToDelete.length > 0) {
+        // Check if any of the positions to delete have evaluations linked
+        const { data: evaluationsToCheck, error: evalCheckError } = await supabase
+          .from('evaluations')
+          .select('id, position_selection_id')
+          .eq('inscription_id', inscriptionId)
+          .not('position_selection_id', 'is', null);
+
+        if (evalCheckError) throw evalCheckError;
+
+        // Get position selection IDs that have evaluations
+        const { data: positionSelectionsWithEvals, error: posCheckError } = await supabase
+          .from('inscription_position_selections')
+          .select('id, administrative_position_id')
+          .eq('inscription_id', inscriptionId)
+          .in('administrative_position_id', positionsToDelete);
+
+        if (posCheckError) throw posCheckError;
+
+        const positionSelectionIdsWithEvals = positionSelectionsWithEvals
+          .filter(ps => evaluationsToCheck.some(evaluation => evaluation.position_selection_id === ps.id))
+          .map(ps => ps.id);
+
+        // If there are evaluations linked to positions we want to delete, handle them
+        if (positionSelectionIdsWithEvals.length > 0) {
+          // Option 1: Delete the evaluations first (recommended for PRECEPTOR/A cleanup)
+          const { error: deleteEvalsError } = await supabase
+            .from('evaluations')
+            .delete()
+            .in('position_selection_id', positionSelectionIdsWithEvals);
+
+          if (deleteEvalsError) throw deleteEvalsError;
+        }
+
+        // Now delete the position selections
         const { error: deleteError } = await supabase
           .from('inscription_position_selections')
           .delete()

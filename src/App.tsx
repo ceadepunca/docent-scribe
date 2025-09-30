@@ -19,7 +19,6 @@ import NewInscription from "./pages/NewInscription";
 import Inscriptions from "./pages/Inscriptions";
 import InscriptionDetail from "./pages/InscriptionDetail";
 import EditInscription from "./pages/EditInscription";
-import Evaluations from "./pages/Evaluations";
 import Listings from "./pages/Listings";
 import InscriptionManagement from "./pages/InscriptionManagement";
 import AssistedInscription from "./pages/admin/AssistedInscription";
@@ -93,13 +92,6 @@ const App = () => (
               <ProtectedRoute allowedRoles={['docente', 'super_admin', 'evaluator']}>
                 <ProtectedLayout>
                   <Inscriptions />
-                </ProtectedLayout>
-              </ProtectedRoute>
-            } />
-            <Route path="/evaluations" element={
-              <ProtectedRoute allowedRoles={['evaluator', 'super_admin']}>
-                <ProtectedLayout>
-                  <Evaluations />
                 </ProtectedLayout>
               </ProtectedRoute>
             } />

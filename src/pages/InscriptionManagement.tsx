@@ -463,8 +463,8 @@ export const InscriptionManagement = () => {
                                           ? `/inscription-management?${returnParams.toString()}`
                                           : '/inscription-management';
                                         
-                                        // Open evaluation page with return URL
-                                        window.open(`/inscriptions/${inscription.id}?returnTo=${encodeURIComponent(returnUrl)}`, '_blank');
+                                        // Navigate to evaluation page with return URL
+                                        navigate(`/inscriptions/${inscription.id}?returnTo=${encodeURIComponent(returnUrl)}`);
                                       }}
                                       className="flex items-center gap-2"
                                     >

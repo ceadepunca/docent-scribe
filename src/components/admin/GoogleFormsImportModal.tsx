@@ -300,11 +300,11 @@ export const GoogleFormsImportModal: React.FC<GoogleFormsImportModalProps> = ({
                 {importResult.success && createAsSubmitted && (
                   <Button 
                     variant="outline" 
-                    onClick={() => window.open('/evaluations', '_blank')}
+                    onClick={() => window.open('/inscription-management', '_blank')}
                     className="flex items-center gap-2"
                   >
                     <ExternalLink className="h-4 w-4" />
-                    Ver en Evaluaciones
+                    Ver en Inscripciones y Evaluaciones
                   </Button>
                 )}
                 <Button onClick={handleClose}>

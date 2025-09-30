@@ -263,7 +263,7 @@ const Dashboard = () => {
 
           {/* Evaluaciones Card - Only for Evaluators */}
           {isEvaluator && (
-            <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate('/evaluations')}>
+            <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate('/inscription-management')}>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Users className="h-5 w-5" />

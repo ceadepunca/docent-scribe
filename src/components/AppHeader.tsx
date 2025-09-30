@@ -55,15 +55,6 @@ const AppHeader = () => {
                   Inscripciones y evaluaciones
                 </Button>
                 <Button
-                  variant={location.pathname === '/evaluations' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => navigate('/evaluations')}
-                  className="flex items-center gap-2"
-                >
-                  <ClipboardList className="h-4 w-4" />
-                  Evaluaciones
-                </Button>
-                <Button
                   variant={location.pathname === '/listings' ? 'default' : 'ghost'}
                   size="sm"
                   onClick={() => navigate('/listings')}
