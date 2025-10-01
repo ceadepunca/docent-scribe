@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useTeacherManagement } from '@/hooks/useTeacherManagement';
@@ -15,6 +16,7 @@ export const TeacherManagementTab = () => {
   const navigate = useNavigate();
   const { teachers, loading, fetchTeachers, getTeacherStats, checkTeacherExists } = useTeacherManagement();
   const [searchTerm, setSearchTerm] = useState('');
+  const [completenessFilter, setCompletenessFilter] = useState('all'); // 'all', 'complete', 'incomplete'
   const [showImportModal, setShowImportModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -34,24 +36,34 @@ export const TeacherManagementTab = () => {
   };
 
   const filteredTeachers = teachers.filter(teacher => {
-    if (!searchTerm.trim()) return true;
-    
-    const searchLower = searchTerm.toLowerCase().trim();
-    const normalizedSearchTerm = normalizeDNI(searchTerm);
-    
-    // Search in all fields simultaneously
-    const matchesName = teacher.first_name?.toLowerCase().includes(searchLower) || false;
-    const matchesLastName = teacher.last_name?.toLowerCase().includes(searchLower) || false;
-    const matchesEmail = teacher.email?.toLowerCase().includes(searchLower) || false;
-    const matchesLegajo = teacher.legajo_number?.toLowerCase().includes(searchLower) || false;
-    const matchesDNI = normalizedSearchTerm && normalizeDNI(teacher.dni || '').includes(normalizedSearchTerm);
-    
-    // Also check if the search term matches the full name (first + last)
-    const fullName = `${teacher.first_name || ''} ${teacher.last_name || ''}`.toLowerCase().trim();
-    const matchesFullName = fullName.includes(searchLower);
-    
-    // Return true if any field matches
-    return matchesName || matchesLastName || matchesFullName || matchesEmail || matchesLegajo || matchesDNI;
+    // Filter by completeness
+    if (completenessFilter !== 'all') {
+      const isComplete = teacher.data_complete === true;
+      if (completenessFilter === 'complete' && !isComplete) {
+        return false;
+      }
+      if (completenessFilter === 'incomplete' && isComplete) {
+        return false;
+      }
+    }
+
+    // Filter by search term
+    if (searchTerm.trim()) {
+      const searchLower = searchTerm.toLowerCase().trim();
+      const normalizedSearchTerm = normalizeDNI(searchTerm);
+      
+      const matchesName = teacher.first_name?.toLowerCase().includes(searchLower) || false;
+      const matchesLastName = teacher.last_name?.toLowerCase().includes(searchLower) || false;
+      const matchesEmail = teacher.email?.toLowerCase().includes(searchLower) || false;
+      const matchesLegajo = teacher.legajo_number?.toLowerCase().includes(searchLower) || false;
+      const matchesDNI = normalizedSearchTerm && normalizeDNI(teacher.dni || '').includes(normalizedSearchTerm);
+      const fullName = `${teacher.first_name || ''} ${teacher.last_name || ''}`.toLowerCase().trim();
+      const matchesFullName = fullName.includes(searchLower);
+      
+      return matchesName || matchesLastName || matchesFullName || matchesEmail || matchesLegajo || matchesDNI;
+    }
+
+    return true;
   });
 
   const getStatusBadge = (teacher: any) => {
@@ -136,24 +148,37 @@ export const TeacherManagementTab = () => {
         </CardHeader>
         <CardContent>
           {/* Search */}
-          <div className="flex items-center gap-2 mb-4">
-            <Search className="h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar por nombre, apellido, DNI, email o legajo..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="max-w-md"
-            />
-            {searchTerm && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setSearchTerm('')}
-                title="Limpiar búsqueda"
-              >
-                Limpiar
-              </Button>
-            )}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 mb-4">
+            <div className="relative flex-1 w-full">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+              <Input
+                placeholder="Buscar por nombre, apellido, DNI, email o legajo..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 w-full"
+              />
+            </div>
+            <Select value={completenessFilter} onValueChange={setCompletenessFilter}>
+              <SelectTrigger className="w-full sm:w-48">
+                <SelectValue placeholder="Filtrar por estado" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los estados</SelectItem>
+                <SelectItem value="complete">Completos</SelectItem>
+                <SelectItem value="incomplete">Incompletos</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setSearchTerm('');
+                setCompletenessFilter('all');
+              }}
+              title="Limpiar filtros"
+            >
+              Limpiar
+            </Button>
           </div>
 
           {/* Search Results Info */}
