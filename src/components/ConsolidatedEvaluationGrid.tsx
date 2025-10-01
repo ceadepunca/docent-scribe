@@ -662,7 +662,7 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
       if (evaluationNavigation?.hasEvaluationContext) {
         // Siempre regresar a la página de selección de docente (evaluaciones)
         setTimeout(() => {
-          evaluationNavigation.backToEvaluations();
+          navigate('/inscription-management');
         }, 1500);
       } else if (!evaluationNavigation?.hasEvaluationContext) {
         // If not in evaluation context, redirect to inscription management
@@ -818,10 +818,10 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
                               </Badge>
                             )}
                              {/* Botón eliminar evaluación solo para super admin */}
-                             {isSuperAdmin && group.evaluation && group.evaluation.id && (
+                             {isSuperAdmin && group.evaluation && (group.evaluation as any).id && (
                                <Button
                                  variant="destructive"
-                                 size="xs"
+                                 size="sm"
                                  className="ml-2 px-2 py-0 text-xs"
                                  onClick={async () => {
                                    if (window.confirm('¿Seguro que deseas eliminar esta evaluación? Esta acción no se puede deshacer.')) {
@@ -829,7 +829,7 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
                                      const { error } = await supabase
                                        .from('evaluations')
                                        .delete()
-                                       .eq('id', group.evaluation.id);
+                                       .eq('id', (group.evaluation as any).id);
                                      setSaving(false);
                                      if (!error) {
                                        toast({ title: 'Evaluación eliminada', description: 'La evaluación fue eliminada correctamente.' });

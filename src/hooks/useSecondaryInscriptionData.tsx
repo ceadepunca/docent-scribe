@@ -54,15 +54,15 @@ export const useSecondaryInscriptionData = () => {
         
         supabase
           .from('subjects')
-          .select('id, name, school_id, specialty, display_order')
+          .select('id, name, school_id, specialty')
           .eq('is_active', true)
-          .order('display_order', { ascending: true, nullsFirst: false }),
+          .order('name', { ascending: true }),
         
         supabase
           .from('administrative_positions')
-          .select('id, name, school_id, display_order')
+          .select('id, name, school_id')
           .eq('is_active', true)
-          .order('display_order', { ascending: true, nullsFirst: false })
+          .order('name', { ascending: true })
       ]);
 
       if (schoolsResult.error) throw schoolsResult.error;

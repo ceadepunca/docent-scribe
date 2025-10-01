@@ -82,10 +82,10 @@ export const ListingTable: React.FC<ListingTableProps> = ({ listings }) => {
       }
       const titleType = deriveTitleType(item);
       if (item.item_type === 'subject') {
-        // Agrupar specialty no estándar en 'otras'
-        let specialty = item.specialty;
-        if (!specialty || !['ciclo_basico', 'electromecanica', 'construccion'].includes(specialty)) {
-          specialty = 'otras';
+        // Usar specialty o ciclo_basico como default
+        let specialty: 'ciclo_basico' | 'electromecanica' | 'construccion' = item.specialty || 'ciclo_basico';
+        if (!['ciclo_basico', 'electromecanica', 'construccion'].includes(specialty)) {
+          specialty = 'ciclo_basico';
         }
         if (!grouped[item.school_name].subjects[specialty]) {
           grouped[item.school_name].subjects[specialty] = {};
