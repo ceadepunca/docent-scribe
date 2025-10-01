@@ -523,6 +523,33 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
             <Badge variant={evaluation.status === 'completed' ? 'default' : 'secondary'}>
               {evaluation.status === 'completed' ? 'Finalizada' : 'Borrador'}
             </Badge>
+            {/* Botón eliminar evaluación solo para super admin */}
+            {user && user.isSuperAdmin && evaluation && evaluation.id && (
+              <Button
+                variant="destructive"
+                size="xs"
+                className="ml-2 px-2 py-0 text-xs"
+                onClick={async () => {
+                  if (window.confirm('¿Seguro que deseas eliminar esta evaluación? Esta acción no se puede deshacer.')) {
+                    setSaving(true);
+                    const { error } = await supabase
+                      .from('evaluations')
+                      .delete()
+                      .eq('id', evaluation.id);
+                    setSaving(false);
+                    if (!error) {
+                      toast({ title: 'Evaluación eliminada', description: 'La evaluación fue eliminada correctamente.' });
+                      // Refrescar la grilla
+                      window.location.reload();
+                    } else {
+                      toast({ title: 'Error', description: 'No se pudo eliminar la evaluación.', variant: 'destructive' });
+                    }
+                  }
+                }}
+              >
+                Eliminar
+              </Button>
+            )}
           </div>
         </div>
       </CardHeader>

@@ -73,7 +73,6 @@ const getTitleTypeDisplay = (item: ListingItem): string => {
 export const ListingTable: React.FC<ListingTableProps> = ({ listings }) => {
   const groupListings = (listings: ListingItem[]): GroupedListings => {
     const grouped: GroupedListings = {};
-    
     listings.forEach(item => {
       if (!grouped[item.school_name]) {
         grouped[item.school_name] = {
@@ -81,12 +80,13 @@ export const ListingTable: React.FC<ListingTableProps> = ({ listings }) => {
           positions: {}
         };
       }
-
       const titleType = deriveTitleType(item);
-
       if (item.item_type === 'subject') {
-        const specialty = item.specialty || 'ciclo_basico';
-        
+        // Agrupar specialty no estándar en 'otras'
+        let specialty = item.specialty;
+        if (!specialty || !['ciclo_basico', 'electromecanica', 'construccion'].includes(specialty)) {
+          specialty = 'otras';
+        }
         if (!grouped[item.school_name].subjects[specialty]) {
           grouped[item.school_name].subjects[specialty] = {};
         }
@@ -107,7 +107,6 @@ export const ListingTable: React.FC<ListingTableProps> = ({ listings }) => {
         grouped[item.school_name].positions[item.item_name][titleType].push(item);
       }
     });
-
     return grouped;
   };
 
@@ -115,7 +114,8 @@ export const ListingTable: React.FC<ListingTableProps> = ({ listings }) => {
     const labels = {
       ciclo_basico: 'CICLO BÁSICO',
       electromecanica: 'ELECTROMECÁNICA',
-      construccion: 'CONSTRUCCIÓN'
+      construccion: 'CONSTRUCCIÓN',
+      otras: 'OTRAS'
     };
     return labels[specialty as keyof typeof labels] || specialty.toUpperCase();
   };

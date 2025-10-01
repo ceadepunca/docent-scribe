@@ -487,22 +487,15 @@ const Inscriptions = () => {
                               <Eye className="h-3 w-3" />
                               Ver
                             </Button>
-                            {(
-                              // Owner can edit their draft or requires_changes inscriptions
-                              (['draft', 'requires_changes'].includes(inscription.status) && (inscription.user_id === user.id || inscription.user_id === profile?.id)) ||
-                              // Super admin and evaluator can edit any inscription including submitted ones
-                              ((isSuperAdmin || isEvaluator) && ['draft', 'requires_changes', 'submitted'].includes(inscription.status))
-                             ) && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => navigate(`/inscriptions/${inscription.id}/edit`)}
-                                className="flex items-center gap-1"
-                              >
-                                <Edit2 className="h-3 w-3" />
-                                Editar
-                              </Button>
-                            )}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => navigate(`/inscriptions/${inscription.id}/edit`)}
+                              className="flex items-center gap-1"
+                            >
+                              <Edit2 className="h-3 w-3" />
+                              Editar
+                            </Button>
                           </div>
                         </TableCell>
                       </TableRow>

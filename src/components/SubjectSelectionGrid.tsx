@@ -175,10 +175,10 @@ export const SubjectSelectionGrid: React.FC<SubjectSelectionGridProps> = ({
           })}
         </div>
 
-        {/* Selection Summary */}
+        {/* Mostrar materias seleccionadas que no aparecen en la grilla principal */}
         {selectedSubjects.length > 0 && (
           <div className="mt-6 p-4 bg-muted/50 rounded-lg">
-            <h4 className="font-medium mb-3">Materias Seleccionadas:</h4>
+            <h4 className="font-medium mb-3">Materias Seleccionadas (incluye materias no agrupadas):</h4>
             <div className="flex flex-wrap gap-2">
               {selectedSubjects.map((selection, index) => {
                 const subject = subjects.find(s => s.id === selection.subject_id);

@@ -55,7 +55,10 @@ export const FraySubjectsAndPositions: React.FC<FraySubjectsAndPositionsProps> =
 }) => {
   // Filter for FRAY school - get school ID first
   const fraySchool = schools.find(school => school.name?.includes('Fray'));
-  const fraySubjects = subjects.filter(subject => subject.school_id === fraySchool?.id);
+  // Ordenar materias alfabéticamente por nombre
+  const fraySubjects = subjects
+    .filter(subject => subject.school_id === fraySchool?.id)
+    .sort((a, b) => a.name.localeCompare(b.name));
   const frayPositions = positions.filter(position => position.school_id === fraySchool?.id);
 
   // Group subjects by specialty

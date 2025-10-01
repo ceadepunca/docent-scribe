@@ -118,7 +118,7 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
   userId,
   evaluationNavigation
 }) => {
-  const { user } = useAuth();
+  const { user, isSuperAdmin } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [profile, setProfile] = useState<ProfileData | null>(null);
@@ -357,6 +357,7 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
         // No filtrar por evaluador: mostrar cualquier evaluación encontrada
         if (finalEvaluationData) {
           const loadedEvaluation = {
+            id: finalEvaluationData.id,
             titulo_score: finalEvaluationData.titulo_score ?? 0,
             antiguedad_titulo_score: finalEvaluationData.antiguedad_titulo_score ?? 0,
             antiguedad_docente_score: finalEvaluationData.antiguedad_docente_score ?? 0,
@@ -816,6 +817,33 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
                                 ↔ Sync
                               </Badge>
                             )}
+                             {/* Botón eliminar evaluación solo para super admin */}
+                             {isSuperAdmin && group.evaluation && group.evaluation.id && (
+                               <Button
+                                 variant="destructive"
+                                 size="xs"
+                                 className="ml-2 px-2 py-0 text-xs"
+                                 onClick={async () => {
+                                   if (window.confirm('¿Seguro que deseas eliminar esta evaluación? Esta acción no se puede deshacer.')) {
+                                     setSaving(true);
+                                     const { error } = await supabase
+                                       .from('evaluations')
+                                       .delete()
+                                       .eq('id', group.evaluation.id);
+                                     setSaving(false);
+                                     if (!error) {
+                                       toast({ title: 'Evaluación eliminada', description: 'La evaluación fue eliminada correctamente.' });
+                                       // Eliminar el grupo del estado local para que desaparezca de la grilla
+                                       setGroupedItems(prev => prev.filter((_, idx) => idx !== groupIndex));
+                                     } else {
+                                       toast({ title: 'Error', description: 'No se pudo eliminar la evaluación.', variant: 'destructive' });
+                                     }
+                                   }
+                                 }}
+                               >
+                                 Eliminar
+                               </Button>
+                             )}
                           </div>
                         </div>
                       </TableCell>
