@@ -125,13 +125,14 @@ export const FraySubjectsAndPositions: React.FC<FraySubjectsAndPositionsProps> =
           <CardTitle>Materias - Fray M Esquiú</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          {Object.entries(subjectsBySpecialty).map(([specialty, subjects]) => (
-            <div key={specialty} className="space-y-3">
+          {/* Mostrar primero ciclo básico */}
+          {subjectsBySpecialty['ciclo_basico'] && (
+            <div key="ciclo_basico" className="space-y-3">
               <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">
-                {getSpecialtyLabel(specialty)}
+                CICLO BÁSICO
               </h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                {subjects.map((subject) => (
+                {subjectsBySpecialty['ciclo_basico'].map((subject) => (
                   <div key={subject.id} className="flex items-center space-x-4 p-2 rounded-lg border">
                     <div className="flex-1">
                       <span className="text-sm font-medium">{subject.name}</span>
@@ -149,7 +150,35 @@ export const FraySubjectsAndPositions: React.FC<FraySubjectsAndPositionsProps> =
                 ))}
               </div>
             </div>
-          ))}
+          )}
+          {/* Luego los demás grupos */}
+          {Object.entries(subjectsBySpecialty)
+            .filter(([specialty]) => specialty !== 'ciclo_basico')
+            .map(([specialty, subjects]) => (
+              <div key={specialty} className="space-y-3">
+                <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">
+                  {specialty.toUpperCase()}
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  {subjects.map((subject) => (
+                    <div key={subject.id} className="flex items-center space-x-4 p-2 rounded-lg border">
+                      <div className="flex-1">
+                        <span className="text-sm font-medium">{subject.name}</span>
+                      </div>
+                      <div className="flex items-center">
+                        <Checkbox
+                          checked={isSubjectSelected(subject.id)}
+                          onCheckedChange={(checked) => 
+                            handleSubjectChange(subject.id, checked as boolean)
+                          }
+                        />
+                        <span className="ml-2 text-xs">Inscribirse</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
         </CardContent>
       </Card>
 
