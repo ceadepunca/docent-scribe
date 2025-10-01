@@ -78,7 +78,9 @@ export const useListingData = () => {
     setError(null);
 
     try {
-      // Base query for subject selections
+      // Base query for subject selections with explicit JOIN to handle migrated profiles
+      // For migrated profiles: inscriptions.user_id = profiles.id (profiles.user_id is null)
+      // For regular users: inscriptions.user_id = profiles.user_id
       let subjectQuery = supabase
         .from('inscription_subject_selections')
         .select(`
@@ -87,21 +89,7 @@ export const useListingData = () => {
           subject_id,
           inscriptions!inner(
             user_id,
-            teaching_level,
-            profiles!inner(
-              first_name,
-              last_name,
-              dni,
-              email,
-              titulo_1_nombre,
-              titulo_1_promedio,
-              titulo_2_nombre,
-              titulo_2_promedio,
-              titulo_3_nombre,
-              titulo_3_promedio,
-              titulo_4_nombre,
-              titulo_4_promedio
-            )
+            teaching_level
           ),
           subjects!inner(
             name,
@@ -139,7 +127,7 @@ export const useListingData = () => {
         subjectQuery = subjectQuery.eq('inscriptions.inscription_period_id', filters.periodId);
       }
 
-      // Base query for position selections
+      // Base query for position selections with explicit handling for migrated profiles
       let positionQuery = supabase
         .from('inscription_position_selections')
         .select(`
@@ -148,21 +136,7 @@ export const useListingData = () => {
           administrative_position_id,
           inscriptions!inner(
             user_id,
-            teaching_level,
-            profiles!inner(
-              first_name,
-              last_name,
-              dni,
-              email,
-              titulo_1_nombre,
-              titulo_1_promedio,
-              titulo_2_nombre,
-              titulo_2_promedio,
-              titulo_3_nombre,
-              titulo_3_promedio,
-              titulo_4_nombre,
-              titulo_4_promedio
-            )
+            teaching_level
           ),
           administrative_positions!inner(
             name,
@@ -211,9 +185,38 @@ export const useListingData = () => {
         const { data: subjectSelections, error: subjectError } = await subjectQuery;
         if (subjectError) throw subjectError;
 
+        // Get all unique user_ids from inscriptions
+        const userIds = [...new Set(subjectSelections?.map((s: any) => s.inscriptions.user_id) || [])];
+        
+        // Fetch profiles for all user_ids at once
+        // For migrated profiles: profiles.id = inscriptions.user_id
+        // For regular users: profiles.user_id = inscriptions.user_id OR profiles.id = inscriptions.user_id
+        const { data: profiles, error: profilesError } = await supabase
+          .from('profiles')
+          .select('*')
+          .or(`id.in.(${userIds.join(',')}),user_id.in.(${userIds.join(',')})`);
+        
+        if (profilesError) throw profilesError;
+
+        // Create a map for quick profile lookup
+        const profilesMap = new Map();
+        profiles?.forEach((profile: any) => {
+          // Map by both id and user_id to handle both migrated and regular users
+          profilesMap.set(profile.id, profile);
+          if (profile.user_id) {
+            profilesMap.set(profile.user_id, profile);
+          }
+        });
+
         subjectSelections?.forEach((selection: any) => {
           const evaluation = subjectEvaluationsMap.get(selection.id);
-          const profile = selection.inscriptions.profiles;
+          const profile = profilesMap.get(selection.inscriptions.user_id);
+          
+          if (!profile) {
+            console.warn(`Profile not found for user_id: ${selection.inscriptions.user_id}`);
+            return;
+          }
+
           const titles = [
             profile.titulo_1_nombre && `${profile.titulo_1_nombre} (${profile.titulo_1_promedio || 'N/A'})`,
             profile.titulo_2_nombre && `${profile.titulo_2_nombre} (${profile.titulo_2_promedio || 'N/A'})`,
@@ -262,9 +265,35 @@ export const useListingData = () => {
         const { data: positionSelections, error: positionError } = await positionQuery;
         if (positionError) throw positionError;
 
+        // Get all unique user_ids from inscriptions
+        const userIds = [...new Set(positionSelections?.map((s: any) => s.inscriptions.user_id) || [])];
+        
+        // Fetch profiles for all user_ids at once
+        const { data: profiles, error: profilesError } = await supabase
+          .from('profiles')
+          .select('*')
+          .or(`id.in.(${userIds.join(',')}),user_id.in.(${userIds.join(',')})`);
+        
+        if (profilesError) throw profilesError;
+
+        // Create a map for quick profile lookup
+        const profilesMap = new Map();
+        profiles?.forEach((profile: any) => {
+          profilesMap.set(profile.id, profile);
+          if (profile.user_id) {
+            profilesMap.set(profile.user_id, profile);
+          }
+        });
+
         positionSelections?.forEach((selection: any) => {
           const evaluation = positionEvaluationsMap.get(selection.id);
-          const profile = selection.inscriptions.profiles;
+          const profile = profilesMap.get(selection.inscriptions.user_id);
+          
+          if (!profile) {
+            console.warn(`Profile not found for user_id: ${selection.inscriptions.user_id}`);
+            return;
+          }
+
           const titles = [
             profile.titulo_1_nombre && `${profile.titulo_1_nombre} (${profile.titulo_1_promedio || 'N/A'})`,
             profile.titulo_2_nombre && `${profile.titulo_2_nombre} (${profile.titulo_2_promedio || 'N/A'})`,
