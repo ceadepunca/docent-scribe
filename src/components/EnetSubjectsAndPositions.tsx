@@ -128,19 +128,15 @@ export const EnetSubjectsAndPositions: React.FC<EnetSubjectsAndPositionsProps> =
               </h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 {subjectsBySpecialty['ciclo_basico'].map((subject) => (
-                  <div key={subject.id} className="flex items-center space-x-4 p-2 rounded-lg border">
-                    <div className="flex-1">
-                      <span className="text-sm font-medium">{subject.name}</span>
-                    </div>
-                    <div className="flex items-center">
-                      <Checkbox
-                        checked={isSubjectSelected(subject.id)}
-                        onCheckedChange={(checked) => 
-                          handleSubjectChange(subject.id, checked as boolean)
-                        }
-                      />
-                      <span className="ml-2 text-xs">Inscribirse</span>
-                    </div>
+                  <div key={subject.id} className="flex items-center space-x-3 p-2 rounded-lg border">
+                    <Checkbox
+                      id={`subject-${subject.id}`}
+                      checked={isSubjectSelected(subject.id)}
+                      onCheckedChange={(checked) => 
+                        handleSubjectChange(subject.id, checked as boolean)
+                      }
+                    />
+                    <label htmlFor={`subject-${subject.id}`} className="text-sm font-medium flex-1 cursor-pointer">{subject.name}</label>
                   </div>
                 ))}
               </div>
@@ -156,19 +152,15 @@ export const EnetSubjectsAndPositions: React.FC<EnetSubjectsAndPositionsProps> =
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                   {subjects.map((subject) => (
-                    <div key={subject.id} className="flex items-center space-x-4 p-2 rounded-lg border">
-                      <div className="flex-1">
-                        <span className="text-sm font-medium">{subject.name}</span>
-                      </div>
-                      <div className="flex items-center">
-                        <Checkbox
-                          checked={isSubjectSelected(subject.id)}
-                          onCheckedChange={(checked) => 
-                            handleSubjectChange(subject.id, checked as boolean)
-                          }
-                        />
-                        <span className="ml-2 text-xs">Inscribirse</span>
-                      </div>
+                    <div key={subject.id} className="flex items-center space-x-3 p-2 rounded-lg border">
+                      <Checkbox
+                        id={`subject-${subject.id}`}
+                        checked={isSubjectSelected(subject.id)}
+                        onCheckedChange={(checked) => 
+                          handleSubjectChange(subject.id, checked as boolean)
+                        }
+                      />
+                      <label htmlFor={`subject-${subject.id}`} className="text-sm font-medium flex-1 cursor-pointer">{subject.name}</label>
                     </div>
                   ))}
                 </div>
