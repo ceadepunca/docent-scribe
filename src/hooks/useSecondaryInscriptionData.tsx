@@ -131,25 +131,60 @@ export const useSecondaryInscriptionData = () => {
 
   const saveSubjectSelections = async (inscriptionId: string, selections: SubjectSelection[]) => {
     try {
-      // Delete existing selections
-      await supabase
+      // Get current selections
+      const { data: currentSelections, error: fetchError } = await supabase
         .from('inscription_subject_selections')
-        .delete()
+        .select('id, subject_id')
         .eq('inscription_id', inscriptionId);
 
-      // Insert new selections
-      if (selections.length > 0) {
-        const selectionsToInsert = selections.map(selection => ({
+      if (fetchError) throw fetchError;
+
+      const currentSubjectIds = currentSelections?.map(s => s.subject_id) || [];
+      const newSubjectIds = selections.map(s => s.subject_id);
+
+      // Subjects to delete
+      const subjectsToDelete = currentSubjectIds.filter(id => !newSubjectIds.includes(id));
+      
+      if (subjectsToDelete.length > 0) {
+        // Get subject selection IDs that will be deleted
+        const subjectSelectionIdsToDelete = currentSelections
+          ?.filter(s => subjectsToDelete.includes(s.subject_id))
+          .map(s => s.id) || [];
+
+        // Delete evaluations linked to these subject selections
+        if (subjectSelectionIdsToDelete.length > 0) {
+          const { error: deleteEvalsError } = await supabase
+            .from('evaluations')
+            .delete()
+            .in('subject_selection_id', subjectSelectionIdsToDelete);
+
+          if (deleteEvalsError) throw deleteEvalsError;
+        }
+
+        // Delete the subject selections
+        const { error: deleteError } = await supabase
+          .from('inscription_subject_selections')
+          .delete()
+          .eq('inscription_id', inscriptionId)
+          .in('subject_id', subjectsToDelete);
+        
+        if (deleteError) throw deleteError;
+      }
+
+      // Subjects to insert
+      const subjectsToInsert = selections.filter(s => !currentSubjectIds.includes(s.subject_id));
+      if (subjectsToInsert.length > 0) {
+        const selectionsToInsert = subjectsToInsert.map(selection => ({
           inscription_id: inscriptionId,
           subject_id: selection.subject_id,
           position_type: 'profesor' // Default for secondary
         }));
 
-        const { error } = await supabase
+        const { error: insertError } = await supabase
           .from('inscription_subject_selections')
           .insert(selectionsToInsert);
 
-        if (error) throw error;
+        if (insertError) throw insertError;
       }
     } catch (error) {
       console.error('Error saving subject selections:', error);
