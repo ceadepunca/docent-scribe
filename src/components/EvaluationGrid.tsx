@@ -15,6 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useUnsavedChanges } from '@/hooks/useUnsavedChanges';
 
 interface EvaluationData {
+  id?: string;
   titulo_score: number;
   antiguedad_titulo_score: number;
   antiguedad_docente_score: number;
@@ -181,14 +182,18 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
   const fetchExistingEvaluation = async () => {
     if (!user) return;
 
+    setLoading(true);
+    // Reset evaluation state when selection changes to avoid showing stale data
+    setEvaluation(initialEvaluation);
+    setOriginalEvaluation(initialEvaluation);
+
     try {
-      // First, try to find evaluation for this specific selection (for secondary level)
       let evaluationData = null;
       let error = null;
 
+      // Only fetch if there is a selection for secondary level
       if (isSecondaryLevel) {
         if (subjectSelection) {
-          // For subject selections, look for evaluation with matching subject_selection_id
           const { data, error: err } = await supabase
             .from('evaluations')
             .select('*')
@@ -198,7 +203,6 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
           evaluationData = data;
           error = err;
         } else if (positionSelection) {
-          // For position selections, look for evaluation with matching position_selection_id
           const { data, error: err } = await supabase
             .from('evaluations')
             .select('*')
@@ -208,54 +212,28 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
           evaluationData = data;
           error = err;
         }
-      }
-
-      // If no specific evaluation found, try to find any evaluation for this inscription
-      if (!evaluationData && !error) {
-        console.log('No specific evaluation found, looking for any evaluation for inscription...');
+      } else { // For other levels, there's only one evaluation per inscription
         const { data, error: err } = await supabase
-          .from('evaluations')
-          .select('*')
-          .eq('inscription_id', inscriptionId)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
+            .from('evaluations')
+            .select('*')
+            .eq('inscription_id', inscriptionId)
+            .maybeSingle();
         evaluationData = data;
         error = err;
       }
 
-      if (error && error.code !== 'PGRST116') {
+      if (error && error.code !== 'PGRST116') { // PGRST116: no rows found
         console.error('Error loading evaluation:', error);
         throw error;
       }
 
       if (evaluationData) {
-        console.log('Found evaluation:', {
-          id: evaluationData.id,
-          titulo_score: evaluationData.titulo_score,
-          total_score: evaluationData.total_score,
-          position_selection_id: evaluationData.position_selection_id,
-          subject_selection_id: evaluationData.subject_selection_id,
-          evaluator_id: evaluationData.evaluator_id
-        });
-      }
+        const isCurrentUserEvaluation = evaluationData.evaluator_id === user.id;
+        const isImportedEvaluation = (evaluationData.titulo_score > 0 || evaluationData.total_score > 0) &&
+          (!isCurrentUserEvaluation || evaluationData.total_score > 0);
 
-      // If we found an evaluation, check if it belongs to the current user
-      const isCurrentUserEvaluation = evaluationData && evaluationData.evaluator_id === user.id;
-      
-      // Check if this is an imported evaluation (has scores and either doesn't belong to current user or has significant scores)
-      const isImportedEvaluation = evaluationData && 
-        (evaluationData.titulo_score > 0 || evaluationData.total_score > 0) &&
-        (!isCurrentUserEvaluation || evaluationData.total_score > 0);
-      
-      if (evaluationData) {
-        console.log('Found existing evaluation:', evaluationData);
-        console.log('Is current user evaluation:', isCurrentUserEvaluation);
-        console.log('Is imported evaluation:', isImportedEvaluation);
-      }
-
-      if (evaluationData) {
         const loadedEvaluation: EvaluationData = {
+          id: evaluationData.id,
           titulo_score: evaluationData.titulo_score ?? 0,
           antiguedad_titulo_score: evaluationData.antiguedad_titulo_score ?? 0,
           antiguedad_docente_score: evaluationData.antiguedad_docente_score ?? 0,
@@ -267,10 +245,9 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
           otros_antecedentes_score: evaluationData.otros_antecedentes_score ?? 0,
           red_federal_score: evaluationData.red_federal_score ?? 0,
           notes: evaluationData.notes ?? '',
-          // If it's not the current user's evaluation, always set as draft to allow editing
           status: isCurrentUserEvaluation ? (evaluationData.status as 'draft' | 'completed') ?? 'draft' : 'draft',
           title_type: (evaluationData.title_type as 'docente' | 'habilitante' | 'supletorio') ?? (isSecondaryLevel ? 'docente' : undefined),
-          isImported: isImportedEvaluation // Mark as imported if it has scores but different evaluator
+          isImported: isImportedEvaluation
         };
         setEvaluation(loadedEvaluation);
         setOriginalEvaluation(loadedEvaluation);
@@ -493,7 +470,75 @@ export const EvaluationGrid: React.FC<EvaluationGridProps> = ({
           <div>
             <CardTitle className="flex items-center gap-2">
               <Calculator className="h-5 w-5" />
-              Grilla de Evaluación
+                Grilla de Evaluación
+                {/* Mostrar materia/cargo y botón eliminar para super admin */}
+                {isSuperAdmin && (subjectSelection || positionSelection) && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className="ml-2 px-2 py-0 text-xs"
+                    onClick={async () => {
+                      if (window.confirm('¿Seguro que deseas eliminar esta materia/cargo y su evaluación? Esta acción no se puede deshacer.')) {
+                        setSaving(true);
+                        console.log('Deleting selection:', subjectSelection || positionSelection);
+                        console.log('Deleting evaluation state:', evaluation);
+
+                        let evalError = null;
+                        // 1. Eliminar la evaluación si existe
+                        if (evaluation?.id) {
+                          console.log('Attempting to delete evaluation with id:', evaluation.id);
+                          const { error } = await supabase
+                            .from('evaluations')
+                            .delete()
+                            .eq('id', evaluation.id);
+                          evalError = error;
+                          if (evalError) {
+                            console.error('Error deleting evaluation:', evalError);
+                          } else {
+                            console.log('Evaluation deletion call succeeded.');
+                          }
+                        }
+
+                        // 2. Eliminar la selección asociada
+                        let selError = null;
+                        if (subjectSelection) {
+                          console.log('Attempting to delete subject selection with id:', subjectSelection.id);
+                          const { error } = await supabase
+                            .from('inscription_subject_selections')
+                            .delete()
+                            .eq('id', subjectSelection.id);
+                          selError = error;
+                          if (selError) {
+                            console.error('Error deleting subject selection:', selError);
+                          } else {
+                            console.log('Subject selection deletion call succeeded.');
+                          }
+                        } else if (positionSelection) {
+                          console.log('Attempting to delete position selection with id:', positionSelection.id);
+                          const { error } = await supabase
+                            .from('inscription_position_selections')
+                            .delete()
+                            .eq('id', positionSelection.id);
+                          selError = error;
+                          if (selError) {
+                            console.error('Error deleting position selection:', selError);
+                          } else {
+                            console.log('Position selection deletion call succeeded.');
+                          }
+                        }
+                        setSaving(false);
+                        if (!evalError && !selError) {
+                          toast({ title: 'Materia/Cargo eliminado', description: 'La materia/cargo y su evaluación fueron eliminadas correctamente.' });
+                          window.location.reload();
+                        } else {
+                          toast({ title: 'Error', description: `No se pudo eliminar la materia/cargo o su evaluación. ${evalError?.message || selError?.message || ''}`, variant: 'destructive' });
+                        }
+                      }
+                    }}
+                  >
+                    Eliminar materia/cargo
+                  </Button>
+                )}
             </CardTitle>
             <CardDescription>
               {isSecondaryLevel && (subjectSelection || positionSelection) 
