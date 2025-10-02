@@ -78,38 +78,10 @@ export const TeacherManagementTab = () => {
 
   return (
     <div className="space-y-6">
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-2xl font-bold text-green-600">{stats.registered}</div>
-            <div className="text-sm text-muted-foreground">Registrados</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-2xl font-bold text-blue-600">{stats.migrated}</div>
-            <div className="text-sm text-muted-foreground">Migrados</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-2xl font-bold text-yellow-600">{stats.incomplete}</div>
-            <div className="text-sm text-muted-foreground">Incompletos</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-2xl font-bold">{stats.total}</div>
-            <div className="text-sm text-muted-foreground">Total</div>
-          </CardContent>
-        </Card>
-      </div>
-
       {/* Actions Bar */}
       <Card>
         <CardHeader>
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Users className="h-5 w-5" />
@@ -119,11 +91,12 @@ export const TeacherManagementTab = () => {
                 Administrar perfiles de docentes y realizar inscripciones asistidas
               </CardDescription>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 w-full md:w-auto">
               <Button
                 onClick={() => setShowImportModal(true)}
                 variant="outline"
                 className="flex items-center gap-2"
+                size="sm"
               >
                 <Upload className="h-4 w-4" />
                 Importar Excel
@@ -132,11 +105,13 @@ export const TeacherManagementTab = () => {
                 onClick={() => setShowCreateModal(true)}
                 variant="outline"
                 className="flex items-center gap-2"
+                size="sm"
               >
                 <UserPlus className="h-4 w-4" />
                 Crear Docente
               </Button>
               <Button
+                size="sm"
                 onClick={() => navigate('/admin/assisted-inscription')}
                 className="flex items-center gap-2"
               >
@@ -147,6 +122,27 @@ export const TeacherManagementTab = () => {
           </div>
         </CardHeader>
         <CardContent>
+          {/* Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+            <div className="p-3 rounded-lg border bg-card text-card-foreground shadow-sm text-center">
+              <div className="text-2xl font-bold text-green-600">{stats.registered}</div>
+              <div className="text-xs text-muted-foreground">Registrados</div>
+            </div>
+            <div className="p-3 rounded-lg border bg-card text-card-foreground shadow-sm text-center">
+              <div className="text-2xl font-bold text-blue-600">{stats.migrated}</div>
+              <div className="text-xs text-muted-foreground">Migrados</div>
+            </div>
+            <div className="p-3 rounded-lg border bg-card text-card-foreground shadow-sm text-center">
+              <div className="text-2xl font-bold text-yellow-600">{stats.incomplete}</div>
+              <div className="text-xs text-muted-foreground">Incompletos</div>
+            </div>
+            <div className="p-3 rounded-lg border bg-card text-card-foreground shadow-sm text-center">
+              <div className="text-2xl font-bold">{stats.total}</div>
+              <div className="text-xs text-muted-foreground">Total</div>
+            </div>
+          </div>
+
+
           {/* Search */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 mb-4">
             <div className="relative flex-1 w-full">
