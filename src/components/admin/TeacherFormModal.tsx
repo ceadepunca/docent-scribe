@@ -3,8 +3,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Plus, GraduationCap } from 'lucide-react';
 import { useTeacherManagement } from '@/hooks/useTeacherManagement';
 import { useToast } from '@/hooks/use-toast';
+import { TitleCard } from '@/components/TitleCard';
+import { useForm } from 'react-hook-form';
 
 interface TeacherFormModalProps {
   open: boolean;
@@ -28,43 +31,93 @@ export const TeacherFormModal: React.FC<TeacherFormModalProps> = ({
     dni: teacher?.dni || '',
     phone: teacher?.phone || '',
     legajo_number: teacher?.legajo_number || '',
-    titulo_1_nombre: teacher?.titulo_1_nombre || '',
-    titulo_1_fecha_egreso: teacher?.titulo_1_fecha_egreso || '',
-    titulo_1_promedio: teacher?.titulo_1_promedio || '',
+    titulo1Nombre: teacher?.titulo_1_nombre || '',
+    titulo1FechaEgreso: teacher?.titulo_1_fecha_egreso || '',
+    titulo1Promedio: teacher?.titulo_1_promedio?.toString() || '',
+    titulo2Nombre: teacher?.titulo_2_nombre || '',
+    titulo2FechaEgreso: teacher?.titulo_2_fecha_egreso || '',
+    titulo2Promedio: teacher?.titulo_2_promedio?.toString() || '',
+    titulo3Nombre: teacher?.titulo_3_nombre || '',
+    titulo3FechaEgreso: teacher?.titulo_3_fecha_egreso || '',
+    titulo3Promedio: teacher?.titulo_3_promedio?.toString() || '',
+    titulo4Nombre: teacher?.titulo_4_nombre || '',
+    titulo4FechaEgreso: teacher?.titulo_4_fecha_egreso || '',
+    titulo4Promedio: teacher?.titulo_4_promedio?.toString() || '',
   });
 
   const [saving, setSaving] = useState(false);
+  const [visibleTitles, setVisibleTitles] = useState<number[]>(() => {
+    const existingTitles = [];
+    if (teacher?.titulo_2_nombre) existingTitles.push(2);
+    if (teacher?.titulo_3_nombre) existingTitles.push(3);
+    if (teacher?.titulo_4_nombre) existingTitles.push(4);
+    return existingTitles;
+  });
+
+  const form = useForm({
+    defaultValues: formData,
+  });
 
   // Update form data when teacher prop changes
   useEffect(() => {
     if (teacher) {
       console.log('TeacherFormModal: Loading teacher data:', teacher);
-      setFormData({
+      const newData = {
         first_name: teacher.first_name || '',
         last_name: teacher.last_name || '',
         email: teacher.email || '',
         dni: teacher.dni || '',
         phone: teacher.phone || '',
         legajo_number: teacher.legajo_number || '',
-        titulo_1_nombre: teacher.titulo_1_nombre || '',
-        titulo_1_fecha_egreso: teacher.titulo_1_fecha_egreso || '',
-        titulo_1_promedio: teacher.titulo_1_promedio || '',
-      });
+        titulo1Nombre: teacher.titulo_1_nombre || '',
+        titulo1FechaEgreso: teacher.titulo_1_fecha_egreso || '',
+        titulo1Promedio: teacher.titulo_1_promedio?.toString() || '',
+        titulo2Nombre: teacher.titulo_2_nombre || '',
+        titulo2FechaEgreso: teacher.titulo_2_fecha_egreso || '',
+        titulo2Promedio: teacher.titulo_2_promedio?.toString() || '',
+        titulo3Nombre: teacher.titulo_3_nombre || '',
+        titulo3FechaEgreso: teacher.titulo_3_fecha_egreso || '',
+        titulo3Promedio: teacher.titulo_3_promedio?.toString() || '',
+        titulo4Nombre: teacher.titulo_4_nombre || '',
+        titulo4FechaEgreso: teacher.titulo_4_fecha_egreso || '',
+        titulo4Promedio: teacher.titulo_4_promedio?.toString() || '',
+      };
+      setFormData(newData);
+      form.reset(newData);
+      
+      // Update visible titles
+      const existingTitles = [];
+      if (teacher.titulo_2_nombre) existingTitles.push(2);
+      if (teacher.titulo_3_nombre) existingTitles.push(3);
+      if (teacher.titulo_4_nombre) existingTitles.push(4);
+      setVisibleTitles(existingTitles);
     } else {
       // Reset form for new teacher
-      setFormData({
+      const emptyData = {
         first_name: '',
         last_name: '',
         email: '',
         dni: '',
         phone: '',
         legajo_number: '',
-        titulo_1_nombre: '',
-        titulo_1_fecha_egreso: '',
-        titulo_1_promedio: '',
-      });
+        titulo1Nombre: '',
+        titulo1FechaEgreso: '',
+        titulo1Promedio: '',
+        titulo2Nombre: '',
+        titulo2FechaEgreso: '',
+        titulo2Promedio: '',
+        titulo3Nombre: '',
+        titulo3FechaEgreso: '',
+        titulo3Promedio: '',
+        titulo4Nombre: '',
+        titulo4FechaEgreso: '',
+        titulo4Promedio: '',
+      };
+      setFormData(emptyData);
+      form.reset(emptyData);
+      setVisibleTitles([]);
     }
-  }, [teacher]);
+  }, [teacher, form]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -119,15 +172,29 @@ export const TeacherFormModal: React.FC<TeacherFormModalProps> = ({
         return;
       }
 
+      // Get current form values
+      const currentValues = form.getValues();
+      
       // Preparar datos para guardar, manejando campos opcionales
       const dataToSave = {
-        ...formData,
-        // Limpiar campos vacíos para campos opcionales
-        titulo_1_nombre: formData.titulo_1_nombre.trim() || undefined,
-        titulo_1_fecha_egreso: formData.titulo_1_fecha_egreso || undefined,
-        titulo_1_promedio: formData.titulo_1_promedio ? parseFloat(formData.titulo_1_promedio) : undefined,
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        email: formData.email,
+        dni: formData.dni,
         phone: formData.phone.trim() || undefined,
         legajo_number: formData.legajo_number.trim() || undefined,
+        titulo_1_nombre: currentValues.titulo1Nombre?.trim() || undefined,
+        titulo_1_fecha_egreso: currentValues.titulo1FechaEgreso || undefined,
+        titulo_1_promedio: currentValues.titulo1Promedio ? parseFloat(currentValues.titulo1Promedio) : undefined,
+        titulo_2_nombre: currentValues.titulo2Nombre?.trim() || undefined,
+        titulo_2_fecha_egreso: currentValues.titulo2FechaEgreso || undefined,
+        titulo_2_promedio: currentValues.titulo2Promedio ? parseFloat(currentValues.titulo2Promedio) : undefined,
+        titulo_3_nombre: currentValues.titulo3Nombre?.trim() || undefined,
+        titulo_3_fecha_egreso: currentValues.titulo3FechaEgreso || undefined,
+        titulo_3_promedio: currentValues.titulo3Promedio ? parseFloat(currentValues.titulo3Promedio) : undefined,
+        titulo_4_nombre: currentValues.titulo4Nombre?.trim() || undefined,
+        titulo_4_fecha_egreso: currentValues.titulo4FechaEgreso || undefined,
+        titulo_4_promedio: currentValues.titulo4Promedio ? parseFloat(currentValues.titulo4Promedio) : undefined,
       };
 
       let success = false;
@@ -228,45 +295,49 @@ export const TeacherFormModal: React.FC<TeacherFormModalProps> = ({
           </div>
 
           <div className="border-t pt-4">
-            <h4 className="font-medium mb-2">Información Académica (Opcional)</h4>
+            <div className="flex items-center gap-2 mb-4">
+              <GraduationCap className="h-5 w-5" />
+              <h4 className="font-medium">Títulos Académicos (Opcional)</h4>
+            </div>
             <p className="text-sm text-muted-foreground mb-4">
-              Complete solo los datos que tenga disponibles. Puede dejar estos campos vacíos si no los conoce.
+              Puede agregar hasta 4 títulos académicos. Complete solo los datos que tenga disponibles.
             </p>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="titulo_1_nombre">Título</Label>
-                <Input
-                  id="titulo_1_nombre"
-                  placeholder="Ej: Profesorado en Matemáticas"
-                  value={formData.titulo_1_nombre}
-                  onChange={(e) => setFormData(prev => ({ ...prev, titulo_1_nombre: e.target.value }))}
+            <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
+              <TitleCard
+                control={form.control}
+                titleNumber={1}
+              />
+
+              {visibleTitles.map((titleNumber) => (
+                <TitleCard
+                  key={titleNumber}
+                  control={form.control}
+                  titleNumber={titleNumber}
+                  onRemove={() => {
+                    setVisibleTitles(prev => prev.filter(num => num !== titleNumber));
+                    form.setValue(`titulo${titleNumber}Nombre` as any, '');
+                    form.setValue(`titulo${titleNumber}FechaEgreso` as any, '');
+                    form.setValue(`titulo${titleNumber}Promedio` as any, '');
+                  }}
                 />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="titulo_1_fecha_egreso">Fecha de Egreso (Opcional)</Label>
-                  <Input
-                    id="titulo_1_fecha_egreso"
-                    type="date"
-                    placeholder="Dejar vacío si no se conoce"
-                    value={formData.titulo_1_fecha_egreso}
-                    onChange={(e) => setFormData(prev => ({ ...prev, titulo_1_fecha_egreso: e.target.value }))}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="titulo_1_promedio">Promedio (Opcional)</Label>
-                  <Input
-                    id="titulo_1_promedio"
-                    type="number"
-                    step="0.01"
-                    min="1"
-                    max="10"
-                    placeholder="Ej: 8.5"
-                    value={formData.titulo_1_promedio}
-                    onChange={(e) => setFormData(prev => ({ ...prev, titulo_1_promedio: e.target.value }))}
-                  />
-                </div>
-              </div>
+              ))}
+
+              {visibleTitles.length < 3 && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    const nextTitle = [2, 3, 4].find(num => !visibleTitles.includes(num));
+                    if (nextTitle) {
+                      setVisibleTitles(prev => [...prev, nextTitle]);
+                    }
+                  }}
+                  className="w-full h-12 border-dashed"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Agregar Título Adicional
+                </Button>
+              )}
             </div>
           </div>
 
