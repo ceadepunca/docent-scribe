@@ -17,6 +17,7 @@ export type Database = {
       administrative_positions: {
         Row: {
           created_at: string
+          display_order: number | null
           id: string
           is_active: boolean
           name: string
@@ -25,6 +26,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          display_order?: number | null
           id?: string
           is_active?: boolean
           name: string
@@ -33,6 +35,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          display_order?: number | null
           id?: string
           is_active?: boolean
           name?: string
@@ -681,6 +684,7 @@ export type Database = {
       subjects: {
         Row: {
           created_at: string
+          display_order: number | null
           id: string
           is_active: boolean
           name: string
@@ -690,6 +694,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          display_order?: number | null
           id?: string
           is_active?: boolean
           name: string
@@ -699,6 +704,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          display_order?: number | null
           id?: string
           is_active?: boolean
           name?: string
@@ -904,6 +910,17 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      reassign_evaluations_and_delete_position_selection: {
+        Args: {
+          new_position_selection_id?: string
+          position_selection_id: string
+        }
+        Returns: boolean
+      }
+      safe_delete_position_selection: {
+        Args: { position_selection_id: string }
         Returns: boolean
       }
       set_limit: {
