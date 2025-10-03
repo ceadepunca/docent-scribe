@@ -50,7 +50,7 @@ export const useSecondaryInscriptionData = () => {
           .from('schools')
           .select('id, name, teaching_level')
           .eq('is_active', true)
-          .eq('teaching_level', 'secundario'),
+          .in('teaching_level', ['secundario', 'inicial']),
         
         supabase
           .from('subjects')
@@ -73,7 +73,7 @@ export const useSecondaryInscriptionData = () => {
       const subjectsData = (subjectsResult.data || []) as Subject[];
       const positionsData = positionsResult.data || [];
 
-      // Filter subjects and positions by secondary schools only
+      // Filter subjects and positions by secondary and inicial schools
       const schoolIds = schoolsData.map(school => school.id);
       const filteredSubjects = subjectsData.filter(subject => schoolIds.includes(subject.school_id));
       const filteredPositions = positionsData.filter(position => schoolIds.includes(position.school_id));

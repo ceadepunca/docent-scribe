@@ -16,6 +16,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Save, Send, ArrowLeft } from 'lucide-react';
 import { SecondaryInscriptionWizard } from './SecondaryInscriptionWizard';
+import { InicialInscriptionWizard } from './InicialInscriptionWizard';
 import { InscriptionDocumentUploader } from './InscriptionDocumentUploader';
 import { SubjectSelection, PositionSelection, useSecondaryInscriptionData } from '@/hooks/useSecondaryInscriptionData';
 
@@ -52,6 +53,7 @@ const InscriptionForm: React.FC<InscriptionFormProps> = ({ initialData, isEdit =
   
   // For all secondary level inscriptions, show wizard
   const isSecondaryInscription = initialData?.teaching_level === 'secundario';
+  const isInicialInscription = initialData?.teaching_level === 'inicial';
 
   const form = useForm<InscriptionFormData>({
     resolver: zodResolver(inscriptionSchema),
@@ -402,6 +404,19 @@ const InscriptionForm: React.FC<InscriptionFormProps> = ({ initialData, isEdit =
   };
 
   const canEdit = !initialData?.status || ['draft', 'requires_changes', 'submitted'].includes(initialData.status);
+
+  // If it's an inicial inscription, show inicial wizard
+  if (isInicialInscription) {
+    return (
+      <InicialInscriptionWizard
+        onComplete={handleSecondaryInscriptionComplete}
+        onAutoSave={isEdit ? undefined : handleAutoSave}
+        initialInscriptionPeriodId={initialData?.inscription_period_id}
+        inscriptionId={initialData?.id}
+        isLoading={isSubmitting}
+      />
+    );
+  }
 
   // If it's a secondary inscription, show wizard
   if (isSecondaryInscription) {

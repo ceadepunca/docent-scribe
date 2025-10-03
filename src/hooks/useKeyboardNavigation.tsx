@@ -1,20 +1,18 @@
 import { useEffect, useCallback } from 'react';
 
-type TabType = 'period' | 'fray' | 'enet' | 'documents' | 'summary';
-
-interface UseKeyboardNavigationProps {
-  activeTab: TabType;
-  onTabChange: (tab: TabType) => void;
-  tabs: TabType[];
+interface UseKeyboardNavigationProps<T extends string> {
+  activeTab: T;
+  onTabChange: (tab: T) => void;
+  tabs: T[];
   disabled?: boolean;
 }
 
-export const useKeyboardNavigation = ({
+export const useKeyboardNavigation = <T extends string>({
   activeTab,
   onTabChange,
   tabs,
   disabled = false
-}: UseKeyboardNavigationProps) => {
+}: UseKeyboardNavigationProps<T>) => {
   const handleKeyPress = useCallback((event: KeyboardEvent) => {
     // Only handle if Control key is pressed and not disabled
     if (!event.ctrlKey || disabled) return;

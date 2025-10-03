@@ -4,8 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle2, Circle, BookOpen, UserCheck, FileText, Calendar } from 'lucide-react';
-import { FraySubjectsAndPositions } from './FraySubjectsAndPositions';
-import { EnetSubjectsAndPositions } from './EnetSubjectsAndPositions';
+import { InicialSubjectsAndPositions } from './InicialSubjectsAndPositions';
 import { InscriptionDocumentUploader } from './InscriptionDocumentUploader';
 import { PeriodSelectionGrid } from './PeriodSelectionGrid';
 import { SubjectSelection, PositionSelection, useSecondaryInscriptionData } from '@/hooks/useSecondaryInscriptionData';
@@ -13,7 +12,7 @@ import { useInscriptionPeriods } from '@/hooks/useInscriptionPeriods';
 import { useSecondaryInscriptionSelections } from '@/hooks/useSecondaryInscriptionSelections';
 import { useKeyboardNavigation } from '@/hooks/useKeyboardNavigation';
 
-interface SecondaryInscriptionWizardProps {
+interface InicialInscriptionWizardProps {
   onComplete: (data: {
     subjectSelections: SubjectSelection[];
     positionSelections: PositionSelection[];
@@ -29,7 +28,7 @@ interface SecondaryInscriptionWizardProps {
   inscriptionId?: string | null;
 }
 
-export const SecondaryInscriptionWizard: React.FC<SecondaryInscriptionWizardProps> = ({
+export const InicialInscriptionWizard: React.FC<InicialInscriptionWizardProps> = ({
   onComplete,
   onAutoSave,
   initialSubjectSelections = [],
@@ -40,8 +39,8 @@ export const SecondaryInscriptionWizard: React.FC<SecondaryInscriptionWizardProp
   onPositionSelectionsChange,
   inscriptionId = null,
 }) => {
-  const [activeTab, setActiveTab] = useState<'period' | 'fray' | 'enet' | 'documents' | 'summary'>(
-    inscriptionId ? 'fray' : 'period'
+  const [activeTab, setActiveTab] = useState<'period' | 'inicial' | 'documents' | 'summary'>(
+    inscriptionId ? 'inicial' : 'period'
   );
   const [subjectSelections, setSubjectSelections] = useState<SubjectSelection[]>([]);
   const [positionSelections, setPositionSelections] = useState<PositionSelection[]>([]);
@@ -58,8 +57,8 @@ export const SecondaryInscriptionWizard: React.FC<SecondaryInscriptionWizardProp
   } = useSecondaryInscriptionSelections(inscriptionId);
 
   // Keyboard navigation setup
-  const tabs: ('period' | 'fray' | 'enet' | 'documents' | 'summary')[] = ['period', 'fray', 'enet', 'documents', 'summary'];
-  const { navigateToTab } = useKeyboardNavigation<'period' | 'fray' | 'enet' | 'documents' | 'summary'>({
+  const tabs: ('period' | 'inicial' | 'documents' | 'summary')[] = ['period', 'inicial', 'documents', 'summary'];
+  const { navigateToTab } = useKeyboardNavigation<'period' | 'inicial' | 'documents' | 'summary'>({
     activeTab,
     onTabChange: (tab) => setActiveTab(tab),
     tabs,
@@ -101,10 +100,8 @@ export const SecondaryInscriptionWizard: React.FC<SecondaryInscriptionWizardProp
 
   const handleNext = async () => {
     if (activeTab === 'period') {
-      setActiveTab('fray');
-    } else if (activeTab === 'fray') {
-      setActiveTab('enet');
-    } else if (activeTab === 'enet') {
+      setActiveTab('inicial');
+    } else if (activeTab === 'inicial') {
       // Auto-save when accessing documents for the first time
       if (!savedInscriptionId && selectedPeriodId && onAutoSave) {
         setAutoSaving(true);
@@ -124,20 +121,16 @@ export const SecondaryInscriptionWizard: React.FC<SecondaryInscriptionWizardProp
   };
 
   const handleBack = () => {
-    if (activeTab === 'fray') {
+    if (activeTab === 'inicial') {
       setActiveTab('period');
-    } else if (activeTab === 'enet') {
-      setActiveTab('fray');
     } else if (activeTab === 'documents') {
-      setActiveTab('enet');
+      setActiveTab('inicial');
     } else if (activeTab === 'summary') {
       setActiveTab('documents');
     }
   };
 
   const handleComplete = () => {
-    // When editing an existing inscription, use the original period ID
-    // When creating a new inscription, use the selected period ID
     const periodIdToUse = inscriptionId ? initialInscriptionPeriodId : selectedPeriodId;
     
     if (!periodIdToUse) return;
@@ -153,9 +146,9 @@ export const SecondaryInscriptionWizard: React.FC<SecondaryInscriptionWizardProp
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Inscripción para Nivel Secundario</CardTitle>
+          <CardTitle>Inscripción para Nivel Inicial</CardTitle>
           <p className="text-muted-foreground">
-            Complete las selecciones de materias y cargos administrativos para las escuelas secundarias.
+            Complete las selecciones de materias especiales y cargos docentes/directivos para el nivel inicial.
           </p>
           <div className="mt-2 p-2 bg-muted/50 rounded-md">
             <p className="text-xs text-muted-foreground flex items-center gap-1">
@@ -166,7 +159,7 @@ export const SecondaryInscriptionWizard: React.FC<SecondaryInscriptionWizardProp
       </Card>
 
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as typeof activeTab)}>
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="period" className="flex items-center gap-2">
             {selectedPeriodId ? (
               <CheckCircle2 className="h-4 w-4 text-green-500" />
@@ -176,23 +169,14 @@ export const SecondaryInscriptionWizard: React.FC<SecondaryInscriptionWizardProp
             <Calendar className="h-4 w-4" />
             Período
           </TabsTrigger>
-          <TabsTrigger value="fray" className="flex items-center gap-2">
-            {hasSubjectSelections ? (
+          <TabsTrigger value="inicial" className="flex items-center gap-2">
+            {hasAnySelections ? (
               <CheckCircle2 className="h-4 w-4 text-green-500" />
             ) : (
               <Circle className="h-4 w-4" />
             )}
             <BookOpen className="h-4 w-4" />
-            FRAY
-          </TabsTrigger>
-          <TabsTrigger value="enet" className="flex items-center gap-2">
-            {hasPositionSelections ? (
-              <CheckCircle2 className="h-4 w-4 text-green-500" />
-            ) : (
-              <Circle className="h-4 w-4" />
-            )}
-            <UserCheck className="h-4 w-4" />
-            ENET
+            Inicial
           </TabsTrigger>
           <TabsTrigger value="documents" className="flex items-center gap-2">
             <FileText className="h-4 w-4" />
@@ -215,21 +199,21 @@ export const SecondaryInscriptionWizard: React.FC<SecondaryInscriptionWizardProp
             selectedPeriodId={selectedPeriodId}
             onPeriodSelect={setSelectedPeriodId}
             loading={periodsLoading}
-            teachingLevel="secundario"
+            teachingLevel="inicial"
           />
           <div className="flex justify-end mt-6">
             <Button 
               onClick={handleNext}
               disabled={!selectedPeriodId || autoSaving}
             >
-              {autoSaving ? 'Guardando...' : 'Continuar a FRAY'}
+              {autoSaving ? 'Guardando...' : 'Continuar a Inicial'}
             </Button>
           </div>
         </TabsContent>
 
-        <TabsContent value="fray" className="mt-6">
+        <TabsContent value="inicial" className="mt-6">
           <div className="space-y-6">
-            <FraySubjectsAndPositions
+            <InicialSubjectsAndPositions
               subjects={subjects}
               positions={administrativePositions}
               schools={schools}
@@ -250,35 +234,6 @@ export const SecondaryInscriptionWizard: React.FC<SecondaryInscriptionWizardProp
                 Volver a Período
               </Button>
               <Button onClick={handleNext}>
-                Continuar a ENET
-              </Button>
-            </div>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="enet" className="mt-6">
-          <div className="space-y-6">
-            <EnetSubjectsAndPositions
-              subjects={subjects}
-              positions={administrativePositions}
-              schools={schools}
-              selectedSubjects={subjectSelections.map(sel => ({ subjectId: sel.subject_id, positionType: 'titular' }))}
-              selectedPositions={positionSelections.map(sel => ({ positionId: sel.administrative_position_id }))}
-              onSubjectSelectionChange={(selections) => {
-                const mapped = selections.map(sel => ({ subject_id: sel.subjectId }));
-                handleSubjectSelectionsChange(mapped);
-              }}
-              onPositionSelectionChange={(selections) => {
-                const mapped = selections.map(sel => ({ administrative_position_id: sel.positionId }));
-                handlePositionSelectionsChange(mapped);
-              }}
-              loading={loading}
-            />
-            <div className="flex justify-between">
-              <Button variant="outline" onClick={handleBack}>
-                Volver a FRAY
-              </Button>
-              <Button onClick={handleNext}>
                 Continuar a Documentos
               </Button>
             </div>
@@ -292,7 +247,7 @@ export const SecondaryInscriptionWizard: React.FC<SecondaryInscriptionWizardProp
             />
             <div className="flex justify-between">
               <Button variant="outline" onClick={handleBack}>
-                Volver a ENET
+                Volver a Inicial
               </Button>
               <Button 
                 onClick={handleNext}
@@ -309,7 +264,7 @@ export const SecondaryInscriptionWizard: React.FC<SecondaryInscriptionWizardProp
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <FileText className="h-5 w-5" />
-                Resumen de Inscripción
+                Resumen de Inscripción - Nivel Inicial
               </CardTitle>
               <p className="text-muted-foreground">
                 Revise sus selecciones antes de confirmar la inscripción.
@@ -319,52 +274,49 @@ export const SecondaryInscriptionWizard: React.FC<SecondaryInscriptionWizardProp
               <div>
                 <h4 className="font-medium mb-3 flex items-center gap-2">
                   <BookOpen className="h-4 w-4" />
-                  Materias Seleccionadas ({subjectSelections.length})
+                  Materias Especiales Seleccionadas ({subjectSelections.length})
                 </h4>
                 {subjectSelections.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
                     {subjectSelections.map((selection, index) => {
                       const subject = subjects.find(s => s.id === selection.subject_id);
-                      const school = schools.find(s => s.id === subject?.school_id);
                       return (
                         <Badge key={index} variant="secondary">
-                          {subject?.name} - {school?.name}
+                          {subject?.name}
                         </Badge>
                       );
                     })}
                   </div>
                 ) : (
-                  <p className="text-muted-foreground text-sm">No hay materias seleccionadas</p>
+                  <p className="text-muted-foreground text-sm">No hay materias especiales seleccionadas</p>
                 )}
               </div>
 
-              {/* Position Selections Summary */}
               <div>
                 <h4 className="font-medium mb-3 flex items-center gap-2">
                   <UserCheck className="h-4 w-4" />
-                  Cargos Administrativos Seleccionados ({positionSelections.length})
+                  Cargos Docentes y Directivos Seleccionados ({positionSelections.length})
                 </h4>
                 {positionSelections.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
                     {positionSelections.map((selection, index) => {
                       const position = administrativePositions.find(p => p.id === selection.administrative_position_id);
-                      const school = schools.find(s => s.id === position?.school_id);
                       return (
                         <Badge key={index} variant="secondary">
-                          {position?.name} - {school?.name}
+                          {position?.name}
                         </Badge>
                       );
                     })}
                   </div>
                 ) : (
-                  <p className="text-muted-foreground text-sm">No hay cargos administrativos seleccionados</p>
+                  <p className="text-muted-foreground text-sm">No hay cargos seleccionados</p>
                 )}
               </div>
 
               {!hasAnySelections && (
                 <div className="p-4 border border-orange-200 bg-orange-50 rounded-lg">
                   <p className="text-orange-800 text-sm">
-                    ⚠️ No ha seleccionado ninguna materia ni cargo administrativo. 
+                    ⚠️ No ha seleccionado ninguna materia ni cargo. 
                     Debe seleccionar al menos uno para continuar con la inscripción.
                   </p>
                 </div>
