@@ -8,6 +8,7 @@ import { useTeacherManagement } from '@/hooks/useTeacherManagement';
 import { useToast } from '@/hooks/use-toast';
 import { TitleCard } from '@/components/TitleCard';
 import { useForm } from 'react-hook-form';
+import { Form } from '@/components/ui/form';
 
 interface TeacherFormModalProps {
   open: boolean;
@@ -231,7 +232,8 @@ export const TeacherFormModal: React.FC<TeacherFormModalProps> = ({
           )}
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <Form {...form}>
+          <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor="first_name">Nombres *</Label>
@@ -364,7 +366,8 @@ export const TeacherFormModal: React.FC<TeacherFormModalProps> = ({
               </Button>
             </div>
           </div>
-        </form>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );
