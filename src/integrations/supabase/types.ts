@@ -859,11 +859,14 @@ export type Database = {
         Returns: string
       }
       get_inscription_by_user: {
-        Args: { user_uuid: string }
+        Args: {
+          user_uuid: string
+          p_teaching_level: string
+        }
         Returns: {
           id: string
-          teaching_level: string
           user_id: string
+          teaching_level: string
         }[]
       }
       get_position_selection_by_inscription: {

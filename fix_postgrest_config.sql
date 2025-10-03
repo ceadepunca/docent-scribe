@@ -26,7 +26,7 @@ AS $$
 $$;
 
 -- 3. Crear una función para obtener inscripciones por user_id
-CREATE OR REPLACE FUNCTION get_inscription_by_user(user_uuid UUID)
+CREATE OR REPLACE FUNCTION get_inscription_by_user(user_uuid UUID, p_teaching_level TEXT)
 RETURNS TABLE (
     id UUID,
     user_id UUID,
@@ -37,7 +37,7 @@ SECURITY DEFINER
 AS $$
     SELECT i.id, i.user_id, i.teaching_level
     FROM inscriptions i
-    WHERE i.user_id = user_uuid AND i.teaching_level = 'secundario';
+    WHERE i.user_id = user_uuid AND i.teaching_level::text = p_teaching_level;
 $$;
 
 -- 4. Crear una función para obtener selecciones de posición
@@ -157,4 +157,3 @@ FROM information_schema.routines
 WHERE routine_schema = 'public' 
 AND routine_name LIKE '%profile%' OR routine_name LIKE '%inscription%' OR routine_name LIKE '%evaluation%'
 ORDER BY routine_name;
-

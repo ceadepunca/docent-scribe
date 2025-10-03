@@ -24,7 +24,7 @@ interface Inscription {
   updated_at: string;
   user_id: string;
   inscription_period_id: string;
-  evaluation_state: 'evaluada' | 'pendiente';
+  evaluation_state: 'evaluada' | 'pendiente'; // This will be derived
   profiles?: {
     first_name: string;
     last_name: string;
@@ -36,6 +36,9 @@ interface Inscription {
     name: string;
     is_active: boolean;
   } | null;
+  evaluations?: {
+    status: string;
+  }[];
 }
 
 const Inscriptions = () => {
@@ -130,46 +133,33 @@ const Inscriptions = () => {
             last_name,
             email,
             dni
-          )
+          ),
+          evaluations!left(status)
         `)
         .order('created_at', { ascending: false });
 
       // If not super admin or evaluator, only show own inscriptions
       if (!isSuperAdmin && !isEvaluator) {
-        inscriptionsQuery = inscriptionsQuery.eq('user_id', user.id);
+        inscriptionsQuery = inscriptionsQuery.eq('user_id', user.id); // No change here, just for context
       }
 
       const { data: inscriptionsData, error: inscriptionsError } = await inscriptionsQuery;
 
       if (inscriptionsError) throw inscriptionsError;
 
-      // For each inscription, check evaluation status
-      const inscriptionsWithEvalStatus = await Promise.all(
-        (inscriptionsData || []).map(async (inscription) => {
-          // Get evaluation count for this inscription
-          const { data: evaluations, error: evalError } = await supabase
-            .from('evaluations')
-            .select('status')
-            .eq('inscription_id', inscription.id);
+      // Process data to add 'evaluation_state'
+      const inscriptionsWithEvalStatus = (inscriptionsData || []).map(inscription => {
+        // Supabase returns the joined table as an array. `evaluations` is now part of the inscription object.
+        const evaluations = inscription.evaluations || [];
+        // Check if any of the joined evaluations has a 'completed' status.
+        const hasCompletedEvaluations = evaluations.some((ev: any) => ev.status === 'completed');
+        const evaluation_state = hasCompletedEvaluations ? 'evaluada' as const : 'pendiente' as const;
 
-          if (evalError) {
-            console.error('Error fetching evaluations:', evalError);
-            return {
-              ...inscription,
-              evaluation_state: 'pendiente' as const
-            };
-          }
-
-          // Determine evaluation status
-          const hasCompletedEvaluations = evaluations?.some(ev => ev.status === 'completed');
-          const evaluation_state = hasCompletedEvaluations ? 'evaluada' as const : 'pendiente' as const;
-
-          return {
-            ...inscription,
-            evaluation_state
-          };
-        })
-      );
+        return { // No change here, just for context
+          ...inscription,
+          evaluation_state,
+        };
+      });
 
       setInscriptions(inscriptionsWithEvalStatus);
       setFilteredInscriptions(inscriptionsWithEvalStatus);
