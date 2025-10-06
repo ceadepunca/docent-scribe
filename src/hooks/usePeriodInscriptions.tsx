@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface PeriodInscription {
@@ -110,6 +110,42 @@ export const usePeriodInscriptions = () => {
       fetchInscriptionsByPeriod(currentPeriodId);
     }
   }, [currentPeriodId, fetchInscriptionsByPeriod]);
+
+  // Realtime subscription for inscriptions and evaluations
+  useEffect(() => {
+    if (!currentPeriodId) return;
+
+    const channel = supabase
+      .channel('inscriptions-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'inscriptions',
+          filter: `inscription_period_id=eq.${currentPeriodId}`
+        },
+        () => {
+          refreshInscriptions();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'evaluations'
+        },
+        () => {
+          refreshInscriptions();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentPeriodId, refreshInscriptions]);
 
   return {
     inscriptions,
