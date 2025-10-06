@@ -144,6 +144,16 @@ export const InscriptionManagement = () => {
     return state === 'evaluada' ? <CheckCircle2 className="h-3 w-3 mr-1" /> : <Clock className="h-3 w-3 mr-1" />;
   };
 
+  // Helper function to normalize text for search (remove accents, extra spaces, and convert to lowercase)
+  const normalizeText = (text: string): string => {
+    return text
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '') // Remove accents
+      .replace(/\s+/g, ' ') // Replace multiple spaces with single space
+      .trim();
+  };
+
   // Filter inscriptions based on search term and evaluation status
   const filteredInscriptions = inscriptions.filter((inscription: any) => {
     // Filter by search term (name, last name, or DNI)
@@ -151,16 +161,18 @@ export const InscriptionManagement = () => {
       const profile = inscription.profiles;
       if (!profile) return false;
       
-      const fullName = `${profile.first_name} ${profile.last_name}`.toLowerCase();
-      const firstName = profile.first_name?.toLowerCase() || '';
-      const lastName = profile.last_name?.toLowerCase() || '';
-      const dni = profile.dni?.toLowerCase() || '';
-      const search = searchTerm.toLowerCase();
+      const normalizedSearch = normalizeText(searchTerm);
       
-      const matchesSearch = fullName.includes(search) || 
-                           firstName.includes(search) || 
-                           lastName.includes(search) || 
-                           dni.includes(search);
+      // Normalize all searchable fields
+      const fullName = normalizeText(`${profile.first_name || ''} ${profile.last_name || ''}`);
+      const firstName = normalizeText(profile.first_name || '');
+      const lastName = normalizeText(profile.last_name || '');
+      const dni = (profile.dni || '').toLowerCase().trim();
+      
+      const matchesSearch = fullName.includes(normalizedSearch) || 
+                           firstName.includes(normalizedSearch) || 
+                           lastName.includes(normalizedSearch) || 
+                           dni.includes(normalizedSearch);
       
       if (!matchesSearch) return false;
     }
