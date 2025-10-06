@@ -150,7 +150,7 @@ export const InscriptionManagement = () => {
       .toLowerCase()
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '') // Remove accents/diacritics
-      .replace(/[^\p{L}\p{N}\s]/gu, '') // Remove punctuation/symbols, keep letters, numbers and spaces
+      .replace(/[^a-z0-9\s]/g, '') // Remove punctuation/symbols, keep letters, numbers and spaces
       .replace(/\s+/g, ' ') // Collapse multiple spaces
       .trim();
   };
