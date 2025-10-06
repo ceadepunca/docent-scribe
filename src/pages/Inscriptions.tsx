@@ -133,30 +133,54 @@ const Inscriptions = () => {
             last_name,
             email,
             dni
-          ),
-          evaluations!left(status)
+          )
         `)
         .order('created_at', { ascending: false });
 
       // If not super admin or evaluator, only show own inscriptions
       if (!isSuperAdmin && !isEvaluator) {
-        inscriptionsQuery = inscriptionsQuery.eq('user_id', user.id); // No change here, just for context
+        inscriptionsQuery = inscriptionsQuery.eq('user_id', user.id);
       }
 
       const { data: inscriptionsData, error: inscriptionsError } = await inscriptionsQuery;
 
       if (inscriptionsError) throw inscriptionsError;
 
-      // Process data to add 'evaluation_state'
+      // Fetch evaluations separately if user is evaluator or admin
+      let evaluationsMap = new Map<string, { status: string }[]>();
+      
+      if ((isSuperAdmin || isEvaluator) && inscriptionsData && inscriptionsData.length > 0) {
+        const inscriptionIds = inscriptionsData.map(i => i.id);
+        
+        try {
+          const { data: evaluationsData, error: evaluationsError } = await supabase
+            .from('evaluations')
+            .select('inscription_id, status')
+            .in('inscription_id', inscriptionIds);
+
+          if (!evaluationsError && evaluationsData) {
+            // Group evaluations by inscription_id
+            evaluationsData.forEach(evaluation => {
+              const existing = evaluationsMap.get(evaluation.inscription_id) || [];
+              existing.push({ status: evaluation.status });
+              evaluationsMap.set(evaluation.inscription_id, existing);
+            });
+          }
+        } catch (evalError) {
+          console.error('Error fetching evaluations:', evalError);
+          // Continue without evaluations data
+        }
+      }
+
+      // Process data to add 'evaluation_state' and 'evaluations'
       const inscriptionsWithEvalStatus = (inscriptionsData || []).map(inscription => {
-        // Supabase returns the joined table as an array. `evaluations` is now part of the inscription object.
-        const evaluations = inscription.evaluations || [];
-        // Check if any of the joined evaluations has a 'completed' status.
-        const hasCompletedEvaluations = evaluations.some((ev: any) => ev.status === 'completed');
+        const evaluations = evaluationsMap.get(inscription.id) || [];
+        const hasCompletedEvaluations = evaluations.some(ev => ev.status === 'completed');
         const evaluation_state = hasCompletedEvaluations ? 'evaluada' as const : 'pendiente' as const;
 
-        return { // No change here, just for context
+        return {
           ...inscription,
+          evaluations,
           evaluation_state,
         };
       });
