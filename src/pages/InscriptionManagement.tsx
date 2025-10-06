@@ -52,9 +52,11 @@ export const InscriptionManagement = () => {
     }
     
     if (statusFromUrl) {
-      setStatusFilter(statusFromUrl);
+      const mapped = statusFromUrl === 'not_evaluated' ? 'pending' : statusFromUrl;
+      setStatusFilter(mapped);
     } else if (savedStatus) {
-      setStatusFilter(savedStatus);
+      const mapped = savedStatus === 'not_evaluated' ? 'pending' : savedStatus;
+      setStatusFilter(mapped);
     }
     
     if (searchFromUrl) {
@@ -120,39 +122,26 @@ export const InscriptionManagement = () => {
   };
 
   const getEvaluationStatusColor = (inscription: any) => {
-    // Check if inscription has completed evaluations
-    const hasEvaluations = inscription.evaluations && inscription.evaluations.length > 0;
-    const hasCompletedEvaluations = hasEvaluations && inscription.evaluations.some((ev: any) => ev.status === 'completed');
-    
-    if (hasCompletedEvaluations) {
-      return 'bg-green-100 text-green-800 hover:bg-green-100';
-    } else {
-      return 'bg-gray-100 text-gray-800 hover:bg-gray-100';
-    }
+    const state = inscription.evaluation_state ?? (
+      inscription.evaluations?.some((ev: any) => ev.status === 'completed') ? 'evaluada' : 'pendiente'
+    );
+    return state === 'evaluada'
+      ? 'bg-green-100 text-green-800 hover:bg-green-100'
+      : 'bg-gray-100 text-gray-800 hover:bg-gray-100';
   };
 
   const getEvaluationStatusLabel = (inscription: any) => {
-    // Check if inscription has completed evaluations
-    const hasEvaluations = inscription.evaluations && inscription.evaluations.length > 0;
-    const hasCompletedEvaluations = hasEvaluations && inscription.evaluations.some((ev: any) => ev.status === 'completed');
-    
-    if (hasCompletedEvaluations) {
-      return 'Eval';
-    } else {
-      return 'Pend';
-    }
+    const state = inscription.evaluation_state ?? (
+      inscription.evaluations?.some((ev: any) => ev.status === 'completed') ? 'evaluada' : 'pendiente'
+    );
+    return state === 'evaluada' ? 'Eval' : 'Pend';
   };
 
   const getEvaluationStatusIcon = (inscription: any) => {
-    // Check if inscription has completed evaluations
-    const hasEvaluations = inscription.evaluations && inscription.evaluations.length > 0;
-    const hasCompletedEvaluations = hasEvaluations && inscription.evaluations.some((ev: any) => ev.status === 'completed');
-    
-    if (hasCompletedEvaluations) {
-      return <CheckCircle2 className="h-3 w-3 mr-1" />;
-    } else {
-      return <Clock className="h-3 w-3 mr-1" />;
-    }
+    const state = inscription.evaluation_state ?? (
+      inscription.evaluations?.some((ev: any) => ev.status === 'completed') ? 'evaluada' : 'pendiente'
+    );
+    return state === 'evaluada' ? <CheckCircle2 className="h-3 w-3 mr-1" /> : <Clock className="h-3 w-3 mr-1" />;
   };
 
   // Filter inscriptions based on search term and evaluation status
@@ -176,16 +165,17 @@ export const InscriptionManagement = () => {
       if (!matchesSearch) return false;
     }
     
-    // Filter by evaluation status
+    // Filter by evaluation status using unified evaluation_state
     if (statusFilter === 'all') return true;
-    
-    const hasEvaluations = inscription.evaluations && inscription.evaluations.length > 0;
-    const hasCompletedEvaluations = hasEvaluations && inscription.evaluations.some((ev: any) => ev.status === 'completed');
-    
+
+    const state: 'evaluada' | 'pendiente' = inscription.evaluation_state ?? (
+      inscription.evaluations?.some((ev: any) => ev.status === 'completed') ? 'evaluada' : 'pendiente'
+    );
+
     if (statusFilter === 'evaluated') {
-      return hasCompletedEvaluations;
+      return state === 'evaluada';
     } else if (statusFilter === 'pending') {
-      return !hasCompletedEvaluations;
+      return state === 'pendiente';
     }
     
     return true;
