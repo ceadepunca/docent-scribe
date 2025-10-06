@@ -144,13 +144,14 @@ export const InscriptionManagement = () => {
     return state === 'evaluada' ? <CheckCircle2 className="h-3 w-3 mr-1" /> : <Clock className="h-3 w-3 mr-1" />;
   };
 
-  // Helper function to normalize text for search (remove accents, extra spaces, and convert to lowercase)
+  // Helper function to normalize text for search (remove accents, punctuation, extra spaces, and convert to lowercase)
   const normalizeText = (text: string): string => {
-    return text
+    return (text || '')
       .toLowerCase()
       .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '') // Remove accents
-      .replace(/\s+/g, ' ') // Replace multiple spaces with single space
+      .replace(/[\u0300-\u036f]/g, '') // Remove accents/diacritics
+      .replace(/[^\p{L}\p{N}\s]/gu, '') // Remove punctuation/symbols, keep letters, numbers and spaces
+      .replace(/\s+/g, ' ') // Collapse multiple spaces
       .trim();
   };
 
@@ -158,21 +159,22 @@ export const InscriptionManagement = () => {
   const filteredInscriptions = inscriptions.filter((inscription: any) => {
     // Filter by search term (name, last name, or DNI)
     if (searchTerm.trim()) {
-      const profile = inscription.profiles;
+      const profileRaw = inscription.profiles;
+      const profile = Array.isArray(profileRaw) ? profileRaw[0] : profileRaw;
       if (!profile) return false;
       
       const normalizedSearch = normalizeText(searchTerm);
+      const tokens = normalizedSearch.split(' ');
       
       // Normalize all searchable fields
-      const fullName = normalizeText(`${profile.first_name || ''} ${profile.last_name || ''}`);
       const firstName = normalizeText(profile.first_name || '');
       const lastName = normalizeText(profile.last_name || '');
-      const dni = (profile.dni || '').toLowerCase().trim();
+      const fullName = normalizeText(`${firstName} ${lastName}`);
+      const reversedName = normalizeText(`${lastName} ${firstName}`);
+      const dni = normalizeText(profile.dni || '');
       
-      const matchesSearch = fullName.includes(normalizedSearch) || 
-                           firstName.includes(normalizedSearch) || 
-                           lastName.includes(normalizedSearch) || 
-                           dni.includes(normalizedSearch);
+      const haystacks = [fullName, reversedName, firstName, lastName, dni];
+      const matchesSearch = tokens.every((tok) => haystacks.some((h) => h.includes(tok)));
       
       if (!matchesSearch) return false;
     }
