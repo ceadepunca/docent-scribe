@@ -7,9 +7,9 @@ interface ProtectedLayoutProps {
 
 const ProtectedLayout: React.FC<ProtectedLayoutProps> = ({ children }) => {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-muted/50">
+    <div className="h-screen flex flex-col bg-gradient-to-br from-background to-muted/50">
       <AppHeader />
-      <main>{children}</main>
+      <main className="flex-1 overflow-y-auto p-4">{children}</main>
     </div>
   );
 };

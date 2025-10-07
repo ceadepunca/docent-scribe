@@ -19,7 +19,12 @@ export const TitleCard: React.FC<TitleCardProps> = ({
   onRemove
 }) => {
   const titlePrefix = `titulo${titleNumber}`;
-  
+  const additionalIndex = Math.max(1, titleNumber - 1);
+  // Ensure the first title always renders as the principal title.
+  const heading = (isRequired || titleNumber <= 1)
+    ? 'TÍTULO DOCENTE O PRINCIPAL *'
+    : `TÍTULO ADICIONAL #${additionalIndex}`;
+
   return (
     <div className={`border rounded-lg p-4 ${isRequired ? 'bg-muted/20' : 'bg-background'} relative`}>
       {!isRequired && onRemove && (
@@ -35,7 +40,7 @@ export const TitleCard: React.FC<TitleCardProps> = ({
       )}
       
       <h3 className={`font-semibold mb-4 ${isRequired ? 'text-primary' : 'text-foreground'}`}>
-        {isRequired ? 'Título Principal *' : `Título Adicional #${titleNumber}`}
+        {heading}
       </h3>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

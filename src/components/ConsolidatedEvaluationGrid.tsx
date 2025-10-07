@@ -399,34 +399,47 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
     fetchProfileAndEvaluations();
   }, [inscriptionId, user, subjectSelections, positionSelections, userId]);
 
-  // Handle Ctrl+Shift+R shortcut to replicate titulo_score from first row to all rows
+  // Handle Alt+Shift+R shortcut to replicate titulo_score from first row to all rows
+  // Using Alt+Shift+R because many browsers capture Ctrl+R / Ctrl+Shift+R for reload
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.shiftKey && e.key === 'R') {
-        e.preventDefault();
-        e.stopPropagation();
-        e.stopImmediatePropagation();
-        
-        if (groupedItems.length > 0) {
-          const firstTituloScore = groupedItems[0].evaluation.titulo_score;
-          if (firstTituloScore > 0) {
-            setGroupedItems(prev => prev.map((group, index) => {
-              if (index === 0) return group; // Don't change the first row
-              return {
-                ...group,
-                evaluation: {
-                  ...group.evaluation,
-                  titulo_score: firstTituloScore
-                }
-              };
-            }));
-            toast({
-              title: 'Puntaje de títulos replicado',
-              description: `Se aplicó el puntaje de títulos (${firstTituloScore}) de la primera fila a todas las demás`,
-            });
+      try {
+        // Normalize key to lowercase for reliable comparison
+        const key = (e.key || '').toLowerCase();
+
+  // Use Alt+R (no Shift) as the shortcut
+  if (e.altKey && !e.ctrlKey && !e.shiftKey && key === 'r') {
+          // Prevent browser default and other listeners
+          e.preventDefault();
+          e.stopPropagation();
+          // Note: stopImmediatePropagation not available on KeyboardEvent in some envs, but we call it if present
+          if (typeof (e as any).stopImmediatePropagation === 'function') {
+            (e as any).stopImmediatePropagation();
           }
+
+          if (groupedItems.length > 0) {
+            const firstTituloScore = groupedItems[0].evaluation.titulo_score;
+            if (firstTituloScore > 0) {
+              setGroupedItems(prev => prev.map((group, index) => {
+                if (index === 0) return group; // Don't change the first row
+                return {
+                  ...group,
+                  evaluation: {
+                    ...group.evaluation,
+                    titulo_score: firstTituloScore
+                  }
+                };
+              }));
+              toast({
+                title: 'Puntaje de títulos replicado',
+                description: `Se aplicó el puntaje de títulos (${firstTituloScore}) de la primera fila a todas las demás (Alt+R)`,
+              });
+            }
+          }
+          return false;
         }
-        return false;
+      } catch (err) {
+        console.warn('Keyboard shortcut handler error:', err);
       }
     };
 
@@ -779,6 +792,9 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
                                   {char}
                                 </span>
                               ))}
+                              {criterion.id === 'titulo_score' && (
+                                <span className="block text-2xs text-muted-foreground mt-1">Atajo: Alt+R</span>
+                              )}
                             </div>
                           </TableHead>
                         </TooltipTrigger>

@@ -221,7 +221,9 @@ export const TeacherFormModal: React.FC<TeacherFormModalProps> = ({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
-        <DialogHeader>
+        {/* Make modal dialog content vertically scrollable and keep footer actions visible */}
+        <div className="flex flex-col max-h-[80vh]">
+          <DialogHeader>
           <DialogTitle>
             {teacher ? 'Editar Docente' : 'Crear Nuevo Docente'}
           </DialogTitle>
@@ -233,11 +235,12 @@ export const TeacherFormModal: React.FC<TeacherFormModalProps> = ({
               Editando: {teacher.first_name} {teacher.last_name} (DNI: {teacher.dni})
             </div>
           )}
-        </DialogHeader>
+          </DialogHeader>
 
-        <Form {...form}>
-          <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <Form {...form}>
+            {/* Scrollable form body */}
+            <form id="teacher-form" onSubmit={handleSubmit} className="space-y-4 overflow-auto px-4 pb-4 flex-1">
+              <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor="first_name">Nombres *</Label>
               <Input
@@ -346,31 +349,41 @@ export const TeacherFormModal: React.FC<TeacherFormModalProps> = ({
             </div>
           </div>
 
-          <div className="flex justify-between items-center pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                console.log('Form data:', formData);
-                console.log('Teacher prop:', teacher);
-                alert(`Form Data:\n${JSON.stringify(formData, null, 2)}\n\nTeacher Prop:\n${JSON.stringify(teacher, null, 2)}`);
-              }}
-              title="Debug: Ver datos del formulario"
-            >
-              Debug Form
-            </Button>
+              {/* Keep Debug button near inputs but actions moved to footer */}
+              <div className="pt-2">
+                {/* Intentionally left blank: actions are in footer */}
+              </div>
+            </form>
+          </Form>
+
+          {/* Sticky footer with actions */}
+          <div className="border-t px-4 py-3 bg-card flex items-center justify-between">
+            <div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  console.log('Form data:', formData);
+                  console.log('Teacher prop:', teacher);
+                  alert(`Form Data:\n${JSON.stringify(formData, null, 2)}\n\nTeacher Prop:\n${JSON.stringify(teacher, null, 2)}`);
+                }}
+                title="Debug: Ver datos del formulario"
+              >
+                Debug Form
+              </Button>
+            </div>
+
             <div className="flex gap-2">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancelar
               </Button>
-              <Button type="submit" disabled={saving}>
+              <Button type="submit" form="teacher-form" disabled={saving}>
                 {saving ? 'Guardando...' : (teacher ? 'Actualizar' : 'Crear')}
               </Button>
             </div>
           </div>
-          </form>
-        </Form>
+        </div>
       </DialogContent>
     </Dialog>
   );
