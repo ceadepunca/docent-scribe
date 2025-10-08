@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -12,6 +12,7 @@ import { SubjectSelection, PositionSelection, useSecondaryInscriptionData } from
 import { useInscriptionPeriods } from '@/hooks/useInscriptionPeriods';
 import { useSecondaryInscriptionSelections } from '@/hooks/useSecondaryInscriptionSelections';
 import { useKeyboardNavigation } from '@/hooks/useKeyboardNavigation';
+import { useHotkeys } from '@/hooks/useHotkeys';
 
 interface SecondaryInscriptionWizardProps {
   onComplete: (data: {
@@ -40,9 +41,7 @@ export const SecondaryInscriptionWizard: React.FC<SecondaryInscriptionWizardProp
   onPositionSelectionsChange,
   inscriptionId = null,
 }) => {
-  const [activeTab, setActiveTab] = useState<'period' | 'fray' | 'enet' | 'documents' | 'summary'>(
-    inscriptionId ? 'fray' : 'period'
-  );
+  const [activeTab, setActiveTab] = useState<'period' | 'fray' | 'enet' | 'documents' | 'summary'>('fray');
   const [subjectSelections, setSubjectSelections] = useState<SubjectSelection[]>([]);
   const [positionSelections, setPositionSelections] = useState<PositionSelection[]>([]);
   const [selectedPeriodId, setSelectedPeriodId] = useState<string | null>(initialInscriptionPeriodId || null);
@@ -135,9 +134,11 @@ export const SecondaryInscriptionWizard: React.FC<SecondaryInscriptionWizardProp
     }
   };
 
-  const handleComplete = () => {
-    // When editing an existing inscription, use the original period ID
-    // When creating a new inscription, use the selected period ID
+  const isConfirmButtonDisabled = !hasAnySelections || !selectedPeriodId || isLoading || autoSaving;
+
+  const handleComplete = useCallback(() => {
+    if (isConfirmButtonDisabled) return;
+
     const periodIdToUse = inscriptionId ? initialInscriptionPeriodId : selectedPeriodId;
     
     if (!periodIdToUse) return;
@@ -147,7 +148,9 @@ export const SecondaryInscriptionWizard: React.FC<SecondaryInscriptionWizardProp
       positionSelections,
       inscriptionPeriodId: periodIdToUse,
     });
-  };
+  }, [isConfirmButtonDisabled, inscriptionId, initialInscriptionPeriodId, selectedPeriodId, onComplete, subjectSelections, positionSelections]);
+
+  useHotkeys({ 'alt+g': handleComplete }, isConfirmButtonDisabled);
 
   return (
     <div className="space-y-6">
@@ -160,6 +163,9 @@ export const SecondaryInscriptionWizard: React.FC<SecondaryInscriptionWizardProp
           <div className="mt-2 p-2 bg-muted/50 rounded-md">
             <p className="text-xs text-muted-foreground flex items-center gap-1">
               💡 <strong>Navegación rápida:</strong> Use <strong>Ctrl + ←/→</strong> para navegar entre las pestañas
+            </p>
+             <p className="text-xs text-muted-foreground flex items-center gap-1">
+              💡 <strong>Atajo de teclado:</strong> Use <strong>ALT + G</strong> para guardar la inscripción desde cualquier pestaña
             </p>
           </div>
         </CardHeader>
