@@ -55,7 +55,12 @@ export const EnetSubjectsAndPositions: React.FC<EnetSubjectsAndPositionsProps> =
   // Filter for ENET school - get school ID first
   const enetSchool = schools.find(school => school.name?.includes('ENET'));
   const enetSubjects = subjects.filter(subject => subject.school_id === enetSchool?.id);
-  const enetPositions = positions.filter(position => position.school_id === enetSchool?.id);
+  // Filter positions for ENET and sort alphabetically by name so new entries
+  // (e.g. BIBLIOTECARIO) appear in the correct place without changing DB order.
+  const enetPositions = positions
+    .filter(position => position.school_id === enetSchool?.id)
+    .slice() // copy to avoid mutating original array
+    .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'es', { sensitivity: 'base' }));
 
   // Group subjects by specialty
   const subjectsBySpecialty = enetSubjects.reduce((acc, subject) => {

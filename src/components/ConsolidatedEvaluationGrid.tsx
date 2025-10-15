@@ -961,7 +961,7 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
                       className="flex items-center gap-2"
                     >
                       <Save className="h-4 w-4" />
-                      {allCompleted ? 'Reabrir para Editar' : 'Guardar Todo'}
+                      {allCompleted ? 'Reabrir para Editar' : 'Guardar borrador'}
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
