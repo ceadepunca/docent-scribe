@@ -218,12 +218,9 @@ const InscriptionForm: React.FC<InscriptionFormProps> = ({ initialData, isEdit =
       });
 
       // Redirigir al formulario de la grilla de evaluación (InscriptionDetail)
-      if (result.data?.id) {
-        navigate(`/inscriptions/${result.data.id}#evaluation`);
-      } else if (result.id) {
-        navigate(`/inscriptions/${result.id}#evaluation`);
-      } else if (isEdit && initialData?.id) {
-        navigate(`/inscriptions/${initialData.id}#evaluation`);
+      const inscriptionId = result.data?.id || (isEdit ? initialData?.id : undefined);
+      if (inscriptionId) {
+        navigate(`/inscriptions/${inscriptionId}#evaluation`);
       } else {
         navigate('/inscriptions');
       }
@@ -383,14 +380,8 @@ const InscriptionForm: React.FC<InscriptionFormProps> = ({ initialData, isEdit =
         description: 'Su inscripción para nivel secundario se envió exitosamente con todas las selecciones',
       });
 
-      // Navigate based on context
-      if (evaluationNavigation?.hasEvaluationContext) {
-        // If in evaluation context, go back to evaluations
-        evaluationNavigation.backToEvaluations();
-      } else {
-        // Otherwise, go to the inscription detail page to show the evaluation grid
-        navigate(`/inscriptions/${inscription.id}#evaluation`);
-      }
+      // Navigate to the inscription detail page to show the evaluation grid
+      navigate(`/inscriptions/${inscription.id}#evaluation`);
     } catch (error) {
       console.error('Error:', error);
       toast({
