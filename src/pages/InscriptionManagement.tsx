@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Calendar, Users, BookOpen, Eye, CheckCircle2, Clock, ArrowLeft, Search, UserPlus, X } from 'lucide-react';
+import { Calendar, Users, BookOpen, Eye, CheckCircle2, Clock, ArrowLeft, Search, UserPlus, X, RefreshCw } from 'lucide-react';
 import { useInscriptionPeriods } from '@/hooks/useInscriptionPeriods';
 import { usePeriodInscriptions } from '@/hooks/usePeriodInscriptions';
 import { useAuth } from '@/contexts/AuthContext';
@@ -30,21 +30,17 @@ export const InscriptionManagement = () => {
     refreshInscriptions
   } = usePeriodInscriptions();
 
-  // Load filters from URL params and localStorage on component mount
-  React.useEffect(() => {
+  useEffect(() => {
     fetchAllPeriods();
     
-    // Load from URL params first
     const periodFromUrl = searchParams.get('period');
     const statusFromUrl = searchParams.get('status');
     const searchFromUrl = searchParams.get('search');
     
-    // Load from localStorage as fallback
     const savedPeriod = localStorage.getItem('inscription-management-period');
     const savedStatus = localStorage.getItem('inscription-management-status');
     const savedSearch = localStorage.getItem('inscription-management-search');
     
-    // Set initial values
     if (periodFromUrl) {
       setSelectedPeriodId(periodFromUrl);
     } else if (savedPeriod) {
@@ -66,30 +62,37 @@ export const InscriptionManagement = () => {
     }
   }, []);
 
-  // Save filters to localStorage and URL when they change
-  React.useEffect(() => {
-    const params = new URLSearchParams();
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams);
     
     if (selectedPeriodId) {
       params.set('period', selectedPeriodId);
       localStorage.setItem('inscription-management-period', selectedPeriodId);
+    } else {
+      params.delete('period');
+      localStorage.removeItem('inscription-management-period');
     }
     
     if (statusFilter !== 'all') {
       params.set('status', statusFilter);
       localStorage.setItem('inscription-management-status', statusFilter);
+    } else {
+      params.delete('status');
+      localStorage.removeItem('inscription-management-status');
     }
     
     if (searchTerm.trim()) {
       params.set('search', searchTerm);
       localStorage.setItem('inscription-management-search', searchTerm);
+    } else {
+      params.delete('search');
+      localStorage.removeItem('inscription-management-search');
     }
     
-    // Update URL without causing a page reload
     setSearchParams(params, { replace: true });
   }, [selectedPeriodId, statusFilter, searchTerm, setSearchParams]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (selectedPeriodId) {
       fetchInscriptionsByPeriod(selectedPeriodId);
     }
@@ -122,42 +125,31 @@ export const InscriptionManagement = () => {
   };
 
   const getEvaluationStatusColor = (inscription: any) => {
-    const state = inscription.evaluation_state ?? (
-      inscription.evaluations?.some((ev: any) => ev.status === 'completed') ? 'evaluada' : 'pendiente'
-    );
-    return state === 'evaluada'
-      ? 'bg-green-100 text-green-800 hover:bg-green-100'
-      : 'bg-gray-100 text-gray-800 hover:bg-gray-100';
+    const state = inscription.evaluation_state ?? (inscription.evaluations?.some((ev: any) => ev.status === 'completed') ? 'evaluada' : 'pendiente');
+    return state === 'evaluada' ? 'bg-green-100 text-green-800 hover:bg-green-100' : 'bg-gray-100 text-gray-800 hover:bg-gray-100';
   };
 
   const getEvaluationStatusLabel = (inscription: any) => {
-    const state = inscription.evaluation_state ?? (
-      inscription.evaluations?.some((ev: any) => ev.status === 'completed') ? 'evaluada' : 'pendiente'
-    );
+    const state = inscription.evaluation_state ?? (inscription.evaluations?.some((ev: any) => ev.status === 'completed') ? 'evaluada' : 'pendiente');
     return state === 'evaluada' ? 'Eval' : 'Pend';
   };
 
   const getEvaluationStatusIcon = (inscription: any) => {
-    const state = inscription.evaluation_state ?? (
-      inscription.evaluations?.some((ev: any) => ev.status === 'completed') ? 'evaluada' : 'pendiente'
-    );
+    const state = inscription.evaluation_state ?? (inscription.evaluations?.some((ev: any) => ev.status === 'completed') ? 'evaluada' : 'pendiente');
     return state === 'evaluada' ? <CheckCircle2 className="h-3 w-3 mr-1" /> : <Clock className="h-3 w-3 mr-1" />;
   };
 
-  // Helper function to normalize text for search (remove accents, punctuation, extra spaces, and convert to lowercase)
   const normalizeText = (text: string): string => {
     return (text || '')
       .toLowerCase()
       .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '') // Remove accents/diacritics
-      .replace(/[^a-z0-9\s]/g, '') // Remove punctuation/symbols, keep letters, numbers and spaces
-      .replace(/\s+/g, ' ') // Collapse multiple spaces
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9\s]/g, '')
+      .replace(/\s+/g, ' ')
       .trim();
   };
 
-  // Filter inscriptions based on search term and evaluation status
   const filteredInscriptions = inscriptions.filter((inscription: any) => {
-    // Filter by search term (name, last name, or DNI)
     if (searchTerm.trim()) {
       const profileRaw = inscription.profiles;
       const profile = Array.isArray(profileRaw) ? profileRaw[0] : profileRaw;
@@ -166,7 +158,6 @@ export const InscriptionManagement = () => {
       const normalizedSearch = normalizeText(searchTerm);
       const tokens = normalizedSearch.split(' ');
       
-      // Normalize all searchable fields
       const firstName = normalizeText(profile.first_name || '');
       const lastName = normalizeText(profile.last_name || '');
       const fullName = normalizeText(`${firstName} ${lastName}`);
@@ -179,12 +170,9 @@ export const InscriptionManagement = () => {
       if (!matchesSearch) return false;
     }
     
-    // Filter by evaluation status using unified evaluation_state
     if (statusFilter === 'all') return true;
 
-    const state: 'evaluada' | 'pendiente' = inscription.evaluation_state ?? (
-      inscription.evaluations?.some((ev: any) => ev.status === 'completed') ? 'evaluada' : 'pendiente'
-    );
+    const state: 'evaluada' | 'pendiente' = inscription.evaluation_state ?? (inscription.evaluations?.some((ev: any) => ev.status === 'completed') ? 'evaluada' : 'pendiente');
 
     if (statusFilter === 'evaluated') {
       return state === 'evaluada';
@@ -197,7 +185,7 @@ export const InscriptionManagement = () => {
 
   if (periodsLoading) {
     return (
-      <div className="flex items-center justify-center py-8">
+      <div className="flex items-center justify-center h-screen">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-muted-foreground">Cargando períodos...</p>
@@ -207,305 +195,206 @@ export const InscriptionManagement = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-muted/50 p-4">
-      <div className="max-w-7xl mx-auto">
-        <div className="mb-6">
-          <Button
-            variant="ghost"
-            onClick={() => navigate('/dashboard')}
-            className="mb-4"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Volver al Dashboard
-          </Button>
+    <div className="min-h-screen bg-background p-4 lg:p-6">
+      <div className="max-w-8xl mx-auto space-y-6">
+        <Card>
+          <CardHeader>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+              <div className="mb-4 sm:mb-0">
+                <CardTitle className="text-2xl font-bold text-foreground">Gestión de Inscripciones</CardTitle>
+                <CardDescription>Administre y evalúe las inscripciones de docentes.</CardDescription>
+              </div>
+              <Button variant="ghost" onClick={() => navigate('/dashboard')} className="self-start sm:self-center">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Volver al Dashboard
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <Select value={selectedPeriodId} onValueChange={setSelectedPeriodId}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Seleccionar un período..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {periods.map(period => (
+                    <SelectItem key={period.id} value={period.id}>
+                      <div className="flex items-center justify-between w-full">
+                        <span>{period.name}</span>
+                        <Badge variant={period.is_active ? 'default' : 'secondary'} className="ml-2">
+                          {period.is_active ? 'Activo' : 'Inactivo'}
+                        </Badge>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-foreground mb-2">
-              Gestión de Inscripciones
-            </h1>
-            <p className="text-muted-foreground">
-              Administrar y evaluar las inscripciones de docentes
-            </p>
-          </div>
-        </div>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                <Input
+                  placeholder="Buscar por nombre, apellido o DNI..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 pr-10 w-full"
+                  disabled={!selectedPeriodId}
+                />
+                {searchTerm && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSearchTerm('')}
+                    className="absolute right-1 top-1/2 transform -translate-y-1/2 h-7 w-7 p-0 hover:bg-muted"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
 
-        <div className="space-y-6">
-          {/* Search and Filters */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Search className="h-5 w-5" />
-                Búsqueda y Filtros
-              </CardTitle>
-              <CardDescription>
-                Busque por nombre, apellido o DNI, y filtre las inscripciones
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col lg:flex-row gap-4">
-                <div className="flex-1">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                    <Input
-                      placeholder="Buscar por nombre, apellido o DNI..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10 pr-10"
-                    />
-                    {searchTerm && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                          onClick={() => {
-                            setSearchTerm('');
-                            setStatusFilter('all');
-                          }}
-                        className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0 hover:bg-muted"
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                    )}
-                  </div>
+              <Select value={statusFilter} onValueChange={setStatusFilter} disabled={!selectedPeriodId}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Filtrar por estado" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas</SelectItem>
+                  <SelectItem value="evaluated">Solo evaluadas</SelectItem>
+                  <SelectItem value="pending">Solo pendientes</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {selectedPeriod && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4">
+                <div className="text-center p-3 border rounded-lg bg-muted/50">
+                  <div className="text-2xl font-bold text-primary">{stats.total}</div>
+                  <div className="text-sm text-muted-foreground">Total</div>
                 </div>
-                <div className="flex-1 max-w-md">
-                  <Select value={selectedPeriodId} onValueChange={setSelectedPeriodId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar período..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {periods.map(period => (
-                        <SelectItem key={period.id} value={period.id}>
-                          <div className="flex items-center justify-between w-full">
-                            <span>{period.name}</span>
-                            <Badge variant={period.is_active ? 'default' : 'secondary'} className="ml-2">
-                              {period.is_active ? 'Activo' : 'Inactivo'}
-                            </Badge>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                <div className="text-center p-3 border rounded-lg bg-muted/50">
+                  <div className="text-2xl font-bold text-green-600">{stats.evaluated}</div>
+                  <div className="text-sm text-muted-foreground">Evaluadas</div>
                 </div>
-                <div className="flex-1 max-w-md">
-                  <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Filtrar por estado de evaluación" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todas las inscripciones</SelectItem>
-                      <SelectItem value="evaluated">Solo evaluadas</SelectItem>
-                      <SelectItem value="pending">Solo pendientes</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div className="text-center p-3 border rounded-lg bg-muted/50">
+                  <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
+                  <div className="text-sm text-muted-foreground">Pendientes</div>
                 </div>
-                <div className="flex items-end gap-2">
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-2">
                   {isSuperAdmin && (
                     <Button 
-                      variant="default" 
+                      variant="outline" 
                       onClick={() => navigate('/admin/assisted-inscription')}
-                      className="flex items-center gap-2"
+                      className="w-full"
                     >
-                      <UserPlus className="h-4 w-4" />
-                      Inscripción Asistida
+                      <UserPlus className="h-4 w-4 mr-2" />
+                      Asistida
                     </Button>
                   )}
                   <Button 
                     variant="outline" 
                     onClick={refreshInscriptions}
                     disabled={inscriptionsLoading}
+                    className="w-full"
                   >
+                    <RefreshCw className={`h-4 w-4 mr-2 ${inscriptionsLoading ? 'animate-spin' : ''}`} />
                     Actualizar
                   </Button>
                 </div>
               </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {selectedPeriodId ? (
+          <Card>
+            <CardHeader>
+                <CardTitle>Resultados</CardTitle>
+                <CardDescription>
+                  Mostrando {filteredInscriptions.length} de {inscriptions.length} inscripciones para "{selectedPeriod?.name}"
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {inscriptionsLoading ? (
+                <div className="flex items-center justify-center py-16">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                    <p className="text-muted-foreground">Cargando inscripciones...</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Docente</TableHead>
+                        <TableHead className="hidden md:table-cell">Email</TableHead>
+                        <TableHead className="hidden lg:table-cell">DNI</TableHead>
+                        <TableHead>Nivel</TableHead>
+                        <TableHead className="hidden lg:table-cell">Período</TableHead>
+                        <TableHead>Estado</TableHead>
+                        <TableHead>Evaluación</TableHead>
+                        {(isSuperAdmin || isEvaluator) && <TableHead className="text-right">Acciones</TableHead>}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredInscriptions.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={isSuperAdmin || isEvaluator ? 8 : 7} className="text-center py-16">
+                            <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                            <p className="font-semibold">No se encontraron inscripciones</p>
+                            <p className="text-muted-foreground text-sm">
+                              {searchTerm.trim() 
+                                ? `Ningún resultado para "${searchTerm}"`
+                                : 'Intente cambiar los filtros o seleccione otro período.'
+                              }
+                            </p>
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        filteredInscriptions.map((inscription: any) => (
+                          <TableRow key={inscription.id} className="hover:bg-muted/50">
+                            <TableCell className="font-medium">{`${inscription.profiles?.first_name || ''} ${inscription.profiles?.last_name || ''}`.trim() || 'Sin nombre'}</TableCell>
+                            <TableCell className="hidden md:table-cell">{inscription.profiles?.email || '-'}</TableCell>
+                            <TableCell className="hidden lg:table-cell">{inscription.profiles?.dni || '-'}</TableCell>
+                            <TableCell><Badge variant="outline">{inscription.teaching_level}</Badge></TableCell>
+                            <TableCell className="hidden lg:table-cell"><Badge variant="outline" className="text-xs">{selectedPeriod?.name || '-'}</Badge></TableCell>
+                            <TableCell><Badge className={getStatusColor(inscription.status)}>{getStatusLabel(inscription.status)}</Badge></TableCell>
+                            <TableCell>
+                              <Badge className={getEvaluationStatusColor(inscription)}>
+                                {getEvaluationStatusIcon(inscription)}
+                                {getEvaluationStatusLabel(inscription)}
+                              </Badge>
+                            </TableCell>
+                            {(isSuperAdmin || isEvaluator) && (
+                              <TableCell className="text-right">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => navigate(`/inscriptions/${inscription.id}?from=evaluations&period=${selectedPeriodId}&status=${statusFilter}`)}
+                                >
+                                  <Eye className="h-4 w-4 mr-2" />
+                                  Evaluar
+                                </Button>
+                              </TableCell>
+                            )}
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
             </CardContent>
           </Card>
-
-          {/* Period Details and Stats */}
-          {selectedPeriod && (
-            <>
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle className="flex items-center gap-2">
-                        <BookOpen className="h-5 w-5" />
-                        {selectedPeriod.name}
-                      </CardTitle>
-                      <CardDescription className="mt-2">
-                        {selectedPeriod.description}
-                      </CardDescription>
-                    </div>
-                    <Badge variant={selectedPeriod.is_active ? 'default' : 'secondary'}>
-                      {selectedPeriod.is_active ? 'Período Activo' : 'Período Inactivo'}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                    <div className="text-center p-4 border rounded-lg">
-                      <div className="text-2xl font-bold text-primary">{stats.total}</div>
-                      <div className="text-sm text-muted-foreground">Total Inscripciones</div>
-                    </div>
-                    <div className="text-center p-4 border rounded-lg">
-                      <div className="text-2xl font-bold text-green-600">{stats.evaluated}</div>
-                      <div className="text-sm text-muted-foreground">Evaluadas</div>
-                    </div>
-                    <div className="text-center p-4 border rounded-lg">
-                      <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
-                      <div className="text-sm text-muted-foreground">Pendientes</div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <Calendar className="h-4 w-4" />
-                      Inicio: {format(new Date(selectedPeriod.start_date), 'dd/MM/yyyy', { locale: es })}
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Calendar className="h-4 w-4" />
-                      Fin: {format(new Date(selectedPeriod.end_date), 'dd/MM/yyyy', { locale: es })}
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Users className="h-4 w-4" />
-                      Niveles: {selectedPeriod.available_levels.join(', ')}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-
-              {/* Inscriptions Table */}
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle>Inscripciones del Período</CardTitle>
-                      <CardDescription>
-                        Mostrando {filteredInscriptions.length} de {inscriptions.length} inscripciones
-                      </CardDescription>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {inscriptionsLoading ? (
-                    <div className="flex items-center justify-center py-8">
-                      <div className="text-center">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-                        <p className="text-muted-foreground">Cargando inscripciones...</p>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Docente</TableHead>
-                            <TableHead>Email</TableHead>
-                            <TableHead>DNI</TableHead>
-                            <TableHead>Nivel</TableHead>
-                            <TableHead>Período</TableHead>
-                            <TableHead>Estado</TableHead>
-                            <TableHead>Evaluación</TableHead>
-                            {(isSuperAdmin || isEvaluator) && <TableHead>Acciones</TableHead>}
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {filteredInscriptions.length === 0 ? (
-                            <TableRow>
-                              <TableCell colSpan={isSuperAdmin || isEvaluator ? 8 : 7} className="text-center py-8">
-                                <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                                <p className="text-muted-foreground">
-                                  {searchTerm.trim() 
-                                    ? `No se encontraron inscripciones que coincidan con "${searchTerm}"`
-                                    : statusFilter === 'all' 
-                                      ? 'No hay inscripciones para este período'
-                                      : `No hay inscripciones ${statusFilter === 'evaluated' ? 'evaluadas' : 'pendientes'} para este período`
-                                  }
-                                </p>
-                              </TableCell>
-                            </TableRow>
-                          ) : (
-                            filteredInscriptions.map((inscription: any) => (
-                              <TableRow key={inscription.id} className="hover:bg-muted/50">
-                                <TableCell className="font-medium">
-                                  {inscription.profiles?.first_name} {inscription.profiles?.last_name}
-                                </TableCell>
-                                <TableCell>{inscription.profiles?.email || 'No disponible'}</TableCell>
-                                <TableCell>{inscription.profiles?.dni || 'No disponible'}</TableCell>
-                                <TableCell>
-                                  <Badge variant="outline">
-                                    {inscription.teaching_level}
-                                  </Badge>
-                                </TableCell>
-                                <TableCell>
-                                  <Badge variant="outline" className="text-xs">
-                                    {selectedPeriod?.name || 'Sin período'}
-                                  </Badge>
-                                </TableCell>
-                                <TableCell>
-                                  <Badge className={getStatusColor(inscription.status)}>
-                                    {getStatusLabel(inscription.status)}
-                                  </Badge>
-                                </TableCell>
-                                <TableCell>
-                                  <Badge className={getEvaluationStatusColor(inscription)}>
-                                    {getEvaluationStatusIcon(inscription)}
-                                    {getEvaluationStatusLabel(inscription)}
-                                  </Badge>
-                                </TableCell>
-                                {(isSuperAdmin || isEvaluator) && (
-                                  <TableCell>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => {
-                                        // Create return URL with current filters
-                                        const returnParams = new URLSearchParams();
-                                        if (selectedPeriodId) returnParams.set('period', selectedPeriodId);
-                                        if (statusFilter !== 'all') returnParams.set('status', statusFilter);
-                                        if (searchTerm.trim()) returnParams.set('search', searchTerm);
-                                        
-                                        const returnUrl = returnParams.toString() 
-                                          ? `/inscription-management?${returnParams.toString()}`
-                                          : '/inscription-management';
-                                        
-                                        // Navigate to evaluation page with return URL
-                                        navigate(`/inscriptions/${inscription.id}?returnTo=${encodeURIComponent(returnUrl)}`);
-                                      }}
-                                      className="flex items-center gap-2"
-                                    >
-                                      <Eye className="h-4 w-4" />
-                                      Evaluar
-                                    </Button>
-                                  </TableCell>
-                                )}
-                              </TableRow>
-                            ))
-                          )}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </>
-          )}
-
-          {!selectedPeriodId && (
-            <Card className="border-dashed">
-              <CardContent className="pt-6">
-                <div className="text-center py-8">
-                  <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-medium mb-2">Seleccionar Período</h3>
-                  <p className="text-muted-foreground mb-4">
-                    Seleccione un período de inscripción para ver las inscripciones
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
+        ) : (
+          <Card className="border-dashed">
+            <CardContent className="pt-6">
+              <div className="text-center py-16">
+                <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-medium mb-2">Seleccione un Período</h3>
+                <p className="text-muted-foreground">Para comenzar, elija un período de inscripción de la lista.</p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );
