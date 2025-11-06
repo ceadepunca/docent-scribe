@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, Plus, Calendar, Users, BookOpen, ClipboardList, Eye, Clock, Check, X, Settings, Upload, UserPlus2, UserPlus } from 'lucide-react';
+import { ArrowLeft, Plus, Calendar, Users, BookOpen, ClipboardList, Eye, Clock, Check, X, Settings, Upload, UserPlus2, UserPlus, Database, HardDrive, Download, FileJson } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -18,6 +18,9 @@ import { es } from 'date-fns/locale';
 import { TeacherManagementTab } from '@/components/admin/TeacherManagementTab';
 import { AdminImportWrapper } from '@/components/admin/AdminImportWrapper';
 import { GoogleFormsImportModal } from '@/components/admin/GoogleFormsImportModal';
+import { useBackupRestore } from '@/hooks/useBackupRestore';
+import { Progress } from '@/components/ui/progress';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 interface RecentInscription {
   id: string;
@@ -56,6 +59,12 @@ const AdminPanel = () => {
   const [showGoogleFormsImport, setShowGoogleFormsImport] = useState(false);
   const [selectedPeriodForImport, setSelectedPeriodForImport] = useState<{id: string, name: string} | null>(null);
   const [availablePeriods, setAvailablePeriods] = useState<any[]>([]);
+  
+  // Backup/Restore state
+  const { exportBackup, importBackup, isExporting, isImporting, progress } = useBackupRestore();
+  const [backupFile, setBackupFile] = useState<File | null>(null);
+  const [showRestoreDialog, setShowRestoreDialog] = useState(false);
+  const [restoreMode, setRestoreMode] = useState<'replace' | 'merge'>('merge');
 
   useEffect(() => {
     if (isSuperAdmin) {
@@ -253,7 +262,7 @@ const AdminPanel = () => {
         </div>
 
         <Tabs defaultValue="general" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="general" className="flex items-center gap-2">
               <Settings className="h-4 w-4" />
               Panel General
@@ -269,6 +278,10 @@ const AdminPanel = () => {
             <TabsTrigger value="import" className="flex items-center gap-2">
               <Upload className="h-4 w-4" />
               Importar Datos
+            </TabsTrigger>
+            <TabsTrigger value="backup" className="flex items-center gap-2">
+              <Database className="h-4 w-4" />
+              Backup
             </TabsTrigger>
           </TabsList>
 
@@ -668,7 +681,202 @@ const AdminPanel = () => {
               </Card>
             </div>
           </TabsContent>
+
+          <TabsContent value="backup" className="mt-6">
+            <div className="space-y-6">
+              {/* Export Backup */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Download className="h-5 w-5" />
+                    Exportar Backup
+                  </CardTitle>
+                  <CardDescription>
+                    Descarga una copia completa de todos los datos en formato JSON. Útil antes de realizar cambios importantes.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-start gap-4 p-4 bg-muted/50 rounded-lg">
+                    <HardDrive className="h-5 w-5 mt-1 text-muted-foreground" />
+                    <div className="flex-1 space-y-2">
+                      <p className="text-sm font-medium">
+                        El backup incluye:
+                      </p>
+                      <ul className="text-sm text-muted-foreground space-y-1">
+                        <li>• Perfiles de docentes</li>
+                        <li>• Inscripciones y selecciones</li>
+                        <li>• Evaluaciones</li>
+                        <li>• Períodos de inscripción</li>
+                        <li>• Materias y posiciones administrativas</li>
+                        <li>• Documentos (referencias)</li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  {isExporting && (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span>Exportando datos...</span>
+                        <span>{progress}%</span>
+                      </div>
+                      <Progress value={progress} />
+                    </div>
+                  )}
+
+                  <Button 
+                    onClick={exportBackup} 
+                    disabled={isExporting || isImporting}
+                    className="w-full"
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    {isExporting ? 'Exportando...' : 'Descargar Backup'}
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* Import/Restore Backup */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileJson className="h-5 w-5" />
+                    Restaurar Backup
+                  </CardTitle>
+                  <CardDescription>
+                    Importa datos desde un archivo de backup JSON previamente exportado.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="p-4 bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-900 rounded-lg">
+                    <div className="flex gap-3">
+                      <div className="flex-shrink-0">
+                        <svg className="h-5 w-5 text-yellow-600 dark:text-yellow-500" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+                          Precaución
+                        </h3>
+                        <p className="mt-1 text-sm text-yellow-700 dark:text-yellow-300">
+                          La restauración puede sobrescribir datos existentes. Asegúrese de hacer un backup actual antes de restaurar.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="backup-file">Seleccionar archivo de backup</Label>
+                    <Input
+                      id="backup-file"
+                      type="file"
+                      accept=".json"
+                      onChange={(e) => setBackupFile(e.target.files?.[0] || null)}
+                      disabled={isImporting || isExporting}
+                    />
+                  </div>
+
+                  {backupFile && (
+                    <div className="p-3 bg-muted rounded-lg">
+                      <p className="text-sm font-medium">Archivo seleccionado:</p>
+                      <p className="text-sm text-muted-foreground">{backupFile.name}</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Tamaño: {(backupFile.size / 1024).toFixed(2)} KB
+                      </p>
+                    </div>
+                  )}
+
+                  {isImporting && (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span>Importando datos...</span>
+                        <span>{progress}%</span>
+                      </div>
+                      <Progress value={progress} />
+                    </div>
+                  )}
+
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={() => {
+                        if (backupFile) {
+                          setRestoreMode('merge');
+                          setShowRestoreDialog(true);
+                        }
+                      }}
+                      disabled={!backupFile || isImporting || isExporting}
+                      variant="outline"
+                      className="flex-1"
+                    >
+                      Combinar Datos
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        if (backupFile) {
+                          setRestoreMode('replace');
+                          setShowRestoreDialog(true);
+                        }
+                      }}
+                      disabled={!backupFile || isImporting || isExporting}
+                      variant="destructive"
+                      className="flex-1"
+                    >
+                      Reemplazar Todo
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
         </Tabs>
+
+        {/* Restore Confirmation Dialog */}
+        <AlertDialog open={showRestoreDialog} onOpenChange={setShowRestoreDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {restoreMode === 'replace' ? '¿Reemplazar todos los datos?' : '¿Combinar datos?'}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {restoreMode === 'replace' ? (
+                  <>
+                    Esta acción eliminará TODOS los datos actuales y los reemplazará con los datos del backup.
+                    <br /><br />
+                    <strong className="text-destructive">Esta acción no se puede deshacer.</strong>
+                    <br /><br />
+                    Se recomienda hacer un backup actual antes de continuar.
+                  </>
+                ) : (
+                  <>
+                    Esta acción combinará los datos del backup con los datos existentes.
+                    Los registros existentes con el mismo ID serán actualizados.
+                    <br /><br />
+                    Esta operación es más segura que reemplazar todo.
+                  </>
+                )}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={async () => {
+                  if (backupFile) {
+                    const success = await importBackup(backupFile, restoreMode);
+                    if (success) {
+                      setBackupFile(null);
+                      // Refresh stats and data
+                      fetchStats();
+                      fetchRecentInscriptions();
+                    }
+                  }
+                  setShowRestoreDialog(false);
+                }}
+                className={restoreMode === 'replace' ? 'bg-destructive hover:bg-destructive/90' : ''}
+              >
+                Confirmar
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {/* Google Forms Import Modal */}
         {selectedPeriodForImport && (
