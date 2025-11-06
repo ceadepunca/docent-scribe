@@ -25,20 +25,47 @@ interface PeriodStats {
   pending: number;
 }
 
+interface PaginationInfo {
+  currentPage: number;
+  pageSize: number;
+  totalPages: number;
+  totalItems: number;
+}
+
 export const usePeriodInscriptions = () => {
   const [inscriptions, setInscriptions] = useState<PeriodInscription[]>([]);
   const [stats, setStats] = useState<PeriodStats>({ total: 0, evaluated: 0, pending: 0 });
+  const [pagination, setPagination] = useState<PaginationInfo>({ 
+    currentPage: 1, 
+    pageSize: 50, 
+    totalPages: 0, 
+    totalItems: 0 
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentPeriodId, setCurrentPeriodId] = useState<string | null>(null);
 
-  const fetchInscriptionsByPeriod = useCallback(async (periodId: string) => {
+  const fetchInscriptionsByPeriod = useCallback(async (periodId: string, page: number = 1) => {
     try {
       setLoading(true);
       setError(null);
       setCurrentPeriodId(periodId);
 
-      // Fetch inscriptions for the period with explicit join using correct foreign key
+      // First, get total count
+      const { count: totalCount, error: countError } = await supabase
+        .from('inscriptions')
+        .select('*', { count: 'exact', head: true })
+        .eq('inscription_period_id', periodId);
+
+      if (countError) throw countError;
+
+      const totalItems = totalCount || 0;
+      const pageSize = 50;
+      const totalPages = Math.ceil(totalItems / pageSize);
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+
+      // Fetch inscriptions for the period with pagination
       const { data: inscriptionsData, error: inscriptionsError } = await supabase
         .from('inscriptions')
         .select(`
@@ -58,7 +85,8 @@ export const usePeriodInscriptions = () => {
           )
         `)
         .eq('inscription_period_id', periodId)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .range(from, to);
 
       if (inscriptionsError) throw inscriptionsError;
 
@@ -96,6 +124,12 @@ export const usePeriodInscriptions = () => {
 
       setInscriptions(inscriptionsWithEvaluations);
       setStats({ total, evaluated, pending });
+      setPagination({
+        currentPage: page,
+        pageSize,
+        totalPages,
+        totalItems
+      });
 
     } catch (err) {
       console.error('Error fetching period inscriptions:', err);
@@ -107,9 +141,15 @@ export const usePeriodInscriptions = () => {
 
   const refreshInscriptions = useCallback(() => {
     if (currentPeriodId) {
-      fetchInscriptionsByPeriod(currentPeriodId);
+      fetchInscriptionsByPeriod(currentPeriodId, pagination.currentPage);
     }
-  }, [currentPeriodId, fetchInscriptionsByPeriod]);
+  }, [currentPeriodId, pagination.currentPage, fetchInscriptionsByPeriod]);
+
+  const goToPage = useCallback((page: number) => {
+    if (currentPeriodId && page >= 1 && page <= pagination.totalPages) {
+      fetchInscriptionsByPeriod(currentPeriodId, page);
+    }
+  }, [currentPeriodId, pagination.totalPages, fetchInscriptionsByPeriod]);
 
   // Realtime subscription for inscriptions and evaluations
   useEffect(() => {
@@ -150,9 +190,11 @@ export const usePeriodInscriptions = () => {
   return {
     inscriptions,
     stats,
+    pagination,
     loading,
     error,
     fetchInscriptionsByPeriod,
-    refreshInscriptions
+    refreshInscriptions,
+    goToPage
   };
 };

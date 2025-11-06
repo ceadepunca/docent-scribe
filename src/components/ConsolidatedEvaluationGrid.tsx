@@ -288,7 +288,6 @@ export const ConsolidatedEvaluationGrid: React.FC<ConsolidatedEvaluationGridProp
 
         if (evaluationData) {
           group.evaluation = {
-            id: evaluationData.id,
             titulo_score: evaluationData.titulo_score ?? 0,
             antiguedad_titulo_score: evaluationData.antiguedad_titulo_score ?? 0,
             antiguedad_docente_score: evaluationData.antiguedad_docente_score ?? 0,

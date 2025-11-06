@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Calendar, Users, BookOpen, Eye, CheckCircle2, Clock, ArrowLeft, Search, UserPlus, X, RefreshCw } from 'lucide-react';
+import { Calendar, Users, BookOpen, Eye, CheckCircle2, Clock, ArrowLeft, Search, UserPlus, X, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useInscriptionPeriods } from '@/hooks/useInscriptionPeriods';
 import { usePeriodInscriptions } from '@/hooks/usePeriodInscriptions';
 import { useAuth } from '@/contexts/AuthContext';
@@ -25,9 +25,11 @@ export const InscriptionManagement = () => {
   const { 
     inscriptions, 
     stats, 
+    pagination,
     loading: inscriptionsLoading, 
     fetchInscriptionsByPeriod,
-    refreshInscriptions
+    refreshInscriptions,
+    goToPage
   } = usePeriodInscriptions();
 
   useEffect(() => {
@@ -308,7 +310,7 @@ export const InscriptionManagement = () => {
             <CardHeader>
                 <CardTitle>Resultados</CardTitle>
                 <CardDescription>
-                  Mostrando {filteredInscriptions.length} de {inscriptions.length} inscripciones para "{selectedPeriod?.name}"
+                  Página {pagination.currentPage} de {pagination.totalPages} - Mostrando {(pagination.currentPage - 1) * pagination.pageSize + 1}-{Math.min(pagination.currentPage * pagination.pageSize, pagination.totalItems)} de {pagination.totalItems} inscripciones para "{selectedPeriod?.name}"
                 </CardDescription>
             </CardHeader>
             <CardContent>
@@ -380,6 +382,60 @@ export const InscriptionManagement = () => {
                       )}
                     </TableBody>
                   </Table>
+                </div>
+              )}
+              
+              {!inscriptionsLoading && pagination.totalPages > 1 && (
+                <div className="flex items-center justify-between pt-4 border-t">
+                  <div className="text-sm text-muted-foreground">
+                    Mostrando {(pagination.currentPage - 1) * pagination.pageSize + 1}-{Math.min(pagination.currentPage * pagination.pageSize, pagination.totalItems)} de {pagination.totalItems}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => goToPage(pagination.currentPage - 1)}
+                      disabled={pagination.currentPage === 1}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      Anterior
+                    </Button>
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                        let pageNum: number;
+                        if (pagination.totalPages <= 5) {
+                          pageNum = i + 1;
+                        } else if (pagination.currentPage <= 3) {
+                          pageNum = i + 1;
+                        } else if (pagination.currentPage >= pagination.totalPages - 2) {
+                          pageNum = pagination.totalPages - 4 + i;
+                        } else {
+                          pageNum = pagination.currentPage - 2 + i;
+                        }
+                        
+                        return (
+                          <Button
+                            key={pageNum}
+                            variant={pagination.currentPage === pageNum ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => goToPage(pageNum)}
+                            className="w-10"
+                          >
+                            {pageNum}
+                          </Button>
+                        );
+                      })}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => goToPage(pagination.currentPage + 1)}
+                      disabled={pagination.currentPage === pagination.totalPages}
+                    >
+                      Siguiente
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               )}
             </CardContent>
