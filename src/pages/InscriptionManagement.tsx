@@ -96,9 +96,9 @@ export const InscriptionManagement = () => {
 
   useEffect(() => {
     if (selectedPeriodId) {
-      fetchInscriptionsByPeriod(selectedPeriodId, 1, searchTerm);
+      fetchInscriptionsByPeriod(selectedPeriodId, 1, searchTerm, statusFilter as 'all' | 'evaluated' | 'pending');
     }
-  }, [selectedPeriodId, searchTerm]);
+  }, [selectedPeriodId, searchTerm, statusFilter, fetchInscriptionsByPeriod]);
 
   const selectedPeriod = periods.find(p => p.id === selectedPeriodId);
 
@@ -140,20 +140,6 @@ export const InscriptionManagement = () => {
     const state = inscription.evaluation_state ?? (inscription.evaluations?.some((ev: any) => ev.status === 'completed') ? 'evaluada' : 'pendiente');
     return state === 'evaluada' ? <CheckCircle2 className="h-3 w-3 mr-1" /> : <Clock className="h-3 w-3 mr-1" />;
   };
-
-  const filteredInscriptions = inscriptions.filter((inscription: any) => {
-    if (statusFilter === 'all') return true;
-
-    const state: 'evaluada' | 'pendiente' = inscription.evaluation_state ?? (inscription.evaluations?.some((ev: any) => ev.status === 'completed') ? 'evaluada' : 'pendiente');
-
-    if (statusFilter === 'evaluated') {
-      return state === 'evaluada';
-    } else if (statusFilter === 'pending') {
-      return state === 'pendiente';
-    }
-    
-    return true;
-  });
 
   if (periodsLoading) {
     return (
@@ -262,7 +248,7 @@ export const InscriptionManagement = () => {
                   )}
                   <Button 
                     variant="outline" 
-                    onClick={() => refreshInscriptions(searchTerm)}
+                    onClick={() => refreshInscriptions(searchTerm, statusFilter as 'all' | 'evaluated' | 'pending')}
                     disabled={inscriptionsLoading}
                     className="w-full"
                   >
@@ -311,7 +297,7 @@ export const InscriptionManagement = () => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredInscriptions.length === 0 ? (
+                      {inscriptions.length === 0 ? (
                         <TableRow>
                           <TableCell colSpan={isSuperAdmin || isEvaluator ? 8 : 7} className="text-center py-16">
                             <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -325,7 +311,7 @@ export const InscriptionManagement = () => {
                           </TableCell>
                         </TableRow>
                       ) : (
-                        filteredInscriptions.map((inscription: any) => (
+                        inscriptions.map((inscription: any) => (
                           <TableRow key={inscription.id} className="hover:bg-muted/50">
                             <TableCell className="font-medium">{`${inscription.profiles?.first_name || ''} ${inscription.profiles?.last_name || ''}`.trim() || 'Sin nombre'}</TableCell>
                             <TableCell className="hidden md:table-cell">{inscription.profiles?.email || '-'}</TableCell>
@@ -368,7 +354,7 @@ export const InscriptionManagement = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => goToPage(pagination.currentPage - 1, searchTerm)}
+                      onClick={() => goToPage(pagination.currentPage - 1, searchTerm, statusFilter as 'all' | 'evaluated' | 'pending')}
                       disabled={pagination.currentPage === 1}
                     >
                       <ChevronLeft className="h-4 w-4" />
@@ -392,7 +378,7 @@ export const InscriptionManagement = () => {
                             key={pageNum}
                             variant={pagination.currentPage === pageNum ? "default" : "outline"}
                             size="sm"
-                            onClick={() => goToPage(pageNum, searchTerm)}
+                            onClick={() => goToPage(pageNum, searchTerm, statusFilter as 'all' | 'evaluated' | 'pending')}
                             className="w-10"
                           >
                             {pageNum}
@@ -403,7 +389,7 @@ export const InscriptionManagement = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => goToPage(pagination.currentPage + 1, searchTerm)}
+                      onClick={() => goToPage(pagination.currentPage + 1, searchTerm, statusFilter as 'all' | 'evaluated' | 'pending')}
                       disabled={pagination.currentPage === pagination.totalPages}
                     >
                       Siguiente

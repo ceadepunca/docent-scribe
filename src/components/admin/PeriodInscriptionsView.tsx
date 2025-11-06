@@ -34,9 +34,9 @@ export const PeriodInscriptionsView: React.FC = () => {
 
   React.useEffect(() => {
     if (selectedPeriodId) {
-      fetchInscriptionsByPeriod(selectedPeriodId);
+      fetchInscriptionsByPeriod(selectedPeriodId, 1, '', 'all');
     }
-  }, [selectedPeriodId]);
+  }, [selectedPeriodId, fetchInscriptionsByPeriod]);
 
   const selectedPeriod = periods.find(p => p.id === selectedPeriodId);
 
@@ -233,7 +233,7 @@ export const PeriodInscriptionsView: React.FC = () => {
                       <Button 
                         variant="outline" 
                         size="sm" 
-                        onClick={() => refreshInscriptions('')}
+                        onClick={() => refreshInscriptions('', 'all')}
                         disabled={inscriptionsLoading}
                       >
                         <ArrowRight className="h-4 w-4 mr-1" />
