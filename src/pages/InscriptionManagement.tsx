@@ -96,9 +96,9 @@ export const InscriptionManagement = () => {
 
   useEffect(() => {
     if (selectedPeriodId) {
-      fetchInscriptionsByPeriod(selectedPeriodId);
+      fetchInscriptionsByPeriod(selectedPeriodId, 1, searchTerm);
     }
-  }, [selectedPeriodId]);
+  }, [selectedPeriodId, searchTerm]);
 
   const selectedPeriod = periods.find(p => p.id === selectedPeriodId);
 
@@ -141,37 +141,7 @@ export const InscriptionManagement = () => {
     return state === 'evaluada' ? <CheckCircle2 className="h-3 w-3 mr-1" /> : <Clock className="h-3 w-3 mr-1" />;
   };
 
-  const normalizeText = (text: string): string => {
-    return (text || '')
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^a-z0-9\s]/g, '')
-      .replace(/\s+/g, ' ')
-      .trim();
-  };
-
   const filteredInscriptions = inscriptions.filter((inscription: any) => {
-    if (searchTerm.trim()) {
-      const profileRaw = inscription.profiles;
-      const profile = Array.isArray(profileRaw) ? profileRaw[0] : profileRaw;
-      if (!profile) return false;
-      
-      const normalizedSearch = normalizeText(searchTerm);
-      const tokens = normalizedSearch.split(' ');
-      
-      const firstName = normalizeText(profile.first_name || '');
-      const lastName = normalizeText(profile.last_name || '');
-      const fullName = normalizeText(`${firstName} ${lastName}`);
-      const reversedName = normalizeText(`${lastName} ${firstName}`);
-      const dni = normalizeText(profile.dni || '');
-      
-      const haystacks = [fullName, reversedName, firstName, lastName, dni];
-      const matchesSearch = tokens.every((tok) => haystacks.some((h) => h.includes(tok)));
-      
-      if (!matchesSearch) return false;
-    }
-    
     if (statusFilter === 'all') return true;
 
     const state: 'evaluada' | 'pendiente' = inscription.evaluation_state ?? (inscription.evaluations?.some((ev: any) => ev.status === 'completed') ? 'evaluada' : 'pendiente');
@@ -292,7 +262,7 @@ export const InscriptionManagement = () => {
                   )}
                   <Button 
                     variant="outline" 
-                    onClick={refreshInscriptions}
+                    onClick={() => refreshInscriptions(searchTerm)}
                     disabled={inscriptionsLoading}
                     className="w-full"
                   >
@@ -310,7 +280,11 @@ export const InscriptionManagement = () => {
             <CardHeader>
                 <CardTitle>Resultados</CardTitle>
                 <CardDescription>
-                  Página {pagination.currentPage} de {pagination.totalPages} - Mostrando {(pagination.currentPage - 1) * pagination.pageSize + 1}-{Math.min(pagination.currentPage * pagination.pageSize, pagination.totalItems)} de {pagination.totalItems} inscripciones para "{selectedPeriod?.name}"
+                  {searchTerm.trim() ? (
+                    <>Búsqueda: "{searchTerm}" - {pagination.totalItems} resultado(s) encontrado(s) {pagination.totalPages > 1 && `(página ${pagination.currentPage} de ${pagination.totalPages})`}</>
+                  ) : (
+                    <>Página {pagination.currentPage} de {pagination.totalPages} - Mostrando {(pagination.currentPage - 1) * pagination.pageSize + 1}-{Math.min(pagination.currentPage * pagination.pageSize, pagination.totalItems)} de {pagination.totalItems} inscripciones para "{selectedPeriod?.name}"</>
+                  )}
                 </CardDescription>
             </CardHeader>
             <CardContent>
@@ -394,7 +368,7 @@ export const InscriptionManagement = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => goToPage(pagination.currentPage - 1)}
+                      onClick={() => goToPage(pagination.currentPage - 1, searchTerm)}
                       disabled={pagination.currentPage === 1}
                     >
                       <ChevronLeft className="h-4 w-4" />
@@ -418,7 +392,7 @@ export const InscriptionManagement = () => {
                             key={pageNum}
                             variant={pagination.currentPage === pageNum ? "default" : "outline"}
                             size="sm"
-                            onClick={() => goToPage(pageNum)}
+                            onClick={() => goToPage(pageNum, searchTerm)}
                             className="w-10"
                           >
                             {pageNum}
@@ -429,7 +403,7 @@ export const InscriptionManagement = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => goToPage(pagination.currentPage + 1)}
+                      onClick={() => goToPage(pagination.currentPage + 1, searchTerm)}
                       disabled={pagination.currentPage === pagination.totalPages}
                     >
                       Siguiente

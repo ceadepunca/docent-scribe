@@ -45,28 +45,22 @@ export const usePeriodInscriptions = () => {
   const [error, setError] = useState<string | null>(null);
   const [currentPeriodId, setCurrentPeriodId] = useState<string | null>(null);
 
-  const fetchInscriptionsByPeriod = useCallback(async (periodId: string, page: number = 1) => {
+  const fetchInscriptionsByPeriod = useCallback(async (periodId: string, page: number = 1, searchTerm: string = '') => {
     try {
       setLoading(true);
       setError(null);
       setCurrentPeriodId(periodId);
 
-      // First, get total count
-      const { count: totalCount, error: countError } = await supabase
+      const pageSize = 50;
+      
+      // Build base query for count
+      let countQuery = supabase
         .from('inscriptions')
-        .select('*', { count: 'exact', head: true })
+        .select('*, profiles!fk_inscriptions_user_profile(first_name, last_name, dni)', { count: 'exact', head: true })
         .eq('inscription_period_id', periodId);
 
-      if (countError) throw countError;
-
-      const totalItems = totalCount || 0;
-      const pageSize = 50;
-      const totalPages = Math.ceil(totalItems / pageSize);
-      const from = (page - 1) * pageSize;
-      const to = from + pageSize - 1;
-
-      // Fetch inscriptions for the period with pagination
-      const { data: inscriptionsData, error: inscriptionsError } = await supabase
+      // Build base query for data
+      let dataQuery = supabase
         .from('inscriptions')
         .select(`
           id,
@@ -84,7 +78,34 @@ export const usePeriodInscriptions = () => {
             user_id
           )
         `)
-        .eq('inscription_period_id', periodId)
+        .eq('inscription_period_id', periodId);
+
+      // Apply search filters if searchTerm is provided
+      if (searchTerm.trim()) {
+        const searchPattern = `%${searchTerm.trim()}%`;
+        
+        // For count query - search in profiles
+        countQuery = countQuery.or(
+          `profiles.first_name.ilike.${searchPattern},profiles.last_name.ilike.${searchPattern},profiles.dni.ilike.${searchPattern}`
+        );
+        
+        // For data query - search in profiles
+        dataQuery = dataQuery.or(
+          `profiles.first_name.ilike.${searchPattern},profiles.last_name.ilike.${searchPattern},profiles.dni.ilike.${searchPattern}`
+        );
+      }
+
+      // Get total count with search filter
+      const { count: totalCount, error: countError } = await countQuery;
+      if (countError) throw countError;
+
+      const totalItems = totalCount || 0;
+      const totalPages = Math.ceil(totalItems / pageSize);
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+
+      // Fetch inscriptions with pagination and search
+      const { data: inscriptionsData, error: inscriptionsError } = await dataQuery
         .order('created_at', { ascending: false })
         .range(from, to);
 
@@ -139,15 +160,15 @@ export const usePeriodInscriptions = () => {
     }
   }, []);
 
-  const refreshInscriptions = useCallback(() => {
+  const refreshInscriptions = useCallback((searchTerm: string = '') => {
     if (currentPeriodId) {
-      fetchInscriptionsByPeriod(currentPeriodId, pagination.currentPage);
+      fetchInscriptionsByPeriod(currentPeriodId, pagination.currentPage, searchTerm);
     }
   }, [currentPeriodId, pagination.currentPage, fetchInscriptionsByPeriod]);
 
-  const goToPage = useCallback((page: number) => {
+  const goToPage = useCallback((page: number, searchTerm: string = '') => {
     if (currentPeriodId && page >= 1 && page <= pagination.totalPages) {
-      fetchInscriptionsByPeriod(currentPeriodId, page);
+      fetchInscriptionsByPeriod(currentPeriodId, page, searchTerm);
     }
   }, [currentPeriodId, pagination.totalPages, fetchInscriptionsByPeriod]);
 

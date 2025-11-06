@@ -233,7 +233,7 @@ export const PeriodInscriptionsView: React.FC = () => {
                       <Button 
                         variant="outline" 
                         size="sm" 
-                        onClick={refreshInscriptions}
+                        onClick={() => refreshInscriptions('')}
                         disabled={inscriptionsLoading}
                       >
                         <ArrowRight className="h-4 w-4 mr-1" />
