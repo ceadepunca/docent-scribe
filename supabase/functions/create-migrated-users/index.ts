@@ -21,25 +21,40 @@ Deno.serve(async (req) => {
       }
     });
 
-    console.log('Starting migrated users creation process...');
+    // Get batch size from request body (default: 50)
+    const { batchSize = 50 } = await req.json().catch(() => ({}));
 
-    // Fetch all migrated profiles without user_id
+    console.log(`Starting migrated users creation process (batch size: ${batchSize})...`);
+
+    // First, count total pending profiles
+    const { count: totalPending } = await supabaseAdmin
+      .from('profiles')
+      .select('*', { count: 'exact', head: true })
+      .eq('migrated', true)
+      .is('user_id', null);
+
+    console.log(`Total pending profiles: ${totalPending}`);
+
+    // Fetch only a batch of migrated profiles without user_id
     const { data: profiles, error: profilesError } = await supabaseAdmin
       .from('profiles')
       .select('*')
       .eq('migrated', true)
-      .is('user_id', null);
+      .is('user_id', null)
+      .limit(batchSize);
 
     if (profilesError) {
       throw new Error(`Error fetching profiles: ${profilesError.message}`);
     }
 
-    console.log(`Found ${profiles?.length || 0} migrated profiles to process`);
+    console.log(`Found ${profiles?.length || 0} migrated profiles to process in this batch`);
 
     const results = {
-      total: profiles?.length || 0,
+      batchSize: profiles?.length || 0,
       created: 0,
-      errors: [] as any[]
+      errors: [] as any[],
+      totalPending: totalPending || 0,
+      remainingAfterBatch: Math.max(0, (totalPending || 0) - (profiles?.length || 0))
     };
 
     if (!profiles || profiles.length === 0) {
@@ -135,10 +150,12 @@ Deno.serve(async (req) => {
 
     console.log('Migration complete:', results);
 
+    const successRate = results.batchSize > 0 ? Math.round((results.created / results.batchSize) * 100) : 0;
+    
     return new Response(
       JSON.stringify({ 
         success: true,
-        message: `Created ${results.created} out of ${results.total} migrated users`,
+        message: `Procesados ${results.batchSize} perfiles: ${results.created} creados exitosamente (${successRate}%). ${results.remainingAfterBatch} perfiles pendientes.`,
         results
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

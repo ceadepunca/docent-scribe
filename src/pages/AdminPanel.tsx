@@ -71,11 +71,8 @@ const AdminPanel = () => {
   // Migration state
   const [isMigrating, setIsMigrating] = useState(false);
   const [showMigrationResults, setShowMigrationResults] = useState(false);
-  const [migrationResults, setMigrationResults] = useState<{
-    total: number;
-    created: number;
-    errors: any[];
-  } | null>(null);
+  const [totalMigrated, setTotalMigrated] = useState(0);
+  const [migrationResults, setMigrationResults] = useState<any>(null);
 
   // Email cleanup state
   const [isCleaningEmails, setIsCleaningEmails] = useState(false);
@@ -263,31 +260,34 @@ const AdminPanel = () => {
     }
   };
 
-  const executeMigration = async () => {
+  const executeMigration = async (isRetry: boolean = false) => {
     setIsMigrating(true);
     try {
-      const { data, error } = await supabase.functions.invoke('create-migrated-users');
-
-      if (error) {
-        throw new Error(error.message);
+      const { data, error } = await supabase.functions.invoke('create-migrated-users', {
+        body: { batchSize: 50 }
+      });
+      
+      if (error) throw error;
+      
+      // Acumular el total de usuarios creados
+      if (!isRetry) {
+        setTotalMigrated(data.results.created);
+      } else {
+        setTotalMigrated(prev => prev + data.results.created);
       }
-
-      if (!data.success) {
-        throw new Error(data.error || 'Migration failed');
-      }
-
-      setMigrationResults(data.results);
+      
+      setMigrationResults(data);
       setShowMigrationResults(true);
-
+      
       toast({
-        title: 'Migración completada',
-        description: `Se crearon ${data.results.created} de ${data.results.total} usuarios`,
+        title: 'Lote procesado',
+        description: data.message || 'Lote procesado exitosamente',
       });
     } catch (error: any) {
       console.error('Migration error:', error);
       toast({
-        title: 'Error en la migración',
-        description: error.message || 'No se pudo completar la migración',
+        title: 'Error en migración',
+        description: error.message,
         variant: 'destructive',
       });
     } finally {
@@ -814,7 +814,7 @@ const AdminPanel = () => {
 
               <Button
                 variant="outline"
-                onClick={executeMigration}
+                onClick={() => executeMigration()}
                 disabled={isMigrating}
                 className="flex items-center gap-2 h-auto p-4"
               >
@@ -919,78 +919,87 @@ const AdminPanel = () => {
         <AlertDialog open={showMigrationResults} onOpenChange={setShowMigrationResults}>
           <AlertDialogContent className="max-w-2xl">
             <AlertDialogHeader>
-              <AlertDialogTitle>Resultados de la Migración</AlertDialogTitle>
+              <AlertDialogTitle>Resultados de Migración por Lotes</AlertDialogTitle>
               <AlertDialogDescription>
-                Detalles del proceso de creación de usuarios migrados
+                {migrationResults && (
+                  <div className="space-y-4 text-left">
+                    {/* Progress Summary */}
+                    <div className="bg-primary/10 p-4 rounded-lg space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold">Total acumulado creado:</span>
+                        <span className="text-lg font-bold text-primary">{totalMigrated}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold">Este lote:</span>
+                        <span>{migrationResults.results?.created || 0} de {migrationResults.results?.batchSize || 0}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold">Perfiles pendientes:</span>
+                        <span className="text-lg font-bold text-orange-600">
+                          {migrationResults.results?.remainingAfterBatch || 0}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Batch Details */}
+                    <div className="space-y-2">
+                      <p><strong>Procesados en este lote:</strong> {migrationResults.results?.batchSize || 0}</p>
+                      <p><strong>Creados exitosamente:</strong> {migrationResults.results?.created || 0}</p>
+                      <p><strong>Errores en este lote:</strong> {migrationResults.results?.errors?.length || 0}</p>
+                    </div>
+                    
+                    {migrationResults.results?.errors?.length > 0 && (
+                      <div className="mt-4">
+                        <p className="font-semibold mb-2">Detalles de errores:</p>
+                        <div className="max-h-48 overflow-y-auto space-y-2">
+                          {migrationResults.results.errors.map((err: any, idx: number) => (
+                            <div key={idx} className="text-xs bg-destructive/10 p-2 rounded">
+                              <p><strong>DNI:</strong> {err.dni}</p>
+                              <p><strong>Email:</strong> {err.email}</p>
+                              <p><strong>Error:</strong> {err.error}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Progress indicator */}
+                    {migrationResults.results?.remainingAfterBatch > 0 && (
+                      <div className="bg-orange-50 dark:bg-orange-950/20 p-3 rounded border border-orange-200 dark:border-orange-800">
+                        <p className="text-sm text-orange-800 dark:text-orange-200">
+                          ⚠️ Quedan <strong>{migrationResults.results.remainingAfterBatch}</strong> perfiles pendientes. 
+                          Presiona "Continuar Migración" para procesar el siguiente lote.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </AlertDialogDescription>
             </AlertDialogHeader>
-            
-            {migrationResults && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <Card>
-                    <CardContent className="pt-6">
-                      <div className="text-center">
-                        <p className="text-2xl font-bold text-green-600">
-                          {migrationResults.created}
-                        </p>
-                        <p className="text-sm text-muted-foreground">Usuarios Creados</p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent className="pt-6">
-                      <div className="text-center">
-                        <p className="text-2xl font-bold text-blue-600">
-                          {migrationResults.total}
-                        </p>
-                        <p className="text-sm text-muted-foreground">Total Procesados</p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                {migrationResults.errors.length > 0 && (
-                  <Card className="border-destructive">
-                    <CardHeader>
-                      <CardTitle className="text-sm text-destructive">
-                        Errores ({migrationResults.errors.length})
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="max-h-64 overflow-y-auto space-y-2">
-                        {migrationResults.errors.map((error, idx) => (
-                          <div key={idx} className="p-3 bg-destructive/10 rounded-md text-sm">
-                            <p className="font-medium">
-                              {error.email} (DNI: {error.dni})
-                            </p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {error.error}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                <div className="p-4 bg-muted rounded-md">
-                  <p className="text-sm">
-                    <strong>Resumen:</strong> Se crearon exitosamente {migrationResults.created} de {migrationResults.total} usuarios migrados.
-                    {migrationResults.errors.length === 0 ? (
-                      <span className="text-green-600"> ✓ Sin errores</span>
-                    ) : (
-                      <span className="text-destructive"> {migrationResults.errors.length} errores detectados</span>
-                    )}
-                  </p>
-                </div>
-              </div>
-            )}
-
-            <AlertDialogFooter>
-              <AlertDialogAction onClick={() => setShowMigrationResults(false)}>
-                Cerrar
-              </AlertDialogAction>
+            <AlertDialogFooter className="gap-2">
+              {migrationResults?.results?.remainingAfterBatch > 0 ? (
+                <>
+                  <AlertDialogAction 
+                    onClick={() => {
+                      setShowMigrationResults(false);
+                      executeMigration(true);
+                    }}
+                    className="bg-primary hover:bg-primary/90"
+                  >
+                    Continuar Migración ({migrationResults.results.remainingAfterBatch} pendientes)
+                  </AlertDialogAction>
+                  <AlertDialogCancel onClick={() => setShowMigrationResults(false)}>
+                    Pausar
+                  </AlertDialogCancel>
+                </>
+              ) : (
+                <AlertDialogAction onClick={() => {
+                  setShowMigrationResults(false);
+                  setTotalMigrated(0);
+                }}>
+                  Cerrar
+                </AlertDialogAction>
+              )}
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
