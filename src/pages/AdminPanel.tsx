@@ -77,6 +77,18 @@ const AdminPanel = () => {
     errors: any[];
   } | null>(null);
 
+  // Email cleanup state
+  const [isCleaningEmails, setIsCleaningEmails] = useState(false);
+  const [showCleanupResults, setShowCleanupResults] = useState(false);
+  const [cleanupResults, setCleanupResults] = useState<{
+    comasCorregidas: number;
+    espaciosCorregidos: number;
+    arrobasAgregadas: number;
+    dominiosAgregados: number;
+    errores: number;
+    perfilesPendientes: number;
+  } | null>(null);
+
   useEffect(() => {
     if (isSuperAdmin) {
       fetchStats();
@@ -280,6 +292,41 @@ const AdminPanel = () => {
       });
     } finally {
       setIsMigrating(false);
+    }
+  };
+
+  const executeEmailCleanup = async () => {
+    setIsCleaningEmails(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('fix-invalid-emails');
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      if (!data.success) {
+        throw new Error(data.error || 'Email cleanup failed');
+      }
+
+      setCleanupResults(data.summary);
+      setShowCleanupResults(true);
+
+      const totalFixed = data.summary.comasCorregidas + data.summary.espaciosCorregidos + 
+                        data.summary.arrobasAgregadas + data.summary.dominiosAgregados;
+
+      toast({
+        title: 'Limpieza completada',
+        description: `Se corrigieron ${totalFixed} emails. ${data.summary.perfilesPendientes} perfiles pendientes`,
+      });
+    } catch (error: any) {
+      console.error('Email cleanup error:', error);
+      toast({
+        title: 'Error en la limpieza',
+        description: error.message || 'No se pudo completar la limpieza de emails',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsCleaningEmails(false);
     }
   };
 
@@ -750,6 +797,23 @@ const AdminPanel = () => {
 
               <Button
                 variant="outline"
+                onClick={executeEmailCleanup}
+                disabled={isCleaningEmails}
+                className="flex items-center gap-2 h-auto p-4"
+              >
+                <Mail className="h-5 w-5" />
+                <div className="text-left">
+                  <div className="font-medium">
+                    {isCleaningEmails ? 'Limpiando...' : 'Limpiar Emails Inválidos'}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Corregir emails con errores de formato
+                  </div>
+                </div>
+              </Button>
+
+              <Button
+                variant="outline"
                 onClick={executeMigration}
                 disabled={isMigrating}
                 className="flex items-center gap-2 h-auto p-4"
@@ -767,6 +831,89 @@ const AdminPanel = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Email Cleanup Results Dialog */}
+        <AlertDialog open={showCleanupResults} onOpenChange={setShowCleanupResults}>
+          <AlertDialogContent className="max-w-2xl">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Resultados de Limpieza de Emails</AlertDialogTitle>
+              <AlertDialogDescription>
+                Detalles del proceso de corrección de emails inválidos
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            
+            {cleanupResults && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="text-center">
+                        <p className="text-2xl font-bold text-green-600">
+                          {cleanupResults.comasCorregidas}
+                        </p>
+                        <p className="text-sm text-muted-foreground">Comas Corregidas</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="text-center">
+                        <p className="text-2xl font-bold text-blue-600">
+                          {cleanupResults.espaciosCorregidos}
+                        </p>
+                        <p className="text-sm text-muted-foreground">Espacios Eliminados</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="text-center">
+                        <p className="text-2xl font-bold text-purple-600">
+                          {cleanupResults.arrobasAgregadas}
+                        </p>
+                        <p className="text-sm text-muted-foreground">@ Agregadas</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="text-center">
+                        <p className="text-2xl font-bold text-orange-600">
+                          {cleanupResults.dominiosAgregados}
+                        </p>
+                        <p className="text-sm text-muted-foreground">Dominios Agregados</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {cleanupResults.errores > 0 && (
+                  <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-md">
+                    <p className="text-sm text-yellow-800">
+                      <strong>{cleanupResults.errores}</strong> errores durante el proceso
+                    </p>
+                  </div>
+                )}
+
+                <div className="p-4 bg-blue-50 border border-blue-200 rounded-md">
+                  <p className="text-sm text-blue-800">
+                    <strong>{cleanupResults.perfilesPendientes}</strong> perfiles aún sin usuario (pendientes de migración)
+                  </p>
+                </div>
+
+                <p className="text-sm text-muted-foreground">
+                  Ahora puedes ejecutar "Crear Usuarios Migrados" para completar la migración de los perfiles con emails corregidos.
+                </p>
+              </div>
+            )}
+            
+            <AlertDialogFooter>
+              <AlertDialogAction onClick={() => setShowCleanupResults(false)}>
+                Cerrar
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {/* Migration Results Dialog */}
         <AlertDialog open={showMigrationResults} onOpenChange={setShowMigrationResults}>
