@@ -68,6 +68,15 @@ const AdminPanel = () => {
   const [showRestoreDialog, setShowRestoreDialog] = useState(false);
   const [restoreMode, setRestoreMode] = useState<'replace' | 'merge'>('merge');
 
+  // Migration state
+  const [isMigrating, setIsMigrating] = useState(false);
+  const [showMigrationResults, setShowMigrationResults] = useState(false);
+  const [migrationResults, setMigrationResults] = useState<{
+    total: number;
+    created: number;
+    errors: any[];
+  } | null>(null);
+
   useEffect(() => {
     if (isSuperAdmin) {
       fetchStats();
@@ -239,6 +248,38 @@ const AdminPanel = () => {
         description: 'No se pudo crear el período. Intente nuevamente.',
         variant: 'destructive',
       });
+    }
+  };
+
+  const executeMigration = async () => {
+    setIsMigrating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('create-migrated-users');
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      if (!data.success) {
+        throw new Error(data.error || 'Migration failed');
+      }
+
+      setMigrationResults(data.results);
+      setShowMigrationResults(true);
+
+      toast({
+        title: 'Migración completada',
+        description: `Se crearon ${data.results.created} de ${data.results.total} usuarios`,
+      });
+    } catch (error: any) {
+      console.error('Migration error:', error);
+      toast({
+        title: 'Error en la migración',
+        description: error.message || 'No se pudo completar la migración',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsMigrating(false);
     }
   };
 
@@ -706,9 +747,106 @@ const AdminPanel = () => {
                   <div className="text-sm text-muted-foreground">Revisar todas las inscripciones</div>
                 </div>
               </Button>
+
+              <Button
+                variant="outline"
+                onClick={executeMigration}
+                disabled={isMigrating}
+                className="flex items-center gap-2 h-auto p-4"
+              >
+                <Database className="h-5 w-5" />
+                <div className="text-left">
+                  <div className="font-medium">
+                    {isMigrating ? 'Migrando...' : 'Crear Usuarios Migrados'}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Ejecutar migración de docentes
+                  </div>
+                </div>
+              </Button>
             </div>
           </CardContent>
         </Card>
+
+        {/* Migration Results Dialog */}
+        <AlertDialog open={showMigrationResults} onOpenChange={setShowMigrationResults}>
+          <AlertDialogContent className="max-w-2xl">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Resultados de la Migración</AlertDialogTitle>
+              <AlertDialogDescription>
+                Detalles del proceso de creación de usuarios migrados
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            
+            {migrationResults && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="text-center">
+                        <p className="text-2xl font-bold text-green-600">
+                          {migrationResults.created}
+                        </p>
+                        <p className="text-sm text-muted-foreground">Usuarios Creados</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="text-center">
+                        <p className="text-2xl font-bold text-blue-600">
+                          {migrationResults.total}
+                        </p>
+                        <p className="text-sm text-muted-foreground">Total Procesados</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {migrationResults.errors.length > 0 && (
+                  <Card className="border-destructive">
+                    <CardHeader>
+                      <CardTitle className="text-sm text-destructive">
+                        Errores ({migrationResults.errors.length})
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="max-h-64 overflow-y-auto space-y-2">
+                        {migrationResults.errors.map((error, idx) => (
+                          <div key={idx} className="p-3 bg-destructive/10 rounded-md text-sm">
+                            <p className="font-medium">
+                              {error.email} (DNI: {error.dni})
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {error.error}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                <div className="p-4 bg-muted rounded-md">
+                  <p className="text-sm">
+                    <strong>Resumen:</strong> Se crearon exitosamente {migrationResults.created} de {migrationResults.total} usuarios migrados.
+                    {migrationResults.errors.length === 0 ? (
+                      <span className="text-green-600"> ✓ Sin errores</span>
+                    ) : (
+                      <span className="text-destructive"> {migrationResults.errors.length} errores detectados</span>
+                    )}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <AlertDialogFooter>
+              <AlertDialogAction onClick={() => setShowMigrationResults(false)}>
+                Cerrar
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
             </div>
           </TabsContent>
 
