@@ -8,13 +8,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, User, GraduationCap, Plus } from 'lucide-react';
+import { ArrowLeft, User, GraduationCap, Plus, Mail } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { DocumentUploader } from '@/components/DocumentUploader';
 import { DocumentViewer } from '@/components/DocumentViewer';
 import { useProfileDocuments } from '@/hooks/useProfileDocuments';
 import { TitleCard } from '@/components/TitleCard';
+import { EmailChangeRequestModal } from '@/components/EmailChangeRequestModal';
 
 const profileSchema = z.object({
   dni: z.string().optional().or(z.literal('')),
@@ -43,6 +44,7 @@ const Profile = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { documents, getDocumentByType, refreshDocuments } = useProfileDocuments();
+  const [showEmailChangeModal, setShowEmailChangeModal] = useState(false);
   
   // State for managing visible additional titles
   const [visibleTitles, setVisibleTitles] = useState<number[]>(() => {
@@ -205,9 +207,28 @@ const Profile = () => {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Email *</FormLabel>
-                      <FormControl>
-                        <Input type="email" {...field} />
-                      </FormControl>
+                      <div className="flex gap-2">
+                        <FormControl>
+                          <Input 
+                            type="email" 
+                            {...field} 
+                            disabled
+                            className="bg-muted"
+                          />
+                        </FormControl>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setShowEmailChangeModal(true)}
+                        >
+                          <Mail className="h-4 w-4 mr-2" />
+                          Solicitar Cambio
+                        </Button>
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-2">
+                        ℹ️ El email es un dato sensible vinculado a su DNI. Para cambiarlo, debe solicitar 
+                        la modificación y esperar aprobación del administrador.
+                      </p>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -364,6 +385,13 @@ const Profile = () => {
           </Button>
         </div>
       </div>
+
+      {/* Email Change Request Modal */}
+      <EmailChangeRequestModal
+        open={showEmailChangeModal}
+        onOpenChange={setShowEmailChangeModal}
+        currentEmail={profile?.email || ''}
+      />
     </div>
   );
 };

@@ -32,9 +32,11 @@ interface AuthContextType {
   profile: Profile | null;
   userRoles: UserRole[];
   loading: boolean;
+  requiresPasswordChange: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signUp: (email: string, password: string, firstName: string, lastName: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
+  updatePassword: (currentPassword: string, newPassword: string) => Promise<{ error: any }>;
   hasRole: (role: UserRole) => boolean;
   isSuperAdmin: boolean;
   isEvaluator: boolean;
@@ -242,6 +244,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const updatePassword = async (currentPassword: string, newPassword: string) => {
+    if (!profile?.email) {
+      return { error: { message: 'No se encontró el email del usuario' } };
+    }
+
+    // Verificar contraseña actual
+    const { error: verifyError } = await supabase.auth.signInWithPassword({
+      email: profile.email,
+      password: currentPassword
+    });
+    
+    if (verifyError) {
+      return { error: { message: 'Contraseña actual incorrecta' } };
+    }
+    
+    // Actualizar contraseña
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword,
+      data: { requires_password_change: false }
+    });
+    
+    return { error };
+  };
+
   const hasRole = (role: UserRole): boolean => {
     return userRoles.includes(role);
   };
@@ -249,6 +275,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const isSuperAdmin = hasRole('super_admin');
   const isEvaluator = hasRole('evaluator');
   const isDocente = hasRole('docente');
+  const requiresPasswordChange = user?.user_metadata?.requires_password_change === true;
 
   // Update loading state based on profile and roles loading states
   useEffect(() => {
@@ -268,9 +295,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     profile,
     userRoles,
     loading,
+    requiresPasswordChange,
     signIn,
     signUp,
     signOut,
+    updatePassword,
     hasRole,
     isSuperAdmin,
     isEvaluator,

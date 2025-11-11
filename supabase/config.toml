@@ -1,1 +1,7 @@
 project_id = "pvmdbqbhzmofbqqelyfh"
+
+[functions.create-migrated-users]
+verify_jwt = false
+
+[functions.approve-email-change]
+verify_jwt = true

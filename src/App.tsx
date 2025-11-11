@@ -23,6 +23,7 @@ import Listings from "./pages/Listings";
 import InscriptionManagement from "./pages/InscriptionManagement";
 import AssistedInscription from "./pages/admin/AssistedInscription";
 import BulkInscription from "./pages/admin/BulkInscription";
+import ChangePassword from "./pages/ChangePassword";
 
 const queryClient = new QueryClient();
 
@@ -39,6 +40,11 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/unauthorized" element={<Unauthorized />} />
+            <Route path="/change-password" element={
+              <ProtectedRoute>
+                <ChangePassword />
+              </ProtectedRoute>
+            } />
             <Route path="/dashboard" element={
               <ProtectedRoute>
                 <ProtectedLayout>

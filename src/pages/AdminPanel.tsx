@@ -8,11 +8,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, Plus, Calendar, Users, BookOpen, ClipboardList, Eye, Clock, Check, X, Settings, Upload, UserPlus2, UserPlus, Database, HardDrive, Download, FileJson } from 'lucide-react';
+import { ArrowLeft, Plus, Calendar, Users, BookOpen, ClipboardList, Eye, Clock, Check, X, Settings, Upload, UserPlus2, UserPlus, Database, HardDrive, Download, FileJson, Mail } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useDeletionRequests } from '@/hooks/useDeletionRequests';
+import { useEmailChangeRequests } from '@/hooks/useEmailChangeRequests';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { TeacherManagementTab } from '@/components/admin/TeacherManagementTab';
@@ -40,6 +41,7 @@ const AdminPanel = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { requests, fetchAllRequests, respondToRequest } = useDeletionRequests();
+  const { requests: emailChangeRequests, approveRequest: approveEmailChange, rejectRequest: rejectEmailChange } = useEmailChangeRequests();
   
   const [periodForm, setPeriodForm] = useState({
     name: '',
@@ -412,6 +414,98 @@ const AdminPanel = () => {
                                   description: "No se pudo rechazar la solicitud.",
                                   variant: "destructive"
                                 });
+                              }
+                            }}
+                          >
+                            <X className="h-4 w-4 mr-1" />
+                            Rechazar
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Email Change Requests Management */}
+        {emailChangeRequests.filter(r => r.status === 'pending').length > 0 && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Mail className="h-5 w-5" />
+                Solicitudes de Cambio de Email Pendientes
+              </CardTitle>
+              <CardDescription>
+                Revisar y aprobar/rechazar solicitudes de cambio de email
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {emailChangeRequests
+                  .filter(r => r.status === 'pending')
+                  .map((request: any) => (
+                    <div key={request.id} className="border rounded-lg p-4">
+                      <div className="flex items-start justify-between">
+                        <div className="space-y-2 flex-1">
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-medium">
+                              {request.profiles?.first_name} {request.profiles?.last_name}
+                            </h4>
+                            <Badge variant="outline">
+                              DNI: {request.profiles?.dni}
+                            </Badge>
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-sm text-muted-foreground">
+                              <strong>Email actual:</strong> {request.current_email}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              <strong>Email nuevo:</strong> {request.new_email}
+                            </p>
+                          </div>
+                          {request.reason && (
+                            <div className="mt-2">
+                              <p className="text-sm font-medium">Motivo:</p>
+                              <p className="text-sm text-muted-foreground">{request.reason}</p>
+                            </div>
+                          )}
+                          <p className="text-xs text-muted-foreground">
+                            Solicitado: {format(new Date(request.requested_at), 'dd/MM/yyyy HH:mm', { locale: es })}
+                          </p>
+                        </div>
+                        <div className="flex gap-2 ml-4">
+                          <Button
+                            size="sm"
+                            variant="default"
+                            onClick={async () => {
+                              try {
+                                await approveEmailChange(request.id, request.new_email, request.user_id);
+                                toast({
+                                  title: "Cambio aprobado",
+                                  description: "El email ha sido actualizado correctamente."
+                                });
+                              } catch (error) {
+                                // Error is already handled in the hook
+                              }
+                            }}
+                          >
+                            <Check className="h-4 w-4 mr-1" />
+                            Aprobar
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={async () => {
+                              try {
+                                await rejectEmailChange(request.id, 'Solicitud rechazada por administrador');
+                                toast({
+                                  title: "Solicitud rechazada",
+                                  description: "La solicitud ha sido rechazada."
+                                });
+                              } catch (error) {
+                                // Error is already handled in the hook
                               }
                             }}
                           >

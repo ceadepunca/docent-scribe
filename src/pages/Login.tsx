@@ -5,13 +5,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 const Login = () => {
-  const [email, setEmail] = useState('');
+  const [dni, setDni] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { signIn, user } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   useEffect(() => {
     if (user) {
@@ -23,13 +26,45 @@ const Login = () => {
     e.preventDefault();
     setIsLoading(true);
 
-    const { error } = await signIn(email, password);
-    
-    if (!error) {
-      navigate('/dashboard');
+    try {
+      // Buscar email por DNI
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('dni', dni)
+        .single();
+
+      if (profileError || !profile) {
+        toast({
+          title: 'Error de inicio de sesión',
+          description: 'DNI no encontrado en el sistema',
+          variant: 'destructive',
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      // Login con el email encontrado
+      const { error } = await signIn(profile.email, password);
+      
+      if (!error) {
+        navigate('/dashboard');
+      } else {
+        toast({
+          title: 'Error de inicio de sesión',
+          description: 'Contraseña incorrecta',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Ocurrió un error inesperado',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
     }
-    
-    setIsLoading(false);
   };
 
   return (
@@ -44,13 +79,13 @@ const Login = () => {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="dni">Número de DNI</Label>
               <Input
-                id="email"
-                type="email"
-                placeholder="correo@ejemplo.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                id="dni"
+                type="text"
+                placeholder="Ingrese su número de DNI"
+                value={dni}
+                onChange={(e) => setDni(e.target.value)}
                 required
               />
             </div>
