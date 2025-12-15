@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, Plus, Calendar, Users, BookOpen, ClipboardList, Eye, Clock, Check, X, Settings, Upload, UserPlus2, UserPlus, Database, HardDrive, Download, FileJson, Mail } from 'lucide-react';
+import { ArrowLeft, Plus, Calendar, Users, BookOpen, ClipboardList, Eye, Clock, Check, X, Settings, Upload, UserPlus2, UserPlus, Database, HardDrive, Download, FileJson, Mail, Edit } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -22,6 +22,7 @@ import { GoogleFormsImportModal } from '@/components/admin/GoogleFormsImportModa
 import { useBackupRestore } from '@/hooks/useBackupRestore';
 import { Progress } from '@/components/ui/progress';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { TeacherFormModal } from '@/components/admin/TeacherFormModal';
 
 interface RecentInscription {
   id: string;
@@ -84,7 +85,12 @@ const AdminPanel = () => {
     dominiosAgregados: number;
     errores: number;
     perfilesPendientes: number;
+    problemProfiles?: Array<{id: string, dni: string, email: string, first_name: string, last_name: string}>;
   } | null>(null);
+
+  // Profile editing state
+  const [editingProfile, setEditingProfile] = useState<any>(null);
+  const [showEditProfileModal, setShowEditProfileModal] = useState(false);
 
   useEffect(() => {
     if (isSuperAdmin) {
@@ -308,7 +314,10 @@ const AdminPanel = () => {
         throw new Error(data.error || 'Email cleanup failed');
       }
 
-      setCleanupResults(data.summary);
+      setCleanupResults({
+        ...data.summary,
+        problemProfiles: data.problemProfiles || []
+      });
       setShowCleanupResults(true);
 
       const totalFixed = data.summary.comasCorregidas + data.summary.espaciosCorregidos + 
@@ -327,6 +336,29 @@ const AdminPanel = () => {
       });
     } finally {
       setIsCleaningEmails(false);
+    }
+  };
+
+  const handleEditErrorProfile = async (profileId: string) => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', profileId)
+      .single();
+    
+    if (error) {
+      console.error('Error fetching profile:', error);
+      toast({
+        title: 'Error',
+        description: 'No se pudo cargar el perfil',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    if (data) {
+      setEditingProfile(data);
+      setShowEditProfileModal(true);
     }
   };
 
@@ -901,6 +933,33 @@ const AdminPanel = () => {
                   </p>
                 </div>
 
+                {cleanupResults.problemProfiles && cleanupResults.problemProfiles.length > 0 && (
+                  <div className="mt-4">
+                    <p className="font-semibold mb-2 text-yellow-700">Perfiles con emails que requieren corrección manual:</p>
+                    <div className="max-h-48 overflow-y-auto space-y-2">
+                      {cleanupResults.problemProfiles.map((profile) => (
+                        <div key={profile.id} className="flex items-center justify-between bg-yellow-50 dark:bg-yellow-950/30 p-2 rounded border border-yellow-200 dark:border-yellow-800">
+                          <div className="text-xs">
+                            <p><strong>DNI:</strong> {profile.dni || 'N/A'}</p>
+                            <p><strong>Nombre:</strong> {profile.first_name} {profile.last_name}</p>
+                            <p><strong>Email:</strong> <span className="text-destructive">{profile.email}</span></p>
+                          </div>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            onClick={() => {
+                              setEditingProfile(profile);
+                              setShowEditProfileModal(true);
+                            }}
+                          >
+                            <Edit className="h-4 w-4 mr-1" /> Editar
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <p className="text-sm text-muted-foreground">
                   Ahora puedes ejecutar "Crear Usuarios Migrados" para completar la migración de los perfiles con emails corregidos.
                 </p>
@@ -953,10 +1012,21 @@ const AdminPanel = () => {
                         <p className="font-semibold mb-2">Detalles de errores:</p>
                         <div className="max-h-48 overflow-y-auto space-y-2">
                           {migrationResults.results.errors.map((err: any, idx: number) => (
-                            <div key={idx} className="text-xs bg-destructive/10 p-2 rounded">
-                              <p><strong>DNI:</strong> {err.dni}</p>
-                              <p><strong>Email:</strong> {err.email}</p>
-                              <p><strong>Error:</strong> {err.error}</p>
+                            <div key={idx} className="flex items-center justify-between bg-destructive/10 p-2 rounded">
+                              <div className="text-xs">
+                                <p><strong>DNI:</strong> {err.dni}</p>
+                                <p><strong>Email:</strong> {err.email}</p>
+                                <p><strong>Error:</strong> {err.error}</p>
+                              </div>
+                              {err.profile_id && (
+                                <Button 
+                                  size="sm" 
+                                  variant="outline" 
+                                  onClick={() => handleEditErrorProfile(err.profile_id)}
+                                >
+                                  <Edit className="h-4 w-4 mr-1" /> Editar
+                                </Button>
+                              )}
                             </div>
                           ))}
                         </div>
@@ -1275,6 +1345,21 @@ const AdminPanel = () => {
             periodName={selectedPeriodForImport.name}
           />
         )}
+
+        {/* Profile Edit Modal for fixing invalid emails */}
+        <TeacherFormModal
+          open={showEditProfileModal}
+          onOpenChange={setShowEditProfileModal}
+          onSave={() => {
+            setShowEditProfileModal(false);
+            setEditingProfile(null);
+            // Refresh cleanup if dialog is still open
+            if (showCleanupResults) {
+              executeEmailCleanup();
+            }
+          }}
+          teacher={editingProfile}
+        />
       </div>
     </div>
   );

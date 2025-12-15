@@ -166,14 +166,25 @@ Deno.serve(async (req) => {
       .is('user_id', null)
       .eq('migrated', true);
 
+    // Get profiles with problematic emails that couldn't be fixed automatically
+    console.log('Step 5: Identifying profiles with unfixable emails...');
+    const { data: problemProfiles } = await supabase
+      .from('profiles')
+      .select('id, dni, email, first_name, last_name')
+      .is('user_id', null)
+      .eq('migrated', true)
+      .or('email.not.ilike.%@%,email.not.ilike.%@%.%');
+
     console.log('Email cleanup completed');
     console.log(`Remaining profiles without user_id: ${remainingCount}`);
+    console.log(`Profiles with problematic emails: ${problemProfiles?.length || 0}`);
 
     return new Response(
       JSON.stringify({
         success: true,
         results,
         remainingProfiles: remainingCount,
+        problemProfiles: problemProfiles || [],
         summary: {
           comasCorregidas: results.step1_comas.count,
           espaciosCorregidos: results.step2_espacios.count,
