@@ -4,16 +4,20 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useTeacherManagement } from '@/hooks/useTeacherManagement';
-import { Search, Upload, UserPlus, Eye, Edit, Users } from 'lucide-react';
+import { Search, Upload, UserPlus, Eye, Edit, Users, KeyRound } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { TeacherImportModal } from './TeacherImportModal';
 import { TeacherFormModal } from './TeacherFormModal';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 export const TeacherManagementTab = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const { teachers, loading, fetchTeachers, getTeacherStats, checkTeacherExists } = useTeacherManagement();
   const [searchTerm, setSearchTerm] = useState('');
   const [completenessFilter, setCompletenessFilter] = useState('all'); // 'all', 'complete', 'incomplete'
@@ -22,6 +26,13 @@ export const TeacherManagementTab = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedTeacher, setSelectedTeacher] = useState<any>(null);
   const [editingTeacher, setEditingTeacher] = useState<any>(null);
+  
+  // Password reset state
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [resetSearchTerm, setResetSearchTerm] = useState('');
+  const [teacherToReset, setTeacherToReset] = useState<any>(null);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
 
   useEffect(() => {
     fetchTeachers();
@@ -76,6 +87,52 @@ export const TeacherManagementTab = () => {
     return <Badge className="bg-yellow-100 text-yellow-800">⚠️ Incompleto</Badge>;
   };
 
+  // Filter teachers for reset password modal (only those with user_id)
+  const resetSearchResults = resetSearchTerm.trim() 
+    ? teachers.filter(t => {
+        if (!t.user_id) return false; // Only users with auth account
+        const searchLower = resetSearchTerm.toLowerCase().trim();
+        const normalizedSearch = normalizeDNI(resetSearchTerm);
+        const matchesName = t.first_name?.toLowerCase().includes(searchLower);
+        const matchesLastName = t.last_name?.toLowerCase().includes(searchLower);
+        const matchesDNI = normalizedSearch && normalizeDNI(t.dni || '').includes(normalizedSearch);
+        const fullName = `${t.first_name || ''} ${t.last_name || ''}`.toLowerCase();
+        return matchesName || matchesLastName || matchesDNI || fullName.includes(searchLower);
+      }).slice(0, 10)
+    : [];
+
+  const handlePasswordReset = async () => {
+    if (!teacherToReset?.user_id) return;
+    
+    setIsResetting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('reset-user-password', {
+        body: { user_id: teacherToReset.user_id }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: 'Contraseña reseteada',
+        description: `La contraseña de ${teacherToReset.first_name} ${teacherToReset.last_name} fue reseteada a "1234".`,
+      });
+      
+      setShowResetConfirm(false);
+      setTeacherToReset(null);
+      setShowResetModal(false);
+      setResetSearchTerm('');
+    } catch (error: any) {
+      console.error('Reset error:', error);
+      toast({
+        title: 'Error al resetear',
+        description: error.message || 'No se pudo resetear la contraseña',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Actions Bar */}
@@ -109,6 +166,15 @@ export const TeacherManagementTab = () => {
               >
                 <UserPlus className="h-4 w-4" />
                 Crear Docente
+              </Button>
+              <Button
+                onClick={() => setShowResetModal(true)}
+                variant="outline"
+                className="flex items-center gap-2"
+                size="sm"
+              >
+                <KeyRound className="h-4 w-4" />
+                Resetear Contraseña
               </Button>
               <Button
                 size="sm"
@@ -347,6 +413,98 @@ export const TeacherManagementTab = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Password Reset Modal */}
+      <Dialog open={showResetModal} onOpenChange={(open) => {
+        setShowResetModal(open);
+        if (!open) {
+          setResetSearchTerm('');
+          setTeacherToReset(null);
+        }
+      }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <KeyRound className="h-5 w-5" />
+              Resetear Contraseña de Docente
+            </DialogTitle>
+            <DialogDescription>
+              Busque al docente por nombre o DNI para resetear su contraseña a "1234"
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+              <Input
+                placeholder="Buscar por nombre o DNI..."
+                value={resetSearchTerm}
+                onChange={(e) => setResetSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            
+            {resetSearchTerm && (
+              <div className="border rounded-lg max-h-64 overflow-y-auto">
+                {resetSearchResults.length === 0 ? (
+                  <div className="p-4 text-center text-muted-foreground text-sm">
+                    No se encontraron docentes con cuenta activa
+                  </div>
+                ) : (
+                  resetSearchResults.map((teacher) => (
+                    <div 
+                      key={teacher.id}
+                      className="p-3 border-b last:border-b-0 hover:bg-muted/50 cursor-pointer flex justify-between items-center"
+                      onClick={() => {
+                        setTeacherToReset(teacher);
+                        setShowResetConfirm(true);
+                      }}
+                    >
+                      <div>
+                        <p className="font-medium">{teacher.first_name} {teacher.last_name}</p>
+                        <p className="text-sm text-muted-foreground">DNI: {teacher.dni || '-'}</p>
+                      </div>
+                      <Button size="sm" variant="outline">
+                        <KeyRound className="h-4 w-4 mr-1" />
+                        Resetear
+                      </Button>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+
+            {!resetSearchTerm && (
+              <div className="p-4 text-center text-muted-foreground text-sm border rounded-lg bg-muted/30">
+                Ingrese el nombre o DNI del docente para buscarlo
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reset Confirmation Dialog */}
+      <AlertDialog open={showResetConfirm} onOpenChange={setShowResetConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar Reset de Contraseña</AlertDialogTitle>
+            <AlertDialogDescription>
+              ¿Está seguro que desea resetear la contraseña de{' '}
+              <strong>{teacherToReset?.first_name} {teacherToReset?.last_name}</strong>?
+              <br /><br />
+              La nueva contraseña será <strong>"1234"</strong> y el docente deberá cambiarla al iniciar sesión.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isResetting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handlePasswordReset}
+              disabled={isResetting}
+            >
+              {isResetting ? 'Reseteando...' : 'Confirmar Reset'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
