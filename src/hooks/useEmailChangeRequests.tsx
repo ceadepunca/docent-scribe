@@ -28,20 +28,39 @@ export const useEmailChangeRequests = () => {
   const fetchRequests = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      // Fetch requests first
+      const { data: requestsData, error: requestsError } = await supabase
         .from('email_change_requests')
-        .select(`
-          *,
-          profiles:user_id (
-            first_name,
-            last_name,
-            dni
-          )
-        `)
+        .select('*')
         .order('requested_at', { ascending: false });
 
-      if (error) throw error;
-      setRequests((data as any[]) || []);
+      if (requestsError) throw requestsError;
+
+      if (!requestsData || requestsData.length === 0) {
+        setRequests([]);
+        return;
+      }
+
+      // Get unique user IDs
+      const userIds = [...new Set(requestsData.map(r => r.user_id))];
+
+      // Fetch profiles separately
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, dni')
+        .in('id', userIds);
+
+      if (profilesError) {
+        console.warn('Could not fetch profiles:', profilesError);
+      }
+
+      // Combine data
+      const combined = requestsData.map(request => ({
+        ...request,
+        profiles: profilesData?.find(p => p.id === request.user_id) || null
+      }));
+
+      setRequests(combined);
     } catch (error) {
       console.error('Error fetching email change requests:', error);
       toast({
