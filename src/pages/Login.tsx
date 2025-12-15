@@ -129,7 +129,7 @@ const Login = () => {
                 También puede concurrir personalmente a las oficinas de la Comisión en:
               </p>
               <p className="text-sm font-semibold text-amber-900 dark:text-amber-100 mb-3">
-                Calle Esquiú 671 - 1° piso
+                Calle Esquiú 671 - 1° piso - S. F. del Valle de Catamarca
               </p>
               <p className="text-xs text-amber-600 dark:text-amber-400">
                 Nos comunicaremos con usted para validar su identidad y restablecer su contraseña. Puede enviar el email desde su cuenta registrada o desde cualquier otra.
