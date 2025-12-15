@@ -12,6 +12,7 @@ const Login = () => {
   const [dni, setDni] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showRecoveryInfo, setShowRecoveryInfo] = useState(false);
   const { signIn, user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -50,6 +51,7 @@ const Login = () => {
       if (!error) {
         navigate('/dashboard');
       } else {
+        setShowRecoveryInfo(true);
         toast({
           title: 'Error de inicio de sesión',
           description: 'Contraseña incorrecta',
@@ -104,15 +106,30 @@ const Login = () => {
               {isLoading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
             </Button>
           </form>
-          <div className="mt-4 p-3 bg-muted/50 rounded-md">
-            <p className="text-xs text-muted-foreground text-center">
-              <strong>Usuarios de prueba:</strong><br />
-              Docentes: docente1@test.com - docente10@test.com<br />
-              Evaluadores: evaluador1@test.com - evaluador3@test.com<br />
-              Admin: admin@test.com<br />
-              Contraseña: <code>test123</code>
-            </p>
-          </div>
+          {showRecoveryInfo && (
+            <div className="mt-4 p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
+              <h4 className="font-medium text-amber-800 dark:text-amber-200 mb-2 flex items-center gap-2">
+                📧 ¿Olvidó su contraseña?
+              </h4>
+              <p className="text-sm text-amber-700 dark:text-amber-300 mb-2">
+                Para recuperar el acceso a su cuenta, envíe un email a:
+              </p>
+              <p className="text-sm font-semibold text-amber-900 dark:text-amber-100 mb-3">
+                ceadepunca@gmail.com
+              </p>
+              <p className="text-sm text-amber-700 dark:text-amber-300 mb-2">
+                Incluya en el email:
+              </p>
+              <ul className="text-sm text-amber-700 dark:text-amber-300 list-disc list-inside space-y-1 mb-3">
+                <li>Su número de DNI</li>
+                <li>Su nombre completo</li>
+                <li>Un número de teléfono para contactarlo</li>
+              </ul>
+              <p className="text-xs text-amber-600 dark:text-amber-400">
+                Nos comunicaremos con usted para validar su identidad y restablecer su contraseña. Puede enviar el email desde su cuenta registrada o desde cualquier otra.
+              </p>
+            </div>
+          )}
           <div className="mt-6 text-center">
             <p className="text-sm text-muted-foreground">
               ¿No tienes cuenta?{' '}
