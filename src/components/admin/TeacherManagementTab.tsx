@@ -8,7 +8,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useTeacherManagement } from '@/hooks/useTeacherManagement';
-import { Search, Upload, UserPlus, Eye, Edit, Users, KeyRound } from 'lucide-react';
+import { Search, Upload, UserPlus, Eye, Edit, Users, KeyRound, Trash2 } from 'lucide-react';
+import { Label } from '@/components/ui/label';
 import { useNavigate } from 'react-router-dom';
 import { TeacherImportModal } from './TeacherImportModal';
 import { TeacherFormModal } from './TeacherFormModal';
@@ -33,6 +34,12 @@ export const TeacherManagementTab = () => {
   const [teacherToReset, setTeacherToReset] = useState<any>(null);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
+
+  // Delete teacher state
+  const [teacherToDelete, setTeacherToDelete] = useState<any>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [adminPassword, setAdminPassword] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     fetchTeachers();
@@ -130,6 +137,44 @@ export const TeacherManagementTab = () => {
       });
     } finally {
       setIsResetting(false);
+    }
+  };
+
+  const handleDeleteTeacher = async () => {
+    if (!teacherToDelete || !adminPassword) return;
+    
+    setIsDeleting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-user-operations', {
+        body: { 
+          action: 'delete_teacher',
+          profile_id: teacherToDelete.id,
+          user_id: teacherToDelete.user_id,
+          admin_password: adminPassword
+        }
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      toast({
+        title: 'Docente eliminado',
+        description: `${teacherToDelete.first_name} ${teacherToDelete.last_name} fue eliminado exitosamente.`,
+      });
+      
+      setShowDeleteConfirm(false);
+      setTeacherToDelete(null);
+      setAdminPassword('');
+      fetchTeachers();
+    } catch (error: any) {
+      console.error('Delete error:', error);
+      toast({
+        title: 'Error al eliminar',
+        description: error.message || 'No se pudo eliminar el docente',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -306,6 +351,18 @@ export const TeacherManagementTab = () => {
                             title="Editar docente"
                           >
                             <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setTeacherToDelete(teacher);
+                              setShowDeleteConfirm(true);
+                            }}
+                            title="Eliminar docente"
+                            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
                       </TableCell>
@@ -501,6 +558,60 @@ export const TeacherManagementTab = () => {
               disabled={isResetting}
             >
               {isResetting ? 'Reseteando...' : 'Confirmar Reset'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Teacher Confirmation Dialog */}
+      <AlertDialog open={showDeleteConfirm} onOpenChange={(open) => {
+        setShowDeleteConfirm(open);
+        if (!open) {
+          setAdminPassword('');
+          setTeacherToDelete(null);
+        }
+      }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <Trash2 className="h-5 w-5" />
+              Eliminar Docente
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>
+                  ¿Está seguro que desea eliminar permanentemente a{' '}
+                  <strong>{teacherToDelete?.first_name} {teacherToDelete?.last_name}</strong>?
+                </p>
+                <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md text-sm">
+                  <strong className="text-destructive">⚠️ Esta acción es irreversible.</strong>
+                  <br />
+                  Se eliminarán todos los datos asociados: perfil, inscripciones, documentos y cuenta de usuario.
+                </div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          
+          <div className="space-y-2 py-2">
+            <Label htmlFor="admin-password">Ingrese su contraseña para confirmar:</Label>
+            <Input 
+              id="admin-password"
+              type="password" 
+              value={adminPassword}
+              onChange={(e) => setAdminPassword(e.target.value)}
+              placeholder="Contraseña de super admin"
+              disabled={isDeleting}
+            />
+          </div>
+          
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteTeacher}
+              disabled={isDeleting || !adminPassword}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? 'Eliminando...' : 'Eliminar Docente'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
