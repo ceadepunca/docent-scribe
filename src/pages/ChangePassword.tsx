@@ -103,9 +103,9 @@ const ChangePassword = () => {
               <Shield className="h-8 w-8 text-primary" />
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold">Cambio de Contraseña Obligatorio</CardTitle>
+          <CardTitle className="text-2xl font-bold">Cambiar Contraseña</CardTitle>
           <CardDescription>
-            Por seguridad, debe cambiar su contraseña temporal antes de continuar
+            Ingrese su contraseña actual y elija una nueva contraseña segura
           </CardDescription>
         </CardHeader>
         <CardContent>
