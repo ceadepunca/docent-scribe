@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, User, GraduationCap, Plus, Mail } from 'lucide-react';
+import { ArrowLeft, User, GraduationCap, Plus, Mail, KeyRound } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { DocumentUploader } from '@/components/DocumentUploader';
@@ -247,6 +247,19 @@ const Profile = () => {
                     </FormItem>
                   )}
                 />
+
+                {/* Change Password Button */}
+                <div className="md:col-span-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => navigate('/change-password')}
+                    className="w-full sm:w-auto"
+                  >
+                    <KeyRound className="h-4 w-4 mr-2" />
+                    Cambiar Contraseña
+                  </Button>
+                </div>
               </CardContent>
             </Card>
 
