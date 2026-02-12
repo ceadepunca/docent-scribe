@@ -89,7 +89,8 @@ export const useListingData = () => {
           subject_id,
           inscriptions!inner(
             user_id,
-            teaching_level
+            teaching_level,
+            inscription_period_id
           ),
           subjects!inner(
             name,
@@ -136,7 +137,8 @@ export const useListingData = () => {
           administrative_position_id,
           inscriptions!inner(
             user_id,
-            teaching_level
+            teaching_level,
+            inscription_period_id
           ),
           administrative_positions!inner(
             name,
