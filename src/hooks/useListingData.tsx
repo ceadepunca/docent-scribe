@@ -73,6 +73,27 @@ export const useListingData = () => {
     fetchReferenceData();
   }, []);
 
+  // Helper to fetch profiles in batches to avoid URL length limits
+  const fetchProfilesBatched = async (userIds: string[]): Promise<any[]> => {
+    if (userIds.length === 0) return [];
+    
+    const BATCH_SIZE = 50;
+    const allProfiles: any[] = [];
+    
+    for (let i = 0; i < userIds.length; i += BATCH_SIZE) {
+      const batch = userIds.slice(i, i + BATCH_SIZE);
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .or(`id.in.(${batch.join(',')}),user_id.in.(${batch.join(',')})`);
+      
+      if (error) throw error;
+      if (data) allProfiles.push(...data);
+    }
+    
+    return allProfiles;
+  };
+
   const fetchListings = async (filters: ListingFilters) => {
     setLoading(true);
     setError(null);
@@ -163,7 +184,10 @@ export const useListingData = () => {
 
       // Fetch evaluations data once
       const { data: evaluations, error: evaluationsError } = await evaluationsQuery;
-      if (evaluationsError) throw evaluationsError;
+      if (evaluationsError) {
+        console.error('Evaluations query error:', evaluationsError);
+        throw evaluationsError;
+      }
 
       // Create lookup maps for evaluations
       const subjectEvaluationsMap = new Map();
@@ -185,21 +209,15 @@ export const useListingData = () => {
         }
 
         const { data: subjectSelections, error: subjectError } = await subjectQuery;
-        if (subjectError) throw subjectError;
+        if (subjectError) {
+          console.error('Subject selections query error:', subjectError);
+          throw subjectError;
+        }
 
         // Get all unique user_ids from inscriptions
         const userIds = [...new Set(subjectSelections?.map((s: any) => s.inscriptions.user_id) || [])];
         
-        let profiles: any[] = [];
-        if (userIds.length > 0) {
-          const { data: profilesData, error: profilesError } = await supabase
-            .from('profiles')
-            .select('*')
-            .or(`id.in.(${userIds.join(',')}),user_id.in.(${userIds.join(',')})`);
-          
-          if (profilesError) throw profilesError;
-          profiles = profilesData || [];
-        }
+        const profiles = await fetchProfilesBatched(userIds);
 
         // Create a map for quick profile lookup
         const profilesMap = new Map();
@@ -266,21 +284,15 @@ export const useListingData = () => {
         }
 
         const { data: positionSelections, error: positionError } = await positionQuery;
-        if (positionError) throw positionError;
+        if (positionError) {
+          console.error('Position selections query error:', positionError);
+          throw positionError;
+        }
 
         // Get all unique user_ids from inscriptions
         const userIds = [...new Set(positionSelections?.map((s: any) => s.inscriptions.user_id) || [])];
         
-        let profiles: any[] = [];
-        if (userIds.length > 0) {
-          const { data: profilesData, error: profilesError } = await supabase
-            .from('profiles')
-            .select('*')
-            .or(`id.in.(${userIds.join(',')}),user_id.in.(${userIds.join(',')})`);
-          
-          if (profilesError) throw profilesError;
-          profiles = profilesData || [];
-        }
+        const profiles = await fetchProfilesBatched(userIds);
 
         // Create a map for quick profile lookup
         const profilesMap = new Map();
