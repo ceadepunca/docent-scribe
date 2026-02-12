@@ -80,7 +80,7 @@ serve(async (req) => {
     const { data: updateData, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
       user_id,
       {
-        password: '1234',
+        password: '123456',
         user_metadata: {
           requiring_password_change: true
         }
@@ -100,7 +100,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: 'Contraseña reseteada a "1234". El usuario deberá cambiarla al iniciar sesión.' 
+        message: 'Contraseña reseteada a "123456". El usuario deberá cambiarla al iniciar sesión.' 
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
