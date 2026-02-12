@@ -188,15 +188,16 @@ export const useListingData = () => {
         // Get all unique user_ids from inscriptions
         const userIds = [...new Set(subjectSelections?.map((s: any) => s.inscriptions.user_id) || [])];
         
-        // Fetch profiles for all user_ids at once
-        // For migrated profiles: profiles.id = inscriptions.user_id
-        // For regular users: profiles.user_id = inscriptions.user_id OR profiles.id = inscriptions.user_id
-        const { data: profiles, error: profilesError } = await supabase
-          .from('profiles')
-          .select('*')
-          .or(`id.in.(${userIds.join(',')}),user_id.in.(${userIds.join(',')})`);
-        
-        if (profilesError) throw profilesError;
+        let profiles: any[] = [];
+        if (userIds.length > 0) {
+          const { data: profilesData, error: profilesError } = await supabase
+            .from('profiles')
+            .select('*')
+            .or(`id.in.(${userIds.join(',')}),user_id.in.(${userIds.join(',')})`);
+          
+          if (profilesError) throw profilesError;
+          profiles = profilesData || [];
+        }
 
         // Create a map for quick profile lookup
         const profilesMap = new Map();
@@ -268,13 +269,16 @@ export const useListingData = () => {
         // Get all unique user_ids from inscriptions
         const userIds = [...new Set(positionSelections?.map((s: any) => s.inscriptions.user_id) || [])];
         
-        // Fetch profiles for all user_ids at once
-        const { data: profiles, error: profilesError } = await supabase
-          .from('profiles')
-          .select('*')
-          .or(`id.in.(${userIds.join(',')}),user_id.in.(${userIds.join(',')})`);
-        
-        if (profilesError) throw profilesError;
+        let profiles: any[] = [];
+        if (userIds.length > 0) {
+          const { data: profilesData, error: profilesError } = await supabase
+            .from('profiles')
+            .select('*')
+            .or(`id.in.(${userIds.join(',')}),user_id.in.(${userIds.join(',')})`);
+          
+          if (profilesError) throw profilesError;
+          profiles = profilesData || [];
+        }
 
         // Create a map for quick profile lookup
         const profilesMap = new Map();
