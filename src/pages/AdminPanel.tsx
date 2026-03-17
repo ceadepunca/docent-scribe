@@ -689,21 +689,20 @@ const AdminPanel = () => {
               </div>
 
               <div>
-                <Label>Niveles Disponibles *</Label>
-                <div className="flex flex-col gap-2 mt-2">
-                  {(['inicial', 'primario', 'secundario'] as const).map((level) => (
-                    <div key={level} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={level}
-                        checked={periodForm.availableLevels.includes(level)}
-                        onCheckedChange={(checked) => handleLevelChange(level, !!checked)}
-                      />
-                      <Label htmlFor={level} className="capitalize">
-                        {level}
-                      </Label>
-                    </div>
-                  ))}
-                </div>
+                <Label>Nivel Educativo *</Label>
+                <Select
+                  value={periodForm.level}
+                  onValueChange={(value) => setPeriodForm(prev => ({ ...prev, level: value }))}
+                >
+                  <SelectTrigger className="mt-2">
+                    <SelectValue placeholder="Seleccionar nivel" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="inicial">Inicial</SelectItem>
+                    <SelectItem value="primario">Primario</SelectItem>
+                    <SelectItem value="secundario">Secundario</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <Button onClick={createPeriod} className="w-full">

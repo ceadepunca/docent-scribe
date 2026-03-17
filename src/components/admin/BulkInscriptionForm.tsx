@@ -163,7 +163,7 @@ export const BulkInscriptionForm: React.FC<BulkInscriptionFormProps> = ({
           </RadioGroup>
           {selectedPeriod && formData.teaching_level && (
             <div className="mt-2">
-              {selectedPeriod.available_levels.includes(formData.teaching_level as any) ? (
+              {selectedPeriod.level === formData.teaching_level ? (
                 <p className="text-sm text-green-600">✓ Nivel disponible en este período</p>
               ) : (
                 <p className="text-sm text-red-600">⚠ Nivel no disponible en este período</p>

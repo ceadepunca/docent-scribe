@@ -96,7 +96,7 @@ const AssistedInscription = () => {
     
     // Last resort: any period that includes this level
     const anyPeriod = periods.find(period => 
-      period.available_levels.includes(teachingLevel as any)
+      period.level === teachingLevel
     );
     
     return anyPeriod?.id || null;

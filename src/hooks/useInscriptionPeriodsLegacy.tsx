@@ -7,6 +7,7 @@ interface InscriptionPeriod {
   description?: string;
   start_date: string;
   end_date: string;
+  level: string | null;
   available_levels: ('inicial' | 'primario' | 'secundario')[];
   is_active: boolean;
 }
@@ -67,7 +68,7 @@ export const useInscriptionPeriods = () => {
   const getPeriodForLevel = (level: 'inicial' | 'primario' | 'secundario'): InscriptionPeriod | null => {
     const currentPeriods = getCurrentPeriods();
     return currentPeriods.find(period => 
-      period.available_levels.includes(level)
+      period.level === level
     ) || null;
   };
 
@@ -75,11 +76,10 @@ export const useInscriptionPeriods = () => {
     const allLevels: ('inicial' | 'primario' | 'secundario')[] = [];
     
     getCurrentPeriods().forEach(period => {
-      period.available_levels.forEach(level => {
-        if (!allLevels.includes(level)) {
-          allLevels.push(level);
-        }
-      });
+      const lvl = period.level as 'inicial' | 'primario' | 'secundario' | null;
+      if (lvl && !allLevels.includes(lvl)) {
+        allLevels.push(lvl);
+      }
     });
 
     return allLevels;

@@ -32,7 +32,7 @@ export const PeriodSelectionGrid: React.FC<PeriodSelectionGridProps> = ({
 }) => {
   // Filter periods for the specific teaching level
   const availablePeriods = periods.filter(period => 
-    period.is_active && period.available_levels.includes(teachingLevel)
+    period.is_active && period.level === teachingLevel
   );
 
   const getDaysRemaining = (endDate: string) => {
