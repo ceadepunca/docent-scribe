@@ -24,6 +24,7 @@ import InscriptionManagement from "./pages/InscriptionManagement";
 import AssistedInscription from "./pages/admin/AssistedInscription";
 import BulkInscription from "./pages/admin/BulkInscription";
 import ChangePassword from "./pages/ChangePassword";
+import CompleteProfile from "./pages/CompleteProfile";
 
 const queryClient = new QueryClient();
 

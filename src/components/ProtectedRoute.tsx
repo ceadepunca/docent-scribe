@@ -13,7 +13,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   requiredRole, 
   allowedRoles 
 }) => {
-  const { user, loading, hasRole, requiresPasswordChange } = useAuth();
+  const { user, loading, hasRole, requiresPasswordChange, profile } = useAuth();
   const location = window.location;
 
   // Wait for auth and roles to load before enforcing access
@@ -32,14 +32,19 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return <Navigate to="/login" replace />;
   }
 
-  // Allow access to change-password without other checks
-  if (location.pathname === '/change-password') {
+  // Allow access to change-password and complete-profile without other checks
+  if (location.pathname === '/change-password' || location.pathname === '/complete-profile') {
     return <>{children}</>;
   }
 
   // Redirect to change-password if required
   if (requiresPasswordChange) {
     return <Navigate to="/change-password" replace />;
+  }
+
+  // Redirect to complete-profile if user has no DNI set
+  if (profile && !profile.dni) {
+    return <Navigate to="/complete-profile" replace />;
   }
 
   // Check if user has required role
