@@ -24,6 +24,7 @@ import InscriptionManagement from "./pages/InscriptionManagement";
 import AssistedInscription from "./pages/admin/AssistedInscription";
 import BulkInscription from "./pages/admin/BulkInscription";
 import ChangePassword from "./pages/ChangePassword";
+import CompleteProfile from "./pages/CompleteProfile";
 
 const queryClient = new QueryClient();
 
@@ -43,6 +44,11 @@ const App = () => (
             <Route path="/change-password" element={
               <ProtectedRoute>
                 <ChangePassword />
+              </ProtectedRoute>
+            } />
+            <Route path="/complete-profile" element={
+              <ProtectedRoute>
+                <CompleteProfile />
               </ProtectedRoute>
             } />
             <Route path="/dashboard" element={
