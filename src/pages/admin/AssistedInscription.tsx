@@ -77,7 +77,7 @@ const AssistedInscription = () => {
       const startDate = new Date(period.start_date);
       const endDate = new Date(period.end_date);
       return period.is_active && 
-             period.available_levels.includes(teachingLevel as any) &&
+             period.level === teachingLevel &&
              now >= startDate && now <= endDate;
     });
     
