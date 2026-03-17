@@ -49,7 +49,7 @@ const AdminPanel = () => {
     description: '',
     startDate: '',
     endDate: '',
-    availableLevels: [] as ('inicial' | 'primario' | 'secundario')[],
+    level: '' as string,
   });
   
   const [recentInscriptions, setRecentInscriptions] = useState<RecentInscription[]>([]);
