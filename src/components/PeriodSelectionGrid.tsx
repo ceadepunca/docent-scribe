@@ -10,6 +10,7 @@ interface InscriptionPeriod {
   description?: string;
   start_date: string;
   end_date: string;
+  level: string | null;
   available_levels: ('inicial' | 'primario' | 'secundario')[];
   is_active: boolean;
 }
