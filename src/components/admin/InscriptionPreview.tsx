@@ -105,7 +105,7 @@ export const InscriptionPreview: React.FC<InscriptionPreviewProps> = ({
         {/* Level Validation */}
         {selectedPeriod && inscriptionConfig.teaching_level && (
           <div className="flex items-center gap-2 p-3 rounded-lg border">
-            {selectedPeriod.available_levels.includes(inscriptionConfig.teaching_level) ? (
+            {selectedPeriod.level === inscriptionConfig.teaching_level ? (
               <>
                 <CheckCircle className="h-5 w-5 text-green-600" />
                 <span className="text-green-600 font-medium">

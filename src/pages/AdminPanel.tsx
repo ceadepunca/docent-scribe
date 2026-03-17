@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowLeft, Plus, Calendar, Users, BookOpen, ClipboardList, Eye, Clock, Check, X, Settings, Upload, UserPlus2, UserPlus, Database, HardDrive, Download, FileJson, Mail, Edit } from 'lucide-react';
@@ -49,7 +50,7 @@ const AdminPanel = () => {
     description: '',
     startDate: '',
     endDate: '',
-    availableLevels: [] as ('inicial' | 'primario' | 'secundario')[],
+    level: '' as string,
   });
   
   const [recentInscriptions, setRecentInscriptions] = useState<RecentInscription[]>([]);
@@ -210,17 +211,8 @@ const AdminPanel = () => {
     }
   };
 
-  const handleLevelChange = (level: 'inicial' | 'primario' | 'secundario', checked: boolean) => {
-    setPeriodForm(prev => ({
-      ...prev,
-      availableLevels: checked 
-        ? [...prev.availableLevels, level]
-        : prev.availableLevels.filter(l => l !== level)
-    }));
-  };
-
   const createPeriod = async () => {
-    if (!user || !periodForm.name || !periodForm.startDate || !periodForm.endDate || periodForm.availableLevels.length === 0) {
+    if (!user || !periodForm.name || !periodForm.startDate || !periodForm.endDate || !periodForm.level) {
       toast({
         title: 'Error',
         description: 'Complete todos los campos obligatorios.',
@@ -237,7 +229,8 @@ const AdminPanel = () => {
           description: periodForm.description,
           start_date: periodForm.startDate,
           end_date: periodForm.endDate,
-          available_levels: periodForm.availableLevels,
+          level: periodForm.level,
+          available_levels: [periodForm.level as 'inicial' | 'primario' | 'secundario'],
           is_active: true,
           created_by: user.id,
         });
@@ -255,7 +248,7 @@ const AdminPanel = () => {
         description: '',
         startDate: '',
         endDate: '',
-        availableLevels: [],
+        level: '',
       });
     } catch (error) {
       toast({
@@ -697,21 +690,20 @@ const AdminPanel = () => {
               </div>
 
               <div>
-                <Label>Niveles Disponibles *</Label>
-                <div className="flex flex-col gap-2 mt-2">
-                  {(['inicial', 'primario', 'secundario'] as const).map((level) => (
-                    <div key={level} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={level}
-                        checked={periodForm.availableLevels.includes(level)}
-                        onCheckedChange={(checked) => handleLevelChange(level, !!checked)}
-                      />
-                      <Label htmlFor={level} className="capitalize">
-                        {level}
-                      </Label>
-                    </div>
-                  ))}
-                </div>
+                <Label>Nivel Educativo *</Label>
+                <Select
+                  value={periodForm.level}
+                  onValueChange={(value) => setPeriodForm(prev => ({ ...prev, level: value }))}
+                >
+                  <SelectTrigger className="mt-2">
+                    <SelectValue placeholder="Seleccionar nivel" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="inicial">Inicial</SelectItem>
+                    <SelectItem value="primario">Primario</SelectItem>
+                    <SelectItem value="secundario">Secundario</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <Button onClick={createPeriod} className="w-full">

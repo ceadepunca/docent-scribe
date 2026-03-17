@@ -367,6 +367,7 @@ export type Database = {
           end_date: string
           id: string
           is_active: boolean
+          level: string | null
           name: string
           start_date: string
           updated_at: string
@@ -379,6 +380,7 @@ export type Database = {
           end_date: string
           id?: string
           is_active?: boolean
+          level?: string | null
           name: string
           start_date: string
           updated_at?: string
@@ -391,6 +393,7 @@ export type Database = {
           end_date?: string
           id?: string
           is_active?: boolean
+          level?: string | null
           name?: string
           start_date?: string
           updated_at?: string

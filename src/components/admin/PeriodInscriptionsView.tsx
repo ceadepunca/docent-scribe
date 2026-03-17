@@ -194,7 +194,7 @@ export const PeriodInscriptionsView: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-1">
                   <Users className="h-4 w-4" />
-                  Niveles: {selectedPeriod.available_levels.join(', ')}
+                  Nivel: {selectedPeriod.level || selectedPeriod.available_levels?.join(', ') || 'No especificado'}
                 </div>
               </div>
             </CardContent>

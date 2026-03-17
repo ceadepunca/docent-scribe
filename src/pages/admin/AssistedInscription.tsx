@@ -77,7 +77,7 @@ const AssistedInscription = () => {
       const startDate = new Date(period.start_date);
       const endDate = new Date(period.end_date);
       return period.is_active && 
-             period.available_levels.includes(teachingLevel as any) &&
+             period.level === teachingLevel &&
              now >= startDate && now <= endDate;
     });
     
@@ -87,7 +87,7 @@ const AssistedInscription = () => {
     
     // If no current periods, find the most recent active period for this level
     const availablePeriods = periods.filter(period => 
-      period.is_active && period.available_levels.includes(teachingLevel as any)
+      period.is_active && period.level === teachingLevel
     ).sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime());
     
     if (availablePeriods.length > 0) {
@@ -96,7 +96,7 @@ const AssistedInscription = () => {
     
     // Last resort: any period that includes this level
     const anyPeriod = periods.find(period => 
-      period.available_levels.includes(teachingLevel as any)
+      period.level === teachingLevel
     );
     
     return anyPeriod?.id || null;
