@@ -46,6 +46,11 @@ const App = () => (
                 <ChangePassword />
               </ProtectedRoute>
             } />
+            <Route path="/complete-profile" element={
+              <ProtectedRoute>
+                <CompleteProfile />
+              </ProtectedRoute>
+            } />
             <Route path="/dashboard" element={
               <ProtectedRoute>
                 <ProtectedLayout>
