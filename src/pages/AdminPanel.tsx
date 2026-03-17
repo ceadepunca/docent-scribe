@@ -210,17 +210,8 @@ const AdminPanel = () => {
     }
   };
 
-  const handleLevelChange = (level: 'inicial' | 'primario' | 'secundario', checked: boolean) => {
-    setPeriodForm(prev => ({
-      ...prev,
-      availableLevels: checked 
-        ? [...prev.availableLevels, level]
-        : prev.availableLevels.filter(l => l !== level)
-    }));
-  };
-
   const createPeriod = async () => {
-    if (!user || !periodForm.name || !periodForm.startDate || !periodForm.endDate || periodForm.availableLevels.length === 0) {
+    if (!user || !periodForm.name || !periodForm.startDate || !periodForm.endDate || !periodForm.level) {
       toast({
         title: 'Error',
         description: 'Complete todos los campos obligatorios.',
@@ -237,7 +228,8 @@ const AdminPanel = () => {
           description: periodForm.description,
           start_date: periodForm.startDate,
           end_date: periodForm.endDate,
-          available_levels: periodForm.availableLevels,
+          level: periodForm.level,
+          available_levels: [periodForm.level as 'inicial' | 'primario' | 'secundario'],
           is_active: true,
           created_by: user.id,
         });
@@ -255,7 +247,7 @@ const AdminPanel = () => {
         description: '',
         startDate: '',
         endDate: '',
-        availableLevels: [],
+        level: '',
       });
     } catch (error) {
       toast({
