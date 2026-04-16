@@ -1,19 +1,31 @@
 
+El usuario reporta que el botón "Exportar PDF" en `/listings` no funciona. Mirando `ListingGenerator.tsx`, el botón existe pero no tiene `onClick` — es solo decorativo.
 
-## Plan: Resetear contraseña de super admin a "1234"
+# Plan: Implementar exportación a PDF en Listados
 
-Mismo procedimiento que la vez anterior:
+## Problema
+En `src/components/ListingGenerator.tsx` el botón "Exportar PDF" no tiene handler. Es puramente visual.
 
-1. **Crear Edge Function temporal** `supabase/functions/password-reset-temp/index.ts` con `verify_jwt = false`, protegida por clave secreta
-2. **Actualizar `supabase/config.toml`** para registrar la función
-3. **Desplegar y ejecutar** el reseteo para el usuario `bc7f6941-a3f6-48c3-b5cd-b5734806231d` con contraseña `1234`
-4. **Eliminar la función temporal** por seguridad
+## Solución
 
-### Resultado
+### 1. Agregar dependencias
+- `jspdf` + `jspdf-autotable` para generar el PDF con tablas estilo grilla.
 
-Podrás iniciar sesión con:
-- **DNI:** 21325214
-- **Contraseña:** 1234
+### 2. Modificar `src/components/ListingGenerator.tsx`
+- Crear función `handleExportPDF()` que:
+  - Genera un PDF en orientación horizontal (landscape) por la cantidad de columnas.
+  - Encabezado con: título "Listado de Mérito", período, escuela, fecha de generación.
+  - Tabla con columnas: Orden, Apellido y Nombre, DNI, Título, Antigüedad título, Antigüedad docente, Concepto, Promedio, Trabajo público, Becas/otros, Concurso, Otros antecedentes, Red federal, **Total**.
+  - Una sección por agrupamiento (materia o cargo) si el listado incluye varios.
+  - Pie con número de página.
+  - Nombre del archivo: `listado-merito-{periodo}-{fecha}.pdf`.
+- Agregar `onClick={handleExportPDF}` al botón existente.
+- Mantener disabled cuando `listings.length === 0`.
 
-Se te pedirá cambiar la contraseña al iniciar sesión.
+### 3. (Opcional, mismo cambio) Agregar export a CSV
+- Botón secundario que descargue CSV con las mismas columnas, usando `Blob` + `URL.createObjectURL`. Útil para Excel.
 
+## Lo que NO se modifica
+- Estructura de datos de `useListingData`.
+- `ListingTable.tsx` (la vista en pantalla queda igual).
+- Backend / base de datos.
