@@ -414,10 +414,24 @@ export const ListingGenerator: React.FC<Props> = ({ selectedPeriodId }) => {
             </Button>
             
             {listings.length > 0 && (
-              <Button variant="outline" className="flex items-center gap-2">
-                <Download className="h-4 w-4" />
-                Exportar PDF
-              </Button>
+              <>
+                <Button
+                  variant="outline"
+                  className="flex items-center gap-2"
+                  onClick={handleExportPDF}
+                >
+                  <Download className="h-4 w-4" />
+                  Exportar PDF
+                </Button>
+                <Button
+                  variant="outline"
+                  className="flex items-center gap-2"
+                  onClick={handleExportCSV}
+                >
+                  <FileSpreadsheet className="h-4 w-4" />
+                  Exportar CSV
+                </Button>
+              </>
             )}
           </div>
         </CardContent>
