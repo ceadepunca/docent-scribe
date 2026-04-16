@@ -1,12 +1,53 @@
 import React, { useState } from 'react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Download, FileText, Table as TableIcon, Calendar } from 'lucide-react';
-import { useListingData, ListingFilters } from '@/hooks/useListingData';
+import { Download, FileText, FileSpreadsheet, Table as TableIcon, Calendar } from 'lucide-react';
+import { useListingData, ListingFilters, ListingItem } from '@/hooks/useListingData';
 import { useInscriptionPeriods } from '@/hooks/useInscriptionPeriods';
 import { ListingTable } from './ListingTable';
+
+const PDF_COLUMNS = [
+  { header: '#', key: 'order' },
+  { header: 'Apellido y Nombre', key: 'teacher_name' },
+  { header: 'DNI', key: 'teacher_dni' },
+  { header: 'Tipo', key: 'title_type' },
+  { header: 'Tít.', key: 'titulo_score' },
+  { header: 'Ant.Tít.', key: 'antiguedad_titulo_score' },
+  { header: 'Ant.Doc.', key: 'antiguedad_docente_score' },
+  { header: 'Conc.', key: 'concepto_score' },
+  { header: 'Prom.', key: 'promedio_titulo_score' },
+  { header: 'T.Pub.', key: 'trabajo_publico_score' },
+  { header: 'Becas', key: 'becas_otros_score' },
+  { header: 'Conc.', key: 'concurso_score' },
+  { header: 'Otros', key: 'otros_antecedentes_score' },
+  { header: 'R.Fed.', key: 'red_federal_score' },
+  { header: 'TOTAL', key: 'total_score' },
+];
+
+const fmtScore = (v: number | null | undefined) =>
+  v !== null && v !== undefined ? Number(v).toFixed(2) : '--';
+
+const titleTypeLabel = (item: ListingItem) => {
+  const s = item.titulo_score;
+  if (s !== null && s !== undefined) {
+    if (s >= 8.5) return 'Doc';
+    if (s >= 5.5) return 'Hab';
+    if (s >= 2.5) return 'Sup';
+  }
+  switch (item.title_type) {
+    case 'docente': return 'Doc';
+    case 'habilitante': return 'Hab';
+    case 'supletorio': return 'Sup';
+    default: return '--';
+  }
+};
+
+const sanitize = (s: string) =>
+  s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 
 interface Props {
   selectedPeriodId?: string;
