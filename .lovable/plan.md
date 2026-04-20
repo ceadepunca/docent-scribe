@@ -1,31 +1,29 @@
 
-El usuario reporta que el botón "Exportar PDF" en `/listings` no funciona. Mirando `ListingGenerator.tsx`, el botón existe pero no tiene `onClick` — es solo decorativo.
+El usuario quiere agregar exportación a XLSX (Excel) además del PDF y CSV existentes en el generador de listados.
 
-# Plan: Implementar exportación a PDF en Listados
+# Plan: Agregar exportación a XLSX en Listados
 
-## Problema
-En `src/components/ListingGenerator.tsx` el botón "Exportar PDF" no tiene handler. Es puramente visual.
+## Cambios
 
-## Solución
+### 1. Dependencia
+- Agregar `xlsx` (SheetJS) al proyecto.
 
-### 1. Agregar dependencias
-- `jspdf` + `jspdf-autotable` para generar el PDF con tablas estilo grilla.
-
-### 2. Modificar `src/components/ListingGenerator.tsx`
-- Crear función `handleExportPDF()` que:
-  - Genera un PDF en orientación horizontal (landscape) por la cantidad de columnas.
-  - Encabezado con: título "Listado de Mérito", período, escuela, fecha de generación.
-  - Tabla con columnas: Orden, Apellido y Nombre, DNI, Título, Antigüedad título, Antigüedad docente, Concepto, Promedio, Trabajo público, Becas/otros, Concurso, Otros antecedentes, Red federal, **Total**.
-  - Una sección por agrupamiento (materia o cargo) si el listado incluye varios.
-  - Pie con número de página.
-  - Nombre del archivo: `listado-merito-{periodo}-{fecha}.pdf`.
-- Agregar `onClick={handleExportPDF}` al botón existente.
-- Mantener disabled cuando `listings.length === 0`.
-
-### 3. (Opcional, mismo cambio) Agregar export a CSV
-- Botón secundario que descargue CSV con las mismas columnas, usando `Blob` + `URL.createObjectURL`. Útil para Excel.
+### 2. `src/components/ListingGenerator.tsx`
+- Importar `* as XLSX from 'xlsx'`.
+- Crear `handleExportXLSX()` que:
+  - Reutiliza la misma lógica de agrupamiento (`groupListingsForExport`) que PDF y CSV.
+  - Genera **una hoja por escuela** dentro del workbook, con:
+    - Título de la escuela.
+    - Secciones "MATERIAS" y "CARGOS ADMINISTRATIVOS".
+    - Sub-secciones por materia/cargo y tipo de título (Doc/Hab/Sup).
+    - Tabla con las mismas columnas que el PDF: #, Apellido y Nombre, DNI, Tipo, Tít., Ant.Tít., Ant.Doc., Conc., Prom., T.Pub., Becas, Conc., Otros, R.Fed., **TOTAL**.
+  - Formato:
+    - Encabezados en negrita.
+    - Fila TOTAL destacada.
+    - Anchos de columna ajustados (apellido y nombre más ancho, scores angostos).
+  - Nombre del archivo: `listado-merito-{periodo}-{fecha}.xlsx`.
+- Agregar tercer botón "Exportar Excel" junto a PDF y CSV (icono `FileSpreadsheet` ya importado, usar otro como `Sheet` o reusar). Mantener disabled cuando `listings.length === 0`.
 
 ## Lo que NO se modifica
-- Estructura de datos de `useListingData`.
-- `ListingTable.tsx` (la vista en pantalla queda igual).
-- Backend / base de datos.
+- Lógica de PDF y CSV (siguen funcionando igual).
+- `useListingData`, `ListingTable`, ni el backend.
