@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import * as XLSX from 'xlsx';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -296,6 +297,131 @@ export const ListingGenerator: React.FC<Props> = ({ selectedPeriodId }) => {
     URL.revokeObjectURL(url);
   };
 
+  const handleExportXLSX = () => {
+    if (listings.length === 0) return;
+    const wb = XLSX.utils.book_new();
+    const groups = groupListingsForExport();
+    const headers = PDF_COLUMNS.map((c) => c.header);
+
+    const usedSheetNames = new Set<string>();
+    const safeSheetName = (raw: string) => {
+      // Excel sheet name: max 31 chars, no : \ / ? * [ ]
+      let name = raw.replace(/[:\\/?*\[\]]/g, ' ').trim().slice(0, 31) || 'Hoja';
+      let candidate = name;
+      let i = 2;
+      while (usedSheetNames.has(candidate.toLowerCase())) {
+        const suffix = ` (${i++})`;
+        candidate = (name.slice(0, 31 - suffix.length) + suffix);
+      }
+      usedSheetNames.add(candidate.toLowerCase());
+      return candidate;
+    };
+
+    const colWidths = [
+      { wch: 4 },   // #
+      { wch: 32 },  // Apellido y Nombre
+      { wch: 12 },  // DNI
+      { wch: 6 },   // Tipo
+      { wch: 7 },   // Tít.
+      { wch: 8 },   // Ant.Tít.
+      { wch: 8 },   // Ant.Doc.
+      { wch: 7 },   // Conc.
+      { wch: 7 },   // Prom.
+      { wch: 7 },   // T.Pub.
+      { wch: 7 },   // Becas
+      { wch: 7 },   // Conc.
+      { wch: 7 },   // Otros
+      { wch: 7 },   // R.Fed.
+      { wch: 9 },   // TOTAL
+    ];
+
+    Object.entries(groups).forEach(([schoolName, schoolData]) => {
+      const aoa: (string | number | null)[][] = [];
+      const boldRows: number[] = [];      // section / sub-section / school titles
+      const headerRows: number[] = [];    // table header rows
+      const totalCols: number[] = [];     // row indices where TOTAL column should be bold
+
+      // School title
+      aoa.push([schoolName]);
+      boldRows.push(aoa.length - 1);
+      aoa.push([]);
+
+      const pushItemBlock = (sectionLabel: string, items: Record<string, Record<string, ListingItem[]>>) => {
+        if (Object.keys(items).length === 0) return;
+        aoa.push([sectionLabel]);
+        boldRows.push(aoa.length - 1);
+        Object.keys(items).sort().forEach((itemName) => {
+          const byType = items[itemName];
+          Object.keys(byType).forEach((tt) => {
+            aoa.push([`${itemName.toUpperCase()} — ${tt}`]);
+            boldRows.push(aoa.length - 1);
+            aoa.push(headers);
+            headerRows.push(aoa.length - 1);
+            byType[tt].forEach((item, idx) => {
+              aoa.push([
+                idx + 1,
+                item.teacher_name,
+                item.teacher_dni,
+                titleTypeLabel(item),
+                item.titulo_score ?? null,
+                item.antiguedad_titulo_score ?? null,
+                item.antiguedad_docente_score ?? null,
+                item.concepto_score ?? null,
+                item.promedio_titulo_score ?? null,
+                item.trabajo_publico_score ?? null,
+                item.becas_otros_score ?? null,
+                item.concurso_score ?? null,
+                item.otros_antecedentes_score ?? null,
+                item.red_federal_score ?? null,
+                item.total_score ?? null,
+              ]);
+              totalCols.push(aoa.length - 1);
+            });
+            aoa.push([]);
+          });
+        });
+      };
+
+      pushItemBlock('MATERIAS', schoolData.subjects);
+      pushItemBlock('CARGOS ADMINISTRATIVOS', schoolData.positions);
+
+      const ws = XLSX.utils.aoa_to_sheet(aoa);
+      ws['!cols'] = colWidths;
+
+      // Apply formatting
+      const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+      for (let R = range.s.r; R <= range.e.r; R++) {
+        for (let C = range.s.c; C <= range.e.c; C++) {
+          const addr = XLSX.utils.encode_cell({ r: R, c: C });
+          const cell = ws[addr];
+          if (!cell) continue;
+          cell.s = cell.s || {};
+          if (boldRows.includes(R)) {
+            cell.s.font = { bold: true, sz: R === 0 ? 13 : 11 };
+          }
+          if (headerRows.includes(R)) {
+            cell.s.font = { bold: true };
+            cell.s.fill = { patternType: 'solid', fgColor: { rgb: 'E5E7EB' } };
+            cell.s.alignment = { horizontal: 'center' };
+          }
+          if (totalCols.includes(R) && C === 14) {
+            cell.s.font = { bold: true };
+          }
+          // Format numeric score cells
+          if (totalCols.includes(R) && C >= 4 && typeof cell.v === 'number') {
+            cell.z = '0.00';
+          }
+        }
+      }
+
+      XLSX.utils.book_append_sheet(wb, ws, safeSheetName(schoolName));
+    });
+
+    const periodSlug = sanitize(selectedPeriod?.name || 'periodo');
+    const dateSlug = new Date().toISOString().slice(0, 10);
+    XLSX.writeFile(wb, `listado-merito-${periodSlug}-${dateSlug}.xlsx`);
+  };
+
   return (
     <div className="space-y-6">
       {/* Filters */}
@@ -422,6 +548,14 @@ export const ListingGenerator: React.FC<Props> = ({ selectedPeriodId }) => {
                 >
                   <Download className="h-4 w-4" />
                   Exportar PDF
+                </Button>
+                <Button
+                  variant="outline"
+                  className="flex items-center gap-2"
+                  onClick={handleExportXLSX}
+                >
+                  <FileSpreadsheet className="h-4 w-4" />
+                  Exportar Excel
                 </Button>
                 <Button
                   variant="outline"
